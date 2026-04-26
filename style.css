@@ -1,0 +1,740 @@
+* {
+    font-family: 'Poppins', sans-serif;
+}
+
+.login-body {
+    height: 100dvh;
+    margin: 0;
+    padding: 0;
+    background-color: rgb(26, 35, 50);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dashboard-body {
+    margin: 0;
+    padding: 0;
+    height: 100dvh;
+    box-sizing: border-box;
+    display: flex;
+    color: rg;
+}
+
+.login-container,
+.twofa-container {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+    width: 25vw;
+    height: 95vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    border-radius: 0.5rem;
+    background-color: white;
+
+}
+
+.category {
+    display: flex;
+    width: 100%;
+    justify-content: space-evenly;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 1rem;
+}  
+
+.category-login-btn{
+    display: flex;
+    padding: 0.5rem;
+    width: 70%;
+    border: 2px solid rgba(26, 35, 50, 0.3);
+    text-align: center;
+    border-radius: 0.5rem;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+}
+
+.active-login-catergory {
+    background-color: rgb(26, 35, 50);
+    color: white;
+    border: none;
+}
+
+.student-svg-on,.faculty-svg-on {
+    display: none;
+}
+
+.category-login-btn.active-login-catergory [class$="-svg-off"] {
+    display: none;
+}
+
+.category-login-btn.active-login-catergory [class$="-svg-on"] {
+    display: block;
+}
+
+
+.login-container img,
+.twofa-container img {
+    width: 10vw;
+}
+
+.input-fields {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    margin-top: 1.8rem;
+}
+
+.login-container input,
+.verification-input {
+    height: 2rem;
+    background-color: rgb(248, 249, 250);
+    border: 3px solid rgb(228, 230, 231);
+    padding: 0.2rem 0rem 0.2rem 0.7rem;
+    border-radius: 0.5rem;
+}
+
+.verification-input {
+    text-align: center;
+    font-size: 1.3rem;
+}
+
+.login-btn,
+.verify-btn {
+    background-color: rgb(26, 35, 50);
+    border: 2px solid rgb(26, 35, 50);
+    color: white;
+}
+
+.clear-btn {
+    background-color: rgb(245, 245, 250);
+    border: 2px solid rgb(245, 245, 250);
+    color: gray;
+}
+
+.passkey-btn {
+    background-color: rgb(244, 197, 66);
+    border: 2px solid rgb(244, 197, 66);
+    margin-top: 0.8rem;
+}
+
+.back-btn {
+    margin-top: 0.8rem;
+    border: 2px solid rgb(210, 210, 210);
+}
+
+.login-btn,
+.clear-btn,
+.verify-btn,
+.passkey-btn,
+.back-btn {
+    cursor: pointer;
+    border-radius: 0.5rem;
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 500ms;
+}
+
+.login-btn:hover,
+.clear-btn:hover,
+.verify-btn:hover,
+.passkey-btn:hover,
+.back-btn:hover {
+    border: 2px solid gray;
+}
+
+.nav-container {
+    width: 17vw;
+    height: 100%;
+    border-right: 1.5px solid rgb(220, 220, 220);
+}
+
+.nav-logo-container {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    text-align: center;
+    border-bottom: 1.5px solid rgb(220, 220, 220);
+}
+
+.nav-btns-container {
+    padding-top: 1rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    gap: 0.5rem;
+    border-bottom: 1.5px solid rgb(220, 220, 220);
+    padding-bottom: 7rem;
+}
+
+.nav-btn {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    padding: 0.4rem 0rem 0.4rem 0.4rem;
+    width: 100%;
+    border-radius: 0.3rem;
+    transition: all 100ms;
+}
+
+.active-nav-btn {
+    background-color: rgb(26, 35, 50);
+    color: white;
+}
+
+.dashboard-svg-on,
+.guidelines-svg-on,
+.eval-svg-on,
+.history-svg-on,
+.settings-svg-on {
+    display: none;
+}
+
+.nav-btn.active-nav-btn [class$="-svg-off"] {
+    display: none;
+}
+
+.nav-btn:not(.active-nav-btn):hover {
+    background-color: rgb(240, 240, 240);
+}
+
+.nav-btn.active-nav-btn [class$="-svg-on"] {
+    display: block;
+}
+
+.bottom-nav-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 1rem;    
+}
+
+.completed-container, .deleted-warning {
+    background-color: rgb(240, 240, 240);
+    border-radius: 0.5rem;
+    color: rgb(110, 110, 110);
+    width: 80%;
+    padding: 1rem;
+}
+
+.logout-btn, .logout-all-btn, .warning-btn-1, .warning-btn-2 {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.7rem 1rem;
+    width: 80%;
+    background-color: rgb(252, 221, 221);
+    border-radius: 0.5rem;
+    cursor: pointer;
+}
+
+.warning-btn-1, .warning-btn-2 {
+    color: white;
+    width: auto;
+    background-color: rgb(220, 36, 36);
+}
+
+.warning-btn-2 {
+    padding: 1rem;
+}
+
+.logout-btn:hover, .logout-all-btn:hover {
+    background-color: rgb(242, 190, 190);
+}
+
+.dashboard-body main {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+}
+
+.top-banner {
+    position: sticky;
+    top: 0;
+    min-height: 13dvh;
+    background-color: white;
+    border-bottom: 1.5px solid rgb(220, 220, 220);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0rem 2rem 0rem 2rem;
+}
+
+.welcome-txt {
+    font-size: 1.2rem;
+}
+
+.semester-txt {
+    margin-top: 0.3rem;
+    font-size: 0.8rem;
+    color: rgb(105, 105, 105);
+}
+
+.student-id-txt {
+    font-size: 0.8rem;
+    padding: 0.7rem;
+    border-radius: 0.5rem;
+    background-color: rgb(240, 240, 240);
+}
+
+.dashboard-container, .guidelines-container, .eval-container, .history-container, .settings-container {
+    background-color: white;
+}
+
+.tabs {
+    overflow: auto;
+}
+
+.dashboard-container {
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.dash-title {
+    display: flex;
+    justify-content: space-between;
+}
+
+.dash-refresh-btn {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+    border: 2px solid rgba(26, 35, 50, 0.3);
+    cursor: pointer;
+}
+
+.dash-stats, .history-stats {
+    display: flex;
+    justify-content: space-evenly;
+    gap: 2rem;
+}
+
+.dash-stats-card, .history-stats-card {
+    display: flex;
+    width: 30%;
+    padding: 1.7rem;
+    border-radius: 0.5rem;
+    justify-content: space-between;
+    border: 2px solid rgba(26, 35, 50, 0.2);
+}
+
+.eval-locked-notif {
+    display: flex;
+    gap: 1rem;
+    padding: 1.5rem;
+    color: maroon;
+    border-radius: 0.5rem;
+    background-color: rgb(252, 221, 221);
+    border: 2px solid rgba(255, 0, 0, 0.3);
+}
+
+.assigned-title {
+    border: 2px solid rgba(26, 35, 50, 0.3);
+    padding: 1rem;
+    border-bottom: none;
+}
+
+.assigned-card {
+    padding: 1.5rem;
+    border: 2px solid rgba(26, 35, 50, 0.3);
+    border-bottom: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.assigned-card:last-child {
+    border: 2px solid rgba(26, 35, 50, 0.3);
+}
+
+.assigned-status, .history-status-txt {
+    text-align: center;
+    padding: 1rem 3rem;
+    background-color: rgb(244, 197, 66);
+    border-radius: 0.5rem;
+}
+
+.dash-stats-card [class$="-txt"], .history-stats-card [class$="-txt"] {
+    font-size: 2rem;
+}
+
+.total-teachers-txt {
+    font-size: 2rem;
+}
+
+.guidelines-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    padding: 2rem;
+}
+
+.guide-title {
+    background-color: rgb(26, 35, 50);
+    color: white;
+    padding: 2rem;
+    width: 70%;
+}
+.guide-body {
+    border-bottom: 2px solid rgba(26, 35, 50, 0.3);
+    padding: 2rem;
+    width: 70%;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.guide-li {
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    border-top-right-radius: 0.5rem;
+    border-bottom-right-radius: 0.5rem;
+    background-color:  rgb(240, 240, 240);
+    border-left: 5px solid rgb(244, 197, 66);
+}
+
+.guide-num-circle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    width: 2.8rem;
+    height: 2.5rem;    
+    max-height: 2.5rem;
+    border-radius: 3rem;
+    background-color: rgb(244, 197, 66);
+}
+
+.guide-li-title {
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+.guide-li-desc {
+    margin-top: 0.5rem;
+    color: rgb(105, 105, 105);
+}
+
+.guide-reminder {
+    background-color: rgb(26, 35, 50);
+    color: white;
+    padding: 1rem;
+    border-radius: 0.5rem;
+}
+
+.guide-agree {
+    padding: 1rem;
+    background-color: rgb(240, 240, 240);
+}
+
+.guide-agree-chkbx {
+    scale: 2;
+    margin-right: 1rem;
+    cursor: pointer;
+}
+
+.guide-proceed-btn {
+    cursor: not-allowed;
+    background-color: rgb(210, 210, 210);
+    text-align: center;
+    padding: 1rem;
+    border-radius: 0.5rem;
+}
+
+.eval-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+}
+
+.eval-restrict-title {
+    color: white;
+    display: flex;
+    padding: 2rem;
+    gap: 0.5rem;
+    width: 70%;
+    background-color: rgb(220, 36, 36);
+    font-size: 1.3rem;
+}
+
+.eval-restrict-body {
+    display: flex;
+    padding: 2rem;
+    gap: 1rem;
+    font-size: 1.1rem;
+    align-items: center;
+    flex-direction: column;
+    border-bottom: 2px solid rgba(26, 35, 50, 0.3);
+    width: 70%;
+}
+
+.eval-restrict-desc {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    border-radius: 0.5rem;
+    background-color: rgb(255, 225, 225);
+    padding: 1rem;
+    width: 95%;
+    border: 2px solid rgba(255, 0, 0, 0.3);
+    color: maroon;
+}
+
+.goto-guidelines-btn {
+    padding: 1rem;
+    text-align: center;
+    background-color: rgb(26, 35, 50);
+    color: white;
+    margin-top: 1rem;
+    border-radius: 0.5rem;
+    width: 95%;
+    cursor: pointer;
+}
+
+.history-container {
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.history-search-parent {
+    display: flex;
+    justify-content: space-between;
+    padding: 2rem;
+    border-radius: 0.5rem;
+    border: 2px solid rgba(26, 35, 50, 0.3);
+}
+
+.history-search-child {
+    display: flex;
+    align-items: center;
+    width: 50%;
+}
+
+.search-icon {
+    padding-left: 1rem;
+    height: 100%;
+    border: 2px solid rgb(110, 110, 110);
+    border-right: none;
+}
+
+.history-search-input {
+    height: 100%;
+    width: 100%;
+    padding: 0;
+    border: 2px solid rgb(110, 110, 110);
+    border-left: none;
+    background-color: transparent;
+    padding-left: 1rem;
+    font-size: 1.1rem;
+}
+
+.history-search-parent [class$="-btn"] {
+    padding: 1rem 2rem;
+    text-align: center;
+    cursor: pointer;
+    border: 2px solid rgba(26, 35, 50, 0.3);
+    border-radius: 0.5rem;
+    width: 10%;
+}
+
+.history-search-parent [class$="-btn"]:hover {
+    background-color: rgb(240, 240, 240);
+}
+
+.history-title {
+    padding: 1rem;
+    border: 2px solid rgba(26, 35, 50, 0.3);
+    border-bottom: none;
+}
+
+.history-record-card {
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    border: 2px solid rgba(26, 35, 50, 0.3);
+}
+
+
+.settings-container {
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.settings-account-title, .settings-password-title, .settings-security-title {
+    padding: 1rem;
+    font-size: 1.5rem;
+    background-color: rgb(250, 250, 250);
+    border: 2px solid rgba(26, 35, 50, 0.3);
+    border-bottom: none;
+}
+
+.settings-account-body {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    justify-content: space-evenly;
+    border: 2px solid rgba(26, 35, 50, 0.3);
+}
+
+.settings-account-body [class$="-txt"] {
+    padding: 1rem;
+}
+
+.settings-password-body, .settings-secutiy-body {
+    display: flex;
+    padding: 1rem;
+    flex-direction: column;
+    justify-content: center;
+    gap: 1rem;
+    border: 2px solid rgba(26, 35, 50, 0.3);
+}
+
+.settings-secutiy-body {
+    flex-direction: row;
+    padding: 2rem;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.logout-all-btn {
+    width: 20%;
+}
+
+.settings-password-body [class$="-input"] {
+    padding: 1rem 0rem;
+    border: 2px solid rgba(26, 35, 50, 0.3);
+    border-radius: 0.5rem;
+    width: 100%;
+    text-indent: 1rem;
+    margin-top: 0.5rem;
+}
+
+.password-req {
+    padding: 2rem;
+    color: rgb(57, 57, 254);
+    background-color: rgb(239, 246, 255);
+}
+
+.update-pass-btn {
+    padding: 1rem;
+    background-color: rgb(26, 35, 50);
+    color: white;
+    cursor: pointer;
+    text-align: center;
+    border-radius: 0.5rem;
+}
+
+.update-pass-btn:hover {
+    background-color: rgb(38, 51, 72);
+}
+
+.cover-background {
+    position: absolute;
+    background-color: rgba(0, 0, 0, 0.4);
+    z-index: 999;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.logout-title {
+    display: flex;
+    justify-content: space-between;
+    font-weight: bold;
+    font-size: 1.5rem;
+    padding: 1.5rem;
+    color: white;
+    background-color: rgb(220, 36, 36);
+}
+
+.logout-body {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    background-color: white;
+}
+
+.cant-logout, .final-warning {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    padding: 1rem;
+    color: maroon;
+    border-radius: 0.5rem;
+    background-color: rgb(242, 190, 190);
+    border: 2px solid rgb(220, 36, 36);
+}
+
+.final-warning {
+    flex-direction: column;
+    align-items: start;
+}
+
+.logout-body .completed-container {
+    width:auto;
+}
+
+.warning {
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    color: rgb(105, 105, 105);
+    background-color: rgb(255, 225, 225);
+}
+
+.continue-btn {
+    cursor: pointer;
+    padding: 1rem;
+    color: white;
+    background-color: rgb(26, 35, 50);
+    text-align: center;
+    border-radius: 0.5rem;
+}
+
+.hidden {
+    display: none;
+}
+
+.border-radius-top {
+    border-top-left-radius: 0.5rem;
+    border-top-right-radius: 0.5rem;
+}
+
+.border-radius-bottom {
+    border-bottom-left-radius: 0.5rem;
+    border-bottom-right-radius: 0.5rem;
+}
+
+.border-sides {
+    border-left: 2px solid rgba(26, 35, 50, 0.3);
+    border-right: 2px solid rgba(26, 35, 50, 0.3);
+}
