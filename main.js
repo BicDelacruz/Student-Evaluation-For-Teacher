@@ -81,6 +81,8 @@ const clearBtn = document.querySelector(".clear-btn")
 const verifyBtn = document.querySelector(".verify-btn")
 const passkeyBtn = document.querySelector(".passkey-btn")
 const backBtn = document.querySelector(".back-btn")
+const passwordToggle = document.querySelector(".password-toggle")
+const pinInputs = document.querySelectorAll(".pin-input")
 
 const idNumLabel = document.querySelector(".idnum-label")
 const IdNumInput = document.querySelector(".id-input")
@@ -120,11 +122,33 @@ toggleElement(twoFaContainer)
 addClickListener(clearBtn, () => {
     IdNumInput.value = ""
     passwordInput.value = ""
+    if (passwordToggle != null) {
+        passwordInput.type = "password"
+        passwordToggle.classList.remove("is-visible")
+        passwordToggle.setAttribute("aria-label", "Show password")
+        passwordToggle.setAttribute("aria-pressed", "false")
+    }
 })
 
 addClickListener(loginBtn, () => {
     toggleElement(twoFaContainer)
     toggleElement(loginContainer)
+    if (pinInputs.length > 0) {
+        pinInputs.forEach((input) => {
+            input.value = ""
+        })
+        pinInputs[0].focus()
+    }
+})
+
+addClickListener(passwordToggle, () => {
+    if (passwordInput == null) return
+
+    const shouldShowPassword = passwordInput.type === "password"
+    passwordInput.type = shouldShowPassword ? "text" : "password"
+    passwordToggle.classList.toggle("is-visible", shouldShowPassword)
+    passwordToggle.setAttribute("aria-label", shouldShowPassword ? "Hide password" : "Show password")
+    passwordToggle.setAttribute("aria-pressed", shouldShowPassword ? "true" : "false")
 })
 
 addClickListener(verifyBtn, () => {
@@ -134,6 +158,51 @@ addClickListener(verifyBtn, () => {
 addClickListener(backBtn, () => {
     toggleElement(twoFaContainer)
     toggleElement(loginContainer)
+    pinInputs.forEach((input) => {
+        input.value = ""
+    })
+})
+
+pinInputs.forEach((input, index) => {
+    input.addEventListener("input", (event) => {
+        const cleanedValue = event.target.value.replace(/\D/g, "").slice(-1)
+        event.target.value = cleanedValue
+
+        if (cleanedValue && index < pinInputs.length - 1) {
+            pinInputs[index + 1].focus()
+        }
+    })
+
+    input.addEventListener("keydown", (event) => {
+        if (event.key === "Backspace" && input.value === "" && index > 0) {
+            pinInputs[index - 1].focus()
+        }
+
+        if (event.key === "ArrowLeft" && index > 0) {
+            pinInputs[index - 1].focus()
+        }
+
+        if (event.key === "ArrowRight" && index < pinInputs.length - 1) {
+            pinInputs[index + 1].focus()
+        }
+    })
+
+    input.addEventListener("paste", (event) => {
+        const pastedData = (event.clipboardData || window.clipboardData).getData("text")
+        const digits = pastedData.replace(/\D/g, "").slice(0, pinInputs.length).split("")
+
+        if (digits.length === 0) return
+
+        event.preventDefault()
+        pinInputs.forEach((pinInput, pinIndex) => {
+            pinInput.value = digits[pinIndex] || ""
+        })
+
+        const nextIndex = Math.min(digits.length, pinInputs.length) - 1
+        if (nextIndex >= 0) {
+            pinInputs[nextIndex].focus()
+        }
+    })
 })
 
 // -- Guideline Container -- // 
