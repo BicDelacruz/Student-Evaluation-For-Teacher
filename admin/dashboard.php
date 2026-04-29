@@ -98,7 +98,7 @@ render_admin_layout_start(
                 <span>Manage student accounts</span>
             </div>
         </a>
-        <a class="quick-action-card" href="placeholder.php?page=faculty">
+        <a class="quick-action-card" href="faculty_management.php">
             <span class="quick-action-icon"><?= admin_icon('faculty') ?></span>
             <div>
                 <strong>View Faculty</strong>
@@ -127,3 +127,4 @@ render_admin_layout_start(
     You are logged in as System Administrator. You have full access to all system features and data.
 </section>
 <?php render_admin_layout_end(); ?>
+

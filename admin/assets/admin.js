@@ -3,6 +3,7 @@ document.addEventListener("DOMContentLoaded", () => {
     initializePinInputs();
     initializeModals();
     initializeStudentActions();
+    initializeFacultyActions();
     initializeSectionAutoFill();
     initializeFilterForm();
 });
@@ -313,3 +314,101 @@ function syncSectionInputs(form) {
         yearSelect.value = selectedMeta.year_level || "";
     }
 }
+
+function initializeFacultyActions() {
+    const facultyButtons = document.querySelectorAll("[data-faculty-json]");
+    const viewModal = document.querySelector("#viewFacultyModal");
+    const editModal = document.querySelector("#editFacultyModal");
+    const viewEditButton = document.querySelector("[data-view-faculty-edit-trigger]");
+    let currentFaculty = null;
+
+    facultyButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+            const rawData = button.getAttribute("data-faculty-json");
+            if (!rawData) {
+                return;
+            }
+
+            currentFaculty = JSON.parse(rawData);
+
+            if (button.matches("[data-faculty-view]")) {
+                fillFacultyView(currentFaculty);
+            }
+
+            if (button.matches("[data-faculty-edit]")) {
+                fillFacultyEdit(currentFaculty);
+            }
+        });
+    });
+
+    if (viewEditButton && viewModal && editModal) {
+        viewEditButton.addEventListener("click", () => {
+            if (!currentFaculty) {
+                return;
+            }
+
+            viewModal.classList.remove("is-visible");
+            fillFacultyEdit(currentFaculty);
+            editModal.classList.add("is-visible");
+        });
+    }
+}
+
+function fillFacultyView(faculty) {
+    const modal = document.querySelector("#viewFacultyModal");
+    if (!modal) {
+        return;
+    }
+
+    modal.querySelectorAll("[data-faculty-field]").forEach((field) => {
+        const key = field.getAttribute("data-faculty-field");
+        if (!key) {
+            return;
+        }
+
+        field.value = faculty[key] ?? "";
+        field.setAttribute("readonly", "readonly");
+    });
+
+    const badge = modal.querySelector("[data-view-faculty-status]");
+    if (badge) {
+        const status = faculty.status || "active";
+        badge.textContent = status;
+        badge.className = `status-badge ${status === "inactive" ? "inactive" : "active"}`;
+    }
+}
+
+function fillFacultyEdit(faculty) {
+    const modal = document.querySelector("#editFacultyModal");
+    if (!modal) {
+        return;
+    }
+
+    modal.querySelectorAll("[data-faculty-field]").forEach((field) => {
+        const key = field.getAttribute("data-faculty-field");
+        if (!key) {
+            return;
+        }
+
+        field.value = faculty[key] ?? "";
+        field.removeAttribute("readonly");
+        field.removeAttribute("disabled");
+    });
+
+    const originalInput = modal.querySelector('input[name="original_faculty_id"]');
+    if (originalInput) {
+        originalInput.value = faculty.faculty_id || "";
+    }
+
+    const statusInput = modal.querySelector('input[name="status"]');
+    if (statusInput) {
+        statusInput.value = faculty.status || "active";
+    }
+
+    const passwordInput = modal.querySelector('input[name="password"]');
+    if (passwordInput) {
+        passwordInput.value = "";
+    }
+}
+
+

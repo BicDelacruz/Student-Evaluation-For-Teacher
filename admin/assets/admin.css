@@ -583,6 +583,11 @@ svg {
     color: #c53030;
 }
 
+.status-badge.inactive {
+    background: #eef2f7;
+    color: #52627b;
+}
+
 .action-buttons {
     display: flex;
     align-items: center;
@@ -965,3 +970,6 @@ body.dark-mode .students-table th {
         letter-spacing: 0.04em;
     }
 }
+
+
+
