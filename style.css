@@ -53,6 +53,10 @@
     gap: 0.5rem;
 }
 
+.login-form-shell {
+    width: 100%;
+}
+
 .login-logo {
     width: 7rem;
     max-width: 40%;
@@ -172,6 +176,28 @@
 .demo-title {
     color: rgb(16, 24, 40);
     font-weight: 700;
+}
+
+.login-feedback {
+    width: 100%;
+    margin-top: 1.2rem;
+    padding: 0.95rem 1rem;
+    border-radius: 0.85rem;
+    border: 1px solid transparent;
+    font-size: 0.96rem;
+    line-height: 1.45;
+}
+
+.login-feedback.is-error {
+    background: rgb(254, 234, 234);
+    border-color: rgb(244, 188, 188);
+    color: rgb(175, 31, 31);
+}
+
+.login-feedback.is-success {
+    background: rgb(233, 250, 240);
+    border-color: rgb(179, 230, 196);
+    color: rgb(15, 125, 64);
 }
 
 .twofa-container {

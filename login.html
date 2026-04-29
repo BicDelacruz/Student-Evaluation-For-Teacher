@@ -1,13 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Student Evaluation System</title>
     <link rel="stylesheet" href="style.css">
 </head>
-
 <body class="login-body">
     <div class="login-shell">
         <div class="login-container">
@@ -15,13 +13,15 @@
             <div class="login-title">Student Evaluation for Teacher</div>
             <div class="login-subtitle">Sign in to continue</div>
 
-            <div class="input-fields login-form">
-                <label class="login-label idnum-label" for="university-id">University ID Number</label>
-                <input id="university-id" type="text" class="id-input login-input" placeholder="Enter your ID number">
+            <div class="login-feedback hidden" id="login-feedback" role="alert"></div>
+
+            <form class="input-fields login-form login-form-shell" action="admin/process_login.php" method="post" novalidate>
+                <label class="login-label" for="university-id">University ID Number</label>
+                <input id="university-id" name="university_id" type="text" class="id-input login-input" placeholder="Enter your ID number" autocomplete="username" required>
 
                 <label class="login-label" for="password">Password</label>
                 <div class="password-field">
-                    <input id="password" type="password" class="password-input login-input" placeholder="Enter your password">
+                    <input id="password" name="password" type="password" class="password-input login-input" placeholder="Enter your password" autocomplete="current-password" required>
                     <button type="button" class="password-toggle" aria-label="Show password" aria-pressed="false">
                         <svg class="eye-open" width="1.4rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M2 12C3.73 7.61 7.52 5 12 5C16.48 5 20.27 7.61 22 12C20.27 16.39 16.48 19 12 19C7.52 19 3.73 16.39 2 12Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
@@ -36,70 +36,67 @@
                     </button>
                 </div>
 
-                <button type="button" class="login-btn">Login</button>
-                <button type="button" class="clear-btn">Clear</button>
-            </div>
+                <button type="submit" class="login-btn">Login</button>
+                <button type="button" class="clear-btn" id="clear-login">Clear</button>
+            </form>
 
             <div class="demo-credentials">
                 <div class="demo-title">Demo Credentials:</div>
                 <div><b>Student:</b> 24-001234 | student123</div>
                 <div><b>Faculty:</b> FAC0001 | faculty123</div>
+                <div><b>Admin:</b> admin | admin</div>
             </div>
         </div>
     </div>
 
-    <div class="twofa-container">
-        <img class="login-logo" src="img/logo.png" alt="School logo">
+    <script>
+        (function () {
+            const searchParams = new URLSearchParams(window.location.search);
+            const feedback = document.getElementById("login-feedback");
+            const passwordToggle = document.querySelector(".password-toggle");
+            const passwordInput = document.getElementById("password");
+            const clearButton = document.getElementById("clear-login");
+            const form = document.querySelector(".login-form-shell");
 
-        <div class="twofa-shield">
-            <svg width="2rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 3L18 5.25V10.59C18 14.42 15.44 17.98 12 19C8.56 17.98 6 14.42 6 10.59V5.25L12 3Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
-            </svg>
-        </div>
+            const errorMessage = searchParams.get("error");
+            const noticeMessage = searchParams.get("message");
 
-        <div class="twofa-title">Two-Factor Authentication</div>
-        <div class="twofa-subtitle">Scan the QR Code to verify your identity</div>
+            if (feedback && (errorMessage || noticeMessage)) {
+                feedback.textContent = errorMessage || noticeMessage;
+                feedback.classList.remove("hidden");
+                feedback.classList.toggle("is-error", Boolean(errorMessage));
+                feedback.classList.toggle("is-success", Boolean(noticeMessage));
+            }
 
-        <div class="qr-panel">
-            <div class="qr-icon-wrap">
-                <svg width="9rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M4 4H10V10H4V4Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"></path>
-                    <path d="M14 4H20V10H14V4Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"></path>
-                    <path d="M4 14H10V20H4V14Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"></path>
-                    <path d="M12 7H12.01" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"></path>
-                    <path d="M12 12V10M12 12C12 13.1 11.1 14 10 14H8M12 12C12 13.1 12.9 14 14 14H16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path>
-                    <path d="M14 20V17C14 15.9 14.9 15 16 15H18" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path>
-                    <path d="M12 17V20" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path>
-                    <path d="M17.5 12H20" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path>
-                    <path d="M20 18H20.01" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"></path>
-                    <path d="M16 12H16.01" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"></path>
-                    <path d="M4 12H4.01" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"></path>
-                </svg>
-            </div>
-            <div class="qr-caption">Scan this Unique QR Code to verify and register your device</div>
-        </div>
+            if (passwordToggle && passwordInput) {
+                passwordToggle.addEventListener("click", () => {
+                    const shouldShowPassword = passwordInput.type === "password";
+                    passwordInput.type = shouldShowPassword ? "text" : "password";
+                    passwordToggle.classList.toggle("is-visible", shouldShowPassword);
+                    passwordToggle.setAttribute("aria-label", shouldShowPassword ? "Hide password" : "Show password");
+                    passwordToggle.setAttribute("aria-pressed", shouldShowPassword ? "true" : "false");
+                });
+            }
 
-        <div class="twofa-pin-label">Enter 5-Digit PIN</div>
-        <div class="pin-inputs" role="group" aria-label="5 digit verification PIN">
-            <input type="text" class="pin-input" inputmode="numeric" maxlength="1" aria-label="PIN digit 1">
-            <input type="text" class="pin-input" inputmode="numeric" maxlength="1" aria-label="PIN digit 2">
-            <input type="text" class="pin-input" inputmode="numeric" maxlength="1" aria-label="PIN digit 3">
-            <input type="text" class="pin-input" inputmode="numeric" maxlength="1" aria-label="PIN digit 4">
-            <input type="text" class="pin-input" inputmode="numeric" maxlength="1" aria-label="PIN digit 5">
-        </div>
-
-        <div class="input-fields twofa-actions">
-            <div class="verify-btn">Verify Identity</div>
-
-            <div class="back-btn">
-                <svg width="1.35rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L4 12L10 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path><path d="M4 12H20" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></svg>
-                &nbsp; Back to Login
-            </div>
-        </div>
-
-        <div class="twofa-demo"><b>Demo PIN:</b> 12345</div>
-    </div>
-    <script src="main.js" defer></script>
+            if (clearButton && form) {
+                clearButton.addEventListener("click", () => {
+                    form.reset();
+                    if (feedback) {
+                        feedback.classList.add("hidden");
+                        feedback.classList.remove("is-error", "is-success");
+                        feedback.textContent = "";
+                    }
+                    if (passwordInput) {
+                        passwordInput.type = "password";
+                    }
+                    if (passwordToggle) {
+                        passwordToggle.classList.remove("is-visible");
+                        passwordToggle.setAttribute("aria-label", "Show password");
+                        passwordToggle.setAttribute("aria-pressed", "false");
+                    }
+                });
+            }
+        }());
+    </script>
 </body>
-
 </html>
