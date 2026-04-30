@@ -1,0 +1,875 @@
+<!-- Faculty Portal -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Evaluation For Teacher - Faculty Portal</title>
+    <link rel="stylesheet" href="faculty-style.css">
+</head>
+<body class="dashboard-body">
+    <nav>
+        <div class="nav-container">
+            <div class="nav-logo-container">
+                <img src="../img/logo.png" alt="" style="width: 8vw;">
+                <div>Student Evaluation For Teacher</div>
+                <div style="font-size: 0.9rem; margin-top: 0.5rem; color: rgb(100, 100, 100);">Faculty Portal</div>
+                <br>
+            </div>
+
+            <div class="nav-btns-container">
+                <div class="nav-btn dashboard-nav-btn active-nav-btn">
+                    <svg width="2rem" class="dashboard-svg-on" viewBox="0 -0.5 25 25" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="#ffffff"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path fill-rule="evenodd" clip-rule="evenodd" d="M9.918 10.0005H7.082C6.66587 9.99708 6.26541 10.1591 5.96873 10.4509C5.67204 10.7427 5.50343 11.1404 5.5 11.5565V17.4455C5.5077 18.3117 6.21584 19.0078 7.082 19.0005H9.918C10.3341 19.004 10.7346 18.842 11.0313 18.5502C11.328 18.2584 11.4966 17.8607 11.5 17.4445V11.5565C11.4966 11.1404 11.328 10.7427 11.0313 10.4509C10.7346 10.1591 10.3341 9.99708 9.918 10.0005Z" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path fill-rule="evenodd" clip-rule="evenodd" d="M9.918 4.0006H7.082C6.23326 3.97706 5.52559 4.64492 5.5 5.4936V6.5076C5.52559 7.35629 6.23326 8.02415 7.082 8.0006H9.918C10.7667 8.02415 11.4744 7.35629 11.5 6.5076V5.4936C11.4744 4.64492 10.7667 3.97706 9.918 4.0006Z" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path fill-rule="evenodd" clip-rule="evenodd" d="M15.082 13.0007H17.917C18.3333 13.0044 18.734 12.8425 19.0309 12.5507C19.3278 12.2588 19.4966 11.861 19.5 11.4447V5.55666C19.4966 5.14054 19.328 4.74282 19.0313 4.45101C18.7346 4.1592 18.3341 3.9972 17.918 4.00066H15.082C14.6659 3.9972 14.2654 4.1592 13.9687 4.45101C13.672 4.74282 13.5034 5.14054 13.5 5.55666V11.4447C13.5034 11.8608 13.672 12.2585 13.9687 12.5503C14.2654 12.8421 14.6659 13.0041 15.082 13.0007Z" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path fill-rule="evenodd" clip-rule="evenodd" d="M15.082 19.0006H17.917C18.7661 19.0247 19.4744 18.3567 19.5 17.5076V16.4936C19.4744 15.6449 18.7667 14.9771 17.918 15.0006H15.082C14.2333 14.9771 13.5256 15.6449 13.5 16.4936V17.5066C13.525 18.3557 14.2329 19.0241 15.082 19.0006Z" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> </g></svg>
+                    <svg width="2rem" class="dashboard-svg-off" viewBox="0 -0.5 25 25" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="#ffffff"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path fill-rule="evenodd" clip-rule="evenodd" d="M9.918 10.0005H7.082C6.66587 9.99708 6.26541 10.1591 5.96873 10.4509C5.67204 10.7427 5.50343 11.1404 5.5 11.5565V17.4455C5.5077 18.3117 6.21584 19.0078 7.082 19.0005H9.918C10.3341 19.004 10.7346 18.842 11.0313 18.5502C11.328 18.2584 11.4966 17.8607 11.5 17.4445V11.5565C11.4966 11.1404 11.328 10.7427 11.0313 10.4509C10.7346 10.1591 10.3341 9.99708 9.918 10.0005Z" stroke="#030303" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path fill-rule="evenodd" clip-rule="evenodd" d="M9.918 4.0006H7.082C6.23326 3.97706 5.52559 4.64492 5.5 5.4936V6.5076C5.52559 7.35629 6.23326 8.02415 7.082 8.0006H9.918C10.7667 8.02415 11.4744 7.35629 11.5 6.5076V5.4936C11.4744 4.64492 10.7667 3.97706 9.918 4.0006Z" stroke="#030303" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path fill-rule="evenodd" clip-rule="evenodd" d="M15.082 13.0007H17.917C18.3333 13.0044 18.734 12.8425 19.0309 12.5507C19.3278 12.2588 19.4966 11.861 19.5 11.4447V5.55666C19.4966 5.14054 19.328 4.74282 19.0313 4.45101C18.7346 4.1592 18.3341 3.9972 17.918 4.00066H15.082C14.6659 3.9972 14.2654 4.1592 13.9687 4.45101C13.672 4.74282 13.5034 5.14054 13.5 5.55666V11.4447C13.5034 11.8608 13.672 12.2585 13.9687 12.5503C14.2654 12.8421 14.6659 13.0041 15.082 13.0007Z" stroke="#030303" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path fill-rule="evenodd" clip-rule="evenodd" d="M15.082 19.0006H17.917C18.7661 19.0247 19.4744 18.3567 19.5 17.5076V16.4936C19.4744 15.6449 18.7667 14.9771 17.918 15.0006H15.082C14.2333 14.9771 13.5256 15.6449 13.5 16.4936V17.5066C13.525 18.3557 14.2329 19.0241 15.082 19.0006Z" stroke="#030303" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> </g></svg>
+                    &nbsp; Dashboard
+                </div>
+
+                <div class="nav-btn subjects-nav-btn">
+                    <svg width="1.9rem" class="subjects-svg-on" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <svg width="1.9rem" class="subjects-svg-off" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    &nbsp; My Subjects
+                </div>
+
+                <div class="nav-btn evalresults-nav-btn">
+                    <svg width="2rem" class="evalresults-svg-on" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 20V10M12 20V4M6 20v-6" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <svg width="2rem" class="evalresults-svg-off" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 20V10M12 20V4M6 20v-6" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    &nbsp; Evaluation Results
+                </div>
+
+                <div class="nav-btn criteria-nav-btn">
+                    <svg width="2rem" class="criteria-svg-on" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 5.5L3.21429 7L7.5 3" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M2 12.5L3.21429 14L7.5 10" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M2 19.5L3.21429 21L7.5 17" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M22 12H17M12 12H13.5" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"></path><path d="M12 19H17M20.5 19H22" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"></path><path d="M22 5L12 5" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"></path></svg>
+                    <svg width="2rem" class="criteria-svg-off" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 5.5L3.21429 7L7.5 3" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M2 12.5L3.21429 14L7.5 10" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M2 19.5L3.21429 21L7.5 17" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M22 12H17M12 12H13.5" stroke="#000000" stroke-width="1.5" stroke-linecap="round"></path><path d="M12 19H17M20.5 19H22" stroke="#000000" stroke-width="1.5" stroke-linecap="round"></path><path d="M22 5L12 5" stroke="#000000" stroke-width="1.5" stroke-linecap="round"></path></svg>
+                    &nbsp; Criteria Scores
+                </div>
+
+                <div class="nav-btn comments-nav-btn">
+                    <svg width="2rem" class="comments-svg-on" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <svg width="2rem" class="comments-svg-off" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    &nbsp; Comments
+                </div>
+
+                <div class="nav-btn participation-nav-btn">
+                    <svg width="2rem" class="participation-svg-on" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="7" r="4" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <svg width="2rem" class="participation-svg-off" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="7" r="4" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    &nbsp; Participation
+                </div>
+
+                <div class="nav-btn reports-nav-btn">
+                    <svg width="2rem" class="reports-svg-on" fill="#ffffff" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg"><path d="M220.48535,59.51465l-40-40A11.99992,11.99992,0,0,0,172,16H92A20.0226,20.0226,0,0,0,72,36V56H56A20.0226,20.0226,0,0,0,36,76V216a20.0226,20.0226,0,0,0,20,20H164a20.0226,20.0226,0,0,0,20-20V196h20a20.0226,20.0226,0,0,0,20-20V68A12.002,12.002,0,0,0,220.48535,59.51465ZM160,212H60V80h67.0293L160,112.9707Zm40-40H184V108a12.002,12.002,0,0,0-3.51465-8.48535l-40-40A11.99992,11.99992,0,0,0,132,56H96V40h71.0293L200,72.9707Zm-56-28a12,12,0,0,1-12,12H88a12,12,0,0,1,0-24h44A12,12,0,0,1,144,144Zm0,40a12,12,0,0,1-12,12H88a12,12,0,0,1,0-24h44A12,12,0,0,1,144,184Z"></path></svg>
+                    <svg width="2rem" class="reports-svg-off" fill="#000000" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg"><path d="M220.48535,59.51465l-40-40A11.99992,11.99992,0,0,0,172,16H92A20.0226,20.0226,0,0,0,72,36V56H56A20.0226,20.0226,0,0,0,36,76V216a20.0226,20.0226,0,0,0,20,20H164a20.0226,20.0226,0,0,0,20-20V196h20a20.0226,20.0226,0,0,0,20-20V68A12.002,12.002,0,0,0,220.48535,59.51465ZM160,212H60V80h67.0293L160,112.9707Zm40-40H184V108a12.002,12.002,0,0,0-3.51465-8.48535l-40-40A11.99992,11.99992,0,0,0,132,56H96V40h71.0293L200,72.9707Zm-56-28a12,12,0,0,1-12,12H88a12,12,0,0,1,0-24h44A12,12,0,0,1,144,144Zm0,40a12,12,0,0,1-12,12H88a12,12,0,0,1,0-24h44A12,12,0,0,1,144,184Z"></path></svg>
+                    &nbsp; Reports
+                </div>
+            </div>
+
+            <div class="bottom-nav-container">
+                <div class="department-container">
+                    <div>Department</div>
+                    <div class="department-txt" style="margin-top: 1rem; color: #000000;">College of Computer Studies (CCS)</div>
+                </div>
+
+                <div class="logout-btn">
+                    <svg width="2rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g clip-path="url(#clip0_429_11067)"><path d="M15 4.00098H5V18.001C5 19.1055 5.89543 20.001 7 20.001H15" stroke="#ff0000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M16 15.001L19 12.001M19 12.001L16 9.00098M19 12.001H9" stroke="#ff0000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path></g><defs><clipPath id="clip0_429_11067"><rect width="24" height="24" fill="white" transform="translate(0 0.000976562)"></rect></clipPath></defs></svg>
+                    &nbsp; Logout
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        <div class="top-banner">
+            <div>
+                <div class="welcome-txt"><b>Welcome, Prof. Maria Teresa Dela Cruz</b></div>
+                <div class="semester-txt">2nd Semester • 2025-2026</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <div class="faculty-id-txt">Faculty ID: &nbsp;<b>FAC0001</b></div>
+                <div class="notif-btn">
+                    <svg width="1.5rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <!-- ===== DASHBOARD TAB ===== -->
+            <div class="faculty-dashboard-container">
+                <div class="dash-title">
+                    <div>
+                        <div><b style="font-size: 1.5rem;">Dashboard</b></div>
+                        <div style="color: rgb(100, 100, 100); margin-top: 0.5rem;">Overview of your evaluation results and assigned subjects</div>
+                    </div>
+                    <div class="dash-refresh-btn">
+                        <svg width="1.5rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 21C7.02944 21 3 16.9706 3 12C3 9.69494 3.86656 7.59227 5.29168 6L8 3M12 3C16.9706 3 21 7.02944 21 12C21 14.3051 20.1334 16.4077 18.7083 18L16 21M3 3H8M8 3V8M21 21H16M16 21V16" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                        &nbsp; Refresh
+                    </div>
+                </div>
+
+                <div class="dash-stats">
+                    <div class="dash-stats-card">
+                        <div>
+                            <div>Assigned Subjects</div>
+                            <div class="total-txt">4</div>
+                        </div>
+                        <div style="background-color: rgb(26, 35, 50); border-radius: 0.5rem; padding: 0.4rem;">
+                            <svg width="2.5rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        </div>
+                    </div>
+
+                    <div class="dash-stats-card">
+                        <div>
+                            <div>Released Results</div>
+                            <div class="completed-txt">2</div>
+                        </div>
+                        <div style="background-color: rgb(219, 252, 231); border-radius: 0.5rem; padding: 0.4rem;">
+                            <svg width="2.5rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8.5 12.5L10.5 14.5L15.5 9.5" stroke="#03b006" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="#03b006" stroke-width="1.5" stroke-linecap="round"></path></svg>
+                        </div>
+                    </div>
+
+                    <div class="dash-stats-card">
+                        <div>
+                            <div>Overall Average</div>
+                            <div style="font-size: 2rem; color: rgb(244, 197, 66); font-weight: bold;">4.57</div>
+                        </div>
+                        <div style="background-color: rgb(253, 243, 217); border-radius: 0.5rem; padding: 0.4rem;">
+                            <svg width="2.5rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 20V10M12 20V4M6 20v-6" stroke="#f4c542" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        </div>
+                    </div>
+
+                    <div class="dash-stats-card">
+                        <div>
+                            <div>Participation</div>
+                            <div style="font-size: 2rem; color: rgb(59, 130, 246); font-weight: bold;">95.7%</div>
+                        </div>
+                        <div style="background-color: rgb(219, 234, 254); border-radius: 0.5rem; padding: 0.4rem;">
+                            <svg width="2.5rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="7" r="4" stroke="#3b82f6" stroke-width="2"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="eval-released-notif">
+                    <svg width="2rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8.5 12.5L10.5 14.5L15.5 9.5" stroke="#03b006" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="#03b006" stroke-width="1.5" stroke-linecap="round"></path></svg>
+                    <div>
+                        <div><b>Evaluation Results Released</b></div>
+                        <div style="margin-top: 0.3rem; color: rgb(0, 115, 33);">Your evaluation results for 2nd Semester, 2025-2026 have been released. You can now view detailed feedback and scores.</div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="assigned-title border-radius-top">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <b>My Assigned Subjects</b>
+                            <div style="font-size: 0.85rem; color: rgb(100,100,100);">2nd Semester • 2025-2026</div>
+                            <div class="view-all-btn">View All</div>
+                        </div>
+                    </div>
+
+                    <div class="assigned-card">
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <div class="dash-name-txt"><b>IT 221</b></div>
+                                <div class="section-badge">BSIT-2A</div>
+                            </div>
+                            <div class="dash-sub-txt">Human Computer Interaction</div>
+                            <div class="dash-dept-txt">
+                                <svg width="1rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="#888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="7" r="4" stroke="#888" stroke-width="2"/></svg>
+                                35 students &nbsp;
+                                <svg width="1rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" stroke="#888" stroke-width="2"/><line x1="16" y1="2" x2="16" y2="6" stroke="#888" stroke-width="2" stroke-linecap="round"/><line x1="8" y1="2" x2="8" y2="6" stroke="#888" stroke-width="2" stroke-linecap="round"/><line x1="3" y1="10" x2="21" y2="10" stroke="#888" stroke-width="2"/></svg>
+                                2nd Semester
+                            </div>
+                        </div>
+                        <div style="font-size: 1.5rem; color: rgb(244, 197, 66); font-weight: bold;">4.52</div>
+                    </div>
+
+                    <div class="assigned-card">
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <div class="dash-name-txt"><b>IT 221</b></div>
+                                <div class="section-badge">BSIT-2B</div>
+                            </div>
+                            <div class="dash-sub-txt">Human Computer Interaction</div>
+                            <div class="dash-dept-txt">
+                                <svg width="1rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="#888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="7" r="4" stroke="#888" stroke-width="2"/></svg>
+                                38 students &nbsp;
+                                <svg width="1rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" stroke="#888" stroke-width="2"/><line x1="16" y1="2" x2="16" y2="6" stroke="#888" stroke-width="2" stroke-linecap="round"/><line x1="8" y1="2" x2="8" y2="6" stroke="#888" stroke-width="2" stroke-linecap="round"/><line x1="3" y1="10" x2="21" y2="10" stroke="#888" stroke-width="2"/></svg>
+                                2nd Semester
+                            </div>
+                        </div>
+                        <div style="font-size: 1.5rem; color: rgb(130,130,130); font-weight: bold;"></div>
+                    </div>
+
+                    <div class="assigned-card">
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <div class="dash-name-txt"><b>IT 223</b></div>
+                                <div class="section-badge">BSIT-2A</div>
+                            </div>
+                            <div class="dash-sub-txt">Information Management</div>
+                            <div class="dash-dept-txt">
+                                <svg width="1rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="#888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="7" r="4" stroke="#888" stroke-width="2"/></svg>
+                                35 students &nbsp;
+                                <svg width="1rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" stroke="#888" stroke-width="2"/><line x1="16" y1="2" x2="16" y2="6" stroke="#888" stroke-width="2" stroke-linecap="round"/><line x1="8" y1="2" x2="8" y2="6" stroke="#888" stroke-width="2" stroke-linecap="round"/><line x1="3" y1="10" x2="21" y2="10" stroke="#888" stroke-width="2"/></svg>
+                                2nd Semester
+                            </div>
+                        </div>
+                        <div style="font-size: 1.5rem; color: rgb(244, 197, 66); font-weight: bold;">4.62</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== MY SUBJECTS TAB ===== -->
+            <div class="faculty-subjects-container hidden">
+                <div class="tab-page-header">
+                    <div>
+                        <div><b style="font-size: 1.5rem;">My Subjects</b></div>
+                        <div style="color: rgb(100, 100, 100); margin-top: 0.5rem;">View all your assigned subjects and sections</div>
+                    </div>
+                    <div class="back-to-dashboard-btn">← Back to Dashboard</div>
+                </div>
+
+                <div class="filter-bar">
+                    <div class="search-wrapper">
+                        <svg class="search-icon-inline" width="1.2rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M15.7955 15.8111L21 21M18 10.5C18 14.6421 14.6421 18 10.5 18C6.35786 18 3 14.6421 3 10.5C3 6.35786 6.35786 3 10.5 3C14.6421 3 18 6.35786 18 10.5Z" stroke="#999999" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                        <input type="text" class="filter-search-input" placeholder="Search by subject code, title, or section...">
+                    </div>
+                    <select class="filter-select">
+                        <option>All Subjects</option>
+                        <option>IT 221</option>
+                        <option>IT 223</option>
+                    </select>
+                    <select class="filter-select">
+                        <option>All Courses</option>
+                        <option>BSIT</option>
+                        <option>BSCS</option>
+                    </select>
+                    <select class="filter-select">
+                        <option>All Year Levels</option>
+                        <option>1st Year</option>
+                        <option>2nd Year</option>
+                        <option>3rd Year</option>
+                    </select>
+                    <select class="filter-select">
+                        <option>All Sections</option>
+                        <option>BSIT-2A</option>
+                        <option>BSIT-2B</option>
+                    </select>
+                </div>
+
+                <div class="filter-results-label">Showing 9 of 9 assigned subjects &nbsp; <span style="color: rgb(150,150,150);">No filters applied</span></div>
+
+                <div class="subject-group-card">
+                    <div class="subject-group-header">
+                        <svg width="1.5rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <div>
+                            <div><b>IT 221 - Human Computer Interaction</b></div>
+                            <div style="font-size: 0.85rem; color: rgb(130,130,130);">4 section(s)</div>
+                        </div>
+                    </div>
+
+                    <div class="subject-section-row">
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                                <div class="section-badge dark">BSIT-2A</div>
+                                <div class="section-badge light-blue">BSIT-2A</div>
+                                <div class="section-badge light-pink">2nd Year</div>
+                            </div>
+                            <div class="dash-dept-txt" style="margin-top: 0.5rem;">
+                                <svg width="1rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="#888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="7" r="4" stroke="#888" stroke-width="2"/></svg>
+                                0 students &nbsp;
+                                <svg width="1rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" stroke="#888" stroke-width="2"/><line x1="3" y1="10" x2="21" y2="10" stroke="#888" stroke-width="2"/></svg>
+                                2nd Semester, 2025-2026
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="subject-section-row">
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                                <div class="section-badge dark">BSIT-2B</div>
+                                <div class="section-badge light-blue">BSIT-2B</div>
+                                <div class="section-badge light-pink">2nd Year</div>
+                            </div>
+                            <div class="dash-dept-txt" style="margin-top: 0.5rem;">
+                                <svg width="1rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="#888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="7" r="4" stroke="#888" stroke-width="2"/></svg>
+                                0 students &nbsp;
+                                <svg width="1rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" stroke="#888" stroke-width="2"/><line x1="3" y1="10" x2="21" y2="10" stroke="#888" stroke-width="2"/></svg>
+                                2nd Semester, 2025-2026
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="subject-section-row">
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                                <div class="section-badge dark">BSIT 2A</div>
+                                <div class="section-badge light-blue">BSIT</div>
+                                <div class="section-badge light-pink">2nd Year</div>
+                            </div>
+                            <div class="dash-dept-txt" style="margin-top: 0.5rem;">
+                                <svg width="1rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="#888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="7" r="4" stroke="#888" stroke-width="2"/></svg>
+                                38 students &nbsp;
+                                <svg width="1rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" stroke="#888" stroke-width="2"/><line x1="3" y1="10" x2="21" y2="10" stroke="#888" stroke-width="2"/></svg>
+                                2nd Semester, 2025-2026
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== EVALUATION RESULTS TAB ===== -->
+            <div class="faculty-evalresults-container hidden">
+                <div class="tab-page-header">
+                    <div>
+                        <div><b style="font-size: 1.5rem;">Evaluation Results</b></div>
+                        <div style="color: rgb(100, 100, 100); margin-top: 0.5rem;">View summarized evaluation results for your assigned classes</div>
+                    </div>
+                    <div class="back-to-dashboard-btn">← Back to Dashboard</div>
+                </div>
+
+                <div class="filter-bar">
+                    <div class="search-wrapper">
+                        <svg class="search-icon-inline" width="1.2rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M15.7955 15.8111L21 21M18 10.5C18 14.6421 14.6421 18 10.5 18C6.35786 18 3 14.6421 3 10.5C3 6.35786 6.35786 3 10.5 3C14.6421 3 18 6.35786 18 10.5Z" stroke="#999999" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                        <input type="text" class="filter-search-input" placeholder="Search subject...">
+                    </div>
+                    <select class="filter-select">
+                        <option>All Subjects</option>
+                        <option>IT 221</option>
+                        <option>IT 223</option>
+                    </select>
+                    <select class="filter-select">
+                        <option>All Sections</option>
+                        <option>BSIT-2A</option>
+                        <option>BSIT-2B</option>
+                    </select>
+                </div>
+
+                <div class="dash-stats">
+                    <div class="dash-stats-card">
+                        <div>
+                            <div>Overall Average</div>
+                            <div style="font-size: 2rem; color: rgb(244, 197, 66); font-weight: bold;">4.55</div>
+                        </div>
+                        <div style="background-color: rgb(253, 243, 217); border-radius: 0.5rem; padding: 0.4rem;">
+                            <svg width="2.5rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 20V10M12 20V4M6 20v-6" stroke="#f4c542" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        </div>
+                    </div>
+                    <div class="dash-stats-card">
+                        <div>
+                            <div>Released Results</div>
+                            <div class="completed-txt">2</div>
+                        </div>
+                        <div style="background-color: rgb(219, 252, 231); border-radius: 0.5rem; padding: 0.4rem;">
+                            <svg width="2.5rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8.5 12.5L10.5 14.5L15.5 9.5" stroke="#03b006" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="#03b006" stroke-width="1.5" stroke-linecap="round"></path></svg>
+                        </div>
+                    </div>
+                    <div class="dash-stats-card">
+                        <div>
+                            <div>Unreleased Results</div>
+                            <div style="font-size: 2rem; color: rgb(220, 36, 36); font-weight: bold;">2</div>
+                        </div>
+                        <div style="background-color: rgb(254, 226, 226); border-radius: 0.5rem; padding: 0.4rem;">
+                            <svg width="2.5rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" stroke="#dc2424" stroke-width="2"/><line x1="15" y1="9" x2="9" y2="15" stroke="#dc2424" stroke-width="2" stroke-linecap="round"/><line x1="9" y1="9" x2="15" y2="15" stroke="#dc2424" stroke-width="2" stroke-linecap="round"/></svg>
+                        </div>
+                    </div>
+                    <div class="dash-stats-card">
+                        <div>
+                            <div>Avg. Participation</div>
+                            <div style="font-size: 2rem; color: rgb(59, 130, 246); font-weight: bold;">95.9%</div>
+                        </div>
+                        <div style="background-color: rgb(219, 234, 254); border-radius: 0.5rem; padding: 0.4rem;">
+                            <svg width="2.5rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="7" r="4" stroke="#3b82f6" stroke-width="2"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="assigned-title border-radius-top">
+                        <b>Detailed Results</b>
+                        <div style="font-size: 0.85rem; color: rgb(100,100,100); margin-top: 0.3rem;">Click on any result to view detailed criteria scores</div>
+                    </div>
+
+                    <div class="result-record-card">
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <b>IT 221</b>
+                                <div class="section-badge">BSIT-2A</div>
+                                <div class="status-badge released">✓ Released</div>
+                            </div>
+                            <div class="dash-sub-txt">Human Computer Interaction</div>
+                            <div class="dash-dept-txt">33/35 responses &nbsp;•&nbsp; 94.3% participation &nbsp;•&nbsp; Released on 4/15/2026</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 1.5rem; color: rgb(244, 197, 66); font-weight: bold;">4.52</div>
+                            <div style="font-size: 0.8rem; color: rgb(130,130,130);">out of 5.00</div>
+                        </div>
+                    </div>
+
+                    <div class="result-record-card">
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <b>IT 221</b>
+                                <div class="section-badge">BSIT-2B</div>
+                                <div class="status-badge unreleased">✕ Unreleased</div>
+                            </div>
+                            <div class="dash-sub-txt">Human Computer Interaction</div>
+                            <div class="dash-dept-txt">36/38 responses &nbsp;•&nbsp; 94.7% participation</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 1.5rem; color: rgb(244, 197, 66); font-weight: bold;">4.48</div>
+                            <div style="font-size: 0.8rem; color: rgb(130,130,130);">out of 5.00</div>
+                        </div>
+                    </div>
+
+                    <div class="result-record-card">
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <b>IT 223</b>
+                                <div class="section-badge">BSIT-2A</div>
+                                <div class="status-badge released">✓ Released</div>
+                            </div>
+                            <div class="dash-sub-txt">Information Management</div>
+                            <div class="dash-dept-txt">34/35 responses &nbsp;•&nbsp; 97.1% participation &nbsp;•&nbsp; Released on 4/15/2026</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 1.5rem; color: rgb(244, 197, 66); font-weight: bold;">4.62</div>
+                            <div style="font-size: 0.8rem; color: rgb(130,130,130);">out of 5.00</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== CRITERIA SCORES TAB ===== -->
+            <div class="faculty-criteria-container hidden">
+                <div class="tab-page-header">
+                    <div>
+                        <div><b style="font-size: 1.5rem;">Criteria Scores</b></div>
+                        <div style="color: rgb(100, 100, 100); margin-top: 0.5rem;">Detailed breakdown of evaluation scores by category</div>
+                    </div>
+                    <div class="back-to-results-btn">← Back to Results</div>
+                </div>
+
+                <div class="filter-bar">
+                    <select class="filter-select" style="flex: 1;">
+                        <option>IT 221</option>
+                        <option>IT 223</option>
+                    </select>
+                    <select class="filter-select" style="flex: 1;">
+                        <option>BSIT-2A</option>
+                        <option>BSIT-2B</option>
+                    </select>
+                </div>
+
+                <div class="criteria-subject-header">
+                    <div style="display: flex; align-items: center; gap: 0.7rem;">
+                        <b style="font-size: 1.2rem;">IT 221</b>
+                        <div class="section-badge" style="background-color: rgb(80,80,80); color: white;">BSIT-2A</div>
+                    </div>
+                    <div>Human Computer Interaction</div>
+                    <div style="font-size: 0.85rem; color: rgba(255,255,255,0.7); margin-top: 0.3rem;">33/35 students participated</div>
+                    <div style="position: absolute; right: 2rem; top: 50%; transform: translateY(-50%);">
+                        <div style="font-size: 0.85rem; color: rgba(255,255,255,0.7);">Overall Average</div>
+                        <div style="font-size: 2.5rem; font-weight: bold; color: rgb(244,197,66);">4.52</div>
+                        <div style="font-size: 0.8rem; color: rgba(255,255,255,0.5);">out of 5.00</div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="assigned-title border-radius-top">
+                        <b>Category Scores</b>
+                        <div style="font-size: 0.85rem; color: rgb(100,100,100); margin-top: 0.3rem;">Average ratings for each evaluation category</div>
+                    </div>
+
+                    <div class="criteria-score-row">
+                        <div style="display: flex; align-items: center; gap: 1rem; width: 100%;">
+                            <div style="background-color: rgb(219, 252, 231); border-radius: 0.5rem; padding: 0.5rem;">
+                                <svg width="1.5rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#03b006" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            </div>
+                            <div style="flex: 1;">
+                                <div><b>Teaching Effectiveness</b></div>
+                                <div class="criteria-bar-track"><div class="criteria-bar-fill" style="width: 93%;"></div></div>
+                            </div>
+                            <div style="text-align: right; min-width: 4rem;">
+                                <div style="font-size: 1.3rem; font-weight: bold; color: rgb(3, 176, 6);">4.65</div>
+                                <div style="font-size: 0.75rem; color: rgb(130,130,130);">93.0%</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="criteria-score-row">
+                        <div style="display: flex; align-items: center; gap: 1rem; width: 100%;">
+                            <div style="background-color: rgb(219, 252, 231); border-radius: 0.5rem; padding: 0.5rem;">
+                                <svg width="1.5rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" stroke="#03b006" stroke-width="2"/><path d="M12 8v4M12 16h.01" stroke="#03b006" stroke-width="2" stroke-linecap="round"/></svg>
+                            </div>
+                            <div style="flex: 1;">
+                                <div><b>Subject Mastery</b></div>
+                                <div class="criteria-bar-track"><div class="criteria-bar-fill" style="width: 94.4%;"></div></div>
+                            </div>
+                            <div style="text-align: right; min-width: 4rem;">
+                                <div style="font-size: 1.3rem; font-weight: bold; color: rgb(3, 176, 6);">4.72</div>
+                                <div style="font-size: 0.75rem; color: rgb(130,130,130);">94.4%</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="criteria-score-row">
+                        <div style="display: flex; align-items: center; gap: 1rem; width: 100%;">
+                            <div style="background-color: rgb(219, 252, 231); border-radius: 0.5rem; padding: 0.5rem;">
+                                <svg width="1.5rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 11l3 3L22 4" stroke="#03b006" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" stroke="#03b006" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            </div>
+                            <div style="flex: 1;">
+                                <div><b>Preparedness</b></div>
+                                <div class="criteria-bar-track"><div class="criteria-bar-fill" style="width: 91.6%;"></div></div>
+                            </div>
+                            <div style="text-align: right; min-width: 4rem;">
+                                <div style="font-size: 1.3rem; font-weight: bold; color: rgb(244,197,66);">4.58</div>
+                                <div style="font-size: 0.75rem; color: rgb(130,130,130);">91.6%</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="criteria-score-row">
+                        <div style="display: flex; align-items: center; gap: 1rem; width: 100%;">
+                            <div style="background-color: rgb(219, 252, 231); border-radius: 0.5rem; padding: 0.5rem;">
+                                <svg width="1.5rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="#03b006" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            </div>
+                            <div style="flex: 1;">
+                                <div><b>Communication Skills</b></div>
+                                <div class="criteria-bar-track"><div class="criteria-bar-fill" style="width: 88%;"></div></div>
+                            </div>
+                            <div style="text-align: right; min-width: 4rem;">
+                                <div style="font-size: 1.3rem; font-weight: bold; color: rgb(244,197,66);">4.40</div>
+                                <div style="font-size: 0.75rem; color: rgb(130,130,130);">88.0%</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== COMMENTS TAB ===== -->
+            <div class="faculty-comments-container hidden">
+                <div class="tab-page-header">
+                    <div>
+                        <div><b style="font-size: 1.5rem;">Student Comments</b></div>
+                        <div style="color: rgb(100, 100, 100); margin-top: 0.5rem;">Anonymous feedback from your students</div>
+                    </div>
+                    <div class="back-to-results-btn">← Back to Results</div>
+                </div>
+
+                <div class="anon-notice">
+                    <svg width="1.5rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <div>
+                        <b style="color: rgb(29, 78, 216);">Anonymous Feedback</b>
+                        <div style="margin-top: 0.2rem; color: rgb(59, 130, 246); font-size: 0.9rem;">All comments are completely anonymous. Student names and identities are not shown to protect confidentiality. You cannot reply to, edit, or delete these comments.</div>
+                    </div>
+                </div>
+
+                <div class="filter-bar">
+                    <select class="filter-select" style="flex: 1;">
+                        <option>All Subjects</option>
+                        <option>IT 221</option>
+                        <option>IT 223</option>
+                    </select>
+                    <select class="filter-select" style="flex: 1;">
+                        <option>All Sections</option>
+                        <option>BSIT-2A</option>
+                        <option>BSIT-2B</option>
+                    </select>
+                </div>
+
+                <div>
+                    <div class="assigned-title border-radius-top">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <b>IT 221 - Human Computer Interaction</b>
+                            <div class="section-badge">BSIT-2A</div>
+                        </div>
+                        <div style="font-size: 0.85rem; color: rgb(100,100,100); margin-top: 0.3rem;">3 comment(s) • Average Score: 4.52</div>
+                    </div>
+
+                    <div class="comment-card">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.7rem;">
+                            <div style="display: flex; align-items: center; gap: 0.7rem;">
+                                <div class="comment-avatar">💬</div>
+                                <div>
+                                    <b>Anonymous Student #1</b>
+                                    <div class="anon-tag">Student Identity Protected</div>
+                                </div>
+                            </div>
+                            <div style="font-size: 0.85rem; color: rgb(130,130,130);">📅 4/10/2026</div>
+                        </div>
+                        <div style="color: rgb(59, 130, 246);">Prof. Dela Cruz explains complex HCI concepts in a very understandable way. Her examples from real-world applications help us see the practical use of what we learn.</div>
+                    </div>
+
+                    <div class="comment-card">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.7rem;">
+                            <div style="display: flex; align-items: center; gap: 0.7rem;">
+                                <div class="comment-avatar">💬</div>
+                                <div>
+                                    <b>Anonymous Student #2</b>
+                                    <div class="anon-tag">Student Identity Protected</div>
+                                </div>
+                            </div>
+                            <div style="font-size: 0.85rem; color: rgb(130,130,130);">📅 4/10/2026</div>
+                        </div>
+                        <div>Very organized and well-prepared for every class. The lecture materials are comprehensive and easy to follow.</div>
+                    </div>
+
+                    <div class="comment-card">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.7rem;">
+                            <div style="display: flex; align-items: center; gap: 0.7rem;">
+                                <div class="comment-avatar">💬</div>
+                                <div>
+                                    <b>Anonymous Student #3</b>
+                                    <div class="anon-tag">Student Identity Protected</div>
+                                </div>
+                            </div>
+                            <div style="font-size: 0.85rem; color: rgb(130,130,130);">📅 4/11/2026</div>
+                        </div>
+                        <div style="color: rgb(59, 130, 246);">I appreciate how she encourages class participation and makes everyone feel comfortable sharing their ideas. The interactive sessions really help in understanding user interface design principles.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== PARTICIPATION TAB ===== -->
+            <div class="faculty-participation-container hidden">
+                <div class="tab-page-header">
+                    <div>
+                        <div><b style="font-size: 1.5rem;">Participation Rate</b></div>
+                        <div style="color: rgb(100, 100, 100); margin-top: 0.5rem;">Student evaluation submission statistics</div>
+                    </div>
+                    <div class="back-to-dashboard-btn">← Back to Dashboard</div>
+                </div>
+
+                <div class="filter-bar">
+                    <select class="filter-select" style="flex: 1;">
+                        <option>All Subjects</option>
+                        <option>IT 221</option>
+                        <option>IT 223</option>
+                    </select>
+                    <select class="filter-select" style="flex: 1;">
+                        <option>All Sections</option>
+                        <option>BSIT-2A</option>
+                        <option>BSIT-2B</option>
+                    </select>
+                </div>
+
+                <div class="dash-stats">
+                    <div class="dash-stats-card">
+                        <div>
+                            <div>Overall Rate</div>
+                            <div style="font-size: 2rem; color: rgb(244, 197, 66); font-weight: bold;">95.7%</div>
+                        </div>
+                        <div style="background-color: rgb(253, 243, 217); border-radius: 0.5rem; padding: 0.4rem;">
+                            <svg width="2.5rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 20V10M12 20V4M6 20v-6" stroke="#f4c542" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        </div>
+                    </div>
+                    <div class="dash-stats-card">
+                        <div>
+                            <div>Total Submitted</div>
+                            <div class="completed-txt">67</div>
+                        </div>
+                        <div style="background-color: rgb(219, 252, 231); border-radius: 0.5rem; padding: 0.4rem;">
+                            <svg width="2.5rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8.5 12.5L10.5 14.5L15.5 9.5" stroke="#03b006" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="#03b006" stroke-width="1.5" stroke-linecap="round"></path></svg>
+                        </div>
+                    </div>
+                    <div class="dash-stats-card">
+                        <div>
+                            <div>Total Students</div>
+                            <div style="font-size: 2rem; color: rgb(59, 130, 246); font-weight: bold;">70</div>
+                        </div>
+                        <div style="background-color: rgb(219, 234, 254); border-radius: 0.5rem; padding: 0.4rem;">
+                            <svg width="2.5rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="7" r="4" stroke="#3b82f6" stroke-width="2"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        </div>
+                    </div>
+                    <div class="dash-stats-card">
+                        <div>
+                            <div>Pending</div>
+                            <div style="font-size: 2rem; color: rgb(249, 115, 22); font-weight: bold;">3</div>
+                        </div>
+                        <div style="background-color: rgb(254, 235, 215); border-radius: 0.5rem; padding: 0.4rem;">
+                            <svg width="2.5rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" stroke="#f97316" stroke-width="2"/><path d="M12 6v6M12 16h.01" stroke="#f97316" stroke-width="2" stroke-linecap="round"/></svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="assigned-title border-radius-top">
+                        <b>Participation by Class</b>
+                        <div style="font-size: 0.85rem; color: rgb(100,100,100); margin-top: 0.3rem;">Detailed breakdown for each section</div>
+                    </div>
+
+                    <div class="participation-class-card">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <b>IT 221</b>
+                                    <div class="section-badge">BSIT-2A</div>
+                                </div>
+                                <div class="dash-sub-txt">Human Computer Interaction</div>
+                                <div class="participation-stats-row">
+                                    <div>Submitted <span class="completed-txt" style="font-size: 1.1rem;">33</span></div>
+                                    <div>Total Students <span style="font-weight: bold;">35</span></div>
+                                    <div>Pending <span style="color: rgb(220, 36, 36); font-weight: bold;">2</span></div>
+                                </div>
+                            </div>
+                            <div class="participation-rate-badge">94.3%</div>
+                        </div>
+                        <div class="participation-bar-track"><div class="participation-bar-fill" style="width: 94.3%;"></div></div>
+                    </div>
+
+                    <div class="participation-class-card">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <b>IT 223</b>
+                                    <div class="section-badge">BSIT-2A</div>
+                                </div>
+                                <div class="dash-sub-txt">Information Management</div>
+                                <div class="participation-stats-row">
+                                    <div>Submitted <span class="completed-txt" style="font-size: 1.1rem;">34</span></div>
+                                    <div>Total Students <span style="font-weight: bold;">35</span></div>
+                                    <div>Pending <span style="color: rgb(220, 36, 36); font-weight: bold;">1</span></div>
+                                </div>
+                            </div>
+                            <div class="participation-rate-badge">97.1%</div>
+                        </div>
+                        <div class="participation-bar-track"><div class="participation-bar-fill" style="width: 97.1%;"></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== REPORTS TAB ===== -->
+            <div class="faculty-reports-container hidden">
+                <div class="tab-page-header">
+                    <div>
+                        <div><b style="font-size: 1.5rem;">Generate Reports</b></div>
+                        <div style="color: rgb(100, 100, 100); margin-top: 0.5rem;">Preview, download, and print your evaluation reports</div>
+                    </div>
+                    <div class="back-to-dashboard-btn">← Back to Dashboard</div>
+                </div>
+
+                <div class="report-section-card">
+                    <div><b>Report Configuration</b></div>
+                    <div class="filter-bar" style="margin-top: 1rem;">
+                        <select class="filter-select" style="flex: 1;">
+                            <option>All Subjects</option>
+                            <option>IT 221</option>
+                            <option>IT 223</option>
+                        </select>
+                        <select class="filter-select" style="flex: 1;">
+                            <option>All Sections</option>
+                            <option>BSIT-2A</option>
+                            <option>BSIT-2B</option>
+                        </select>
+                        <select class="filter-select" style="flex: 1;">
+                            <option>PDF Format</option>
+                            <option>Excel Format</option>
+                            <option>Word Format</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="report-section-card">
+                    <div><b>Report Summary</b></div>
+                    <div class="dash-stats" style="margin-top: 1rem;">
+                        <div class="dash-stats-card" style="flex: 1;">
+                            <div>
+                                <div>Total Classes</div>
+                                <div style="font-size: 2rem; font-weight: bold;">2</div>
+                            </div>
+                        </div>
+                        <div class="dash-stats-card" style="flex: 1;">
+                            <div>
+                                <div>Overall Average</div>
+                                <div style="font-size: 2rem; color: rgb(244, 197, 66); font-weight: bold;">4.57</div>
+                            </div>
+                        </div>
+                        <div class="dash-stats-card" style="flex: 1;">
+                            <div>
+                                <div>Total Responses</div>
+                                <div class="completed-txt">67</div>
+                            </div>
+                        </div>
+                        <div class="dash-stats-card" style="flex: 1;">
+                            <div>
+                                <div>Participation Rate</div>
+                                <div style="font-size: 2rem; color: rgb(59, 130, 246); font-weight: bold;">95.7%</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="report-section-card">
+                    <div><b>Report Actions</b></div>
+                    <div class="report-actions-row">
+                        <div class="report-preview-btn">
+                            <svg width="1.3rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" stroke="#ffffff" stroke-width="2"/></svg>
+                            &nbsp; Preview Report
+                        </div>
+                        <div class="report-download-btn">
+                            <svg width="1.3rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            &nbsp; Download Report
+                        </div>
+                        <div class="report-print-btn">
+                            <svg width="1.3rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><polyline points="6 9 6 2 18 2 18 9" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><rect x="6" y="14" width="12" height="8" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            &nbsp; Print Report
+                        </div>
+                    </div>
+                </div>
+
+                <div class="report-section-card">
+                    <div><b>Report Contents</b></div>
+                    <div style="font-size: 0.85rem; color: rgb(100,100,100); margin-top: 0.2rem;">The following data will be included in your report</div>
+                    <div style="margin-top: 1rem; display: flex; flex-direction: column; gap: 0.8rem;">
+                        <div class="report-content-item"><svg width="1.2rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8.5 12.5L10.5 14.5L15.5 9.5" stroke="#03b006" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="12" cy="12" r="10" stroke="#03b006" stroke-width="1.5"/></svg> <div><div><b>Faculty Information</b></div><div style="font-size: 0.85rem; color: rgb(130,130,130);">Name, Department, Academic Year, Semester</div></div></div>
+                        <div class="report-content-item"><svg width="1.2rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8.5 12.5L10.5 14.5L15.5 9.5" stroke="#03b006" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="12" cy="12" r="10" stroke="#03b006" stroke-width="1.5"/></svg> <div><div><b>Subject Details</b></div><div style="font-size: 0.85rem; color: rgb(130,130,130);">Subject Code, Title, Section, Total Students</div></div></div>
+                        <div class="report-content-item"><svg width="1.2rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8.5 12.5L10.5 14.5L15.5 9.5" stroke="#03b006" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="12" cy="12" r="10" stroke="#03b006" stroke-width="1.5"/></svg> <div><div><b>Evaluation Scores</b></div><div style="font-size: 0.85rem; color: rgb(130,130,130);">Overall Average, Category Scores, Rating Distribution</div></div></div>
+                        <div class="report-content-item"><svg width="1.2rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8.5 12.5L10.5 14.5L15.5 9.5" stroke="#03b006" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="12" cy="12" r="10" stroke="#03b006" stroke-width="1.5"/></svg> <div><div><b>Participation Statistics</b></div><div style="font-size: 0.85rem; color: rgb(130,130,130);">Total Responses, Participation Rate, Response Timeline</div></div></div>
+                        <div class="report-content-item"><svg width="1.2rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8.5 12.5L10.5 14.5L15.5 9.5" stroke="#03b006" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="12" cy="12" r="10" stroke="#03b006" stroke-width="1.5"/></svg> <div><div><b>Anonymous Comments</b></div><div style="font-size: 0.85rem; color: rgb(130,130,130);">Student Feedback (All student identities protected)</div></div></div>
+                        <div class="report-content-item"><svg width="1.2rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8.5 12.5L10.5 14.5L15.5 9.5" stroke="#03b006" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="12" cy="12" r="10" stroke="#03b006" stroke-width="1.5"/></svg> <div><div><b>Charts and Visualizations</b></div><div style="font-size: 0.85rem; color: rgb(130,130,130);">Score Distribution Charts, Trend Analysis</div></div></div>
+                    </div>
+                </div>
+
+                <div class="report-info-notice">
+                    <svg width="1.5rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" stroke="#3b82f6" stroke-width="2"/><line x1="3" y1="10" x2="21" y2="10" stroke="#3b82f6" stroke-width="2"/></svg>
+                    <div style="font-size: 0.9rem; color: rgb(59, 130, 246);">Reports can only be generated for released evaluation results. All student information remains anonymous in the report. Generated reports include timestamp and faculty information for record-keeping purposes.</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ===== LOGOUT MODAL ===== -->
+    <div class="cover-background hidden">
+        <div style="width: 35%;">
+            <div class="logout-title border-radius-top">
+                <div class="logout-title-txt">Confirm Logout</div>
+                <div class="close-logout-btn" style="cursor: pointer;">✕</div>
+            </div>
+            <div class="logout-body border-radius-bottom">
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem; padding: 1rem 0;">
+                    <div style="background-color: rgb(26,35,50); border-radius: 50%; width: 4rem; height: 4rem; display: flex; align-items: center; justify-content: center;">
+                        <svg width="2rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g clip-path="url(#clip0_429_11067)"><path d="M15 4.00098H5V18.001C5 19.1055 5.89543 20.001 7 20.001H15" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M16 15.001L19 12.001M19 12.001L16 9.00098M19 12.001H9" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path></g><defs><clipPath id="clip0_429_11067"><rect width="24" height="24" fill="white" transform="translate(0 0.000976562)"></rect></clipPath></defs></svg>
+                    </div>
+                    <div style="font-size: 1.4rem; font-weight: bold; text-align: center;">Confirm Logout</div>
+                    <div style="text-align: center; color: rgb(100,100,100);">Are you sure you want to log out of the Student Evaluation For Teacher System?</div>
+                </div>
+
+                <div class="session-info-box">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                        <svg width="1.2rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" stroke="#3b82f6" stroke-width="2"/><path d="M12 8v4M12 16h.01" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/></svg>
+                        <b style="color: rgb(29, 78, 216);">Session Information</b>
+                    </div>
+                    <div style="font-size: 0.9rem; color: rgb(59, 130, 246);">You are currently logged in as <b>Prof. Maria Teresa Dela Cruz</b> (FAC0001). Logging out will end your current session and return you to the login page.</div>
+                </div>
+
+                <div style="display: flex; gap: 1rem;">
+                    <div class="continue-btn" style="flex: 1; background-color: rgb(240,240,240); color: rgb(60,60,60);">Cancel</div>
+                    <div class="warning-btn-2" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                        <svg width="1.2rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g clip-path="url(#clip0_429_11067)"><path d="M15 4.00098H5V18.001C5 19.1055 5.89543 20.001 7 20.001H15" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M16 15.001L19 12.001M19 12.001L16 9.00098M19 12.001H9" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path></g><defs><clipPath id="clip0_429_11067"><rect width="24" height="24" fill="white" transform="translate(0 0.000976562)"></rect></clipPath></defs></svg>
+                        Logout
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="faculty-main.js" defer></script>
+</body>
+</html>

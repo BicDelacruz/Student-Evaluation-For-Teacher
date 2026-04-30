@@ -1,6 +1,5 @@
 // --- Dashboard Navigation Sidebar --- //
 const navBtns = document.querySelectorAll(".nav-btn")
-const categoryBtns = document.querySelectorAll(".category-login-btn")
 
 let currentTab = (document.querySelector(".nav-btn.active-nav-btn") != null) ? document.querySelector(".nav-btn.active-nav-btn").textContent.trim() : null;
 
@@ -62,6 +61,9 @@ function displayGuidelines() {
 function displayEval() {
     hideTabs()
     toggleElement(evalContainer)
+    if (guidelinesAgreed) {
+        evalRestrictDiv.classList.add("hidden")
+    }
 }
 
 function displayHistory() {
@@ -74,6 +76,22 @@ function displaySettings() {
     toggleElement(settingsContainer)
 }
 
+function changeCurrentTab(navBtnClass) {
+    navBtns.forEach((f) => {
+        f.classList.remove("active-nav-btn")
+    })
+    document.querySelector(navBtnClass).classList.add("active-nav-btn") 
+    currentTab = document.querySelector(".nav-btn.active-nav-btn").textContent.trim();
+
+    /*
+        .dashboard-nav-btn
+        .guidelines-nav-btn
+        .eval-nav-btn
+        .history-nav-btn
+        .settings-nav-btn 
+    */
+}
+
 // --- Login and Two Factor Auth --- //
 
 const loginBtn = document.querySelector(".login-btn")
@@ -83,6 +101,8 @@ const passkeyBtn = document.querySelector(".passkey-btn")
 const backBtn = document.querySelector(".back-btn")
 const passwordToggle = document.querySelector(".password-toggle")
 const pinInputs = document.querySelectorAll(".pin-input")
+
+const categoryBtns = document.querySelectorAll(".category-login-btn")
 
 const idNumLabel = document.querySelector(".idnum-label")
 const IdNumInput = document.querySelector(".id-input")
@@ -99,7 +119,7 @@ categoryBtns.forEach((e) => {
         categoryBtns.forEach((f) => {
             if (f != e) f.classList.remove("active-login-catergory")
         })
-        if (currentCategory != null) currentCategory = document.querySelector(".category [class$='active-login-catergory']").textContent.trim()
+        currentCategory = document.querySelector(".category [class$='active-login-catergory']").textContent.trim()
 
         switch (currentCategory) {
             case "Student":
@@ -208,24 +228,35 @@ pinInputs.forEach((input, index) => {
 // -- Guideline Container -- // 
 const acceptChbx = document.querySelector(".guide-agree-chkbx")
 const proceedBtn = document.querySelector(".guide-proceed-btn")
+let guidelinesAgreed = false;
+
+if (acceptChbx) acceptChbx.addEventListener("change", () => {
+    if (acceptChbx.checked) {
+        proceedBtn.classList.add("guide-proceed-btn-accepted")
+    } else {
+        proceedBtn.classList.remove("guide-proceed-btn-accepted")
+    }
+})
 
 addClickListener(proceedBtn, () => {
     if (acceptChbx.checked) {
-        
-    }
+        guidelinesAgreed = true
+        acceptChbx.disabled = true
+        displayEval()
+        changeCurrentTab(".eval-nav-btn")
+    }   
 })
 
 // --- Evaluation Container --- //
 
-const goToGuidelinesBtn = document.querySelector(".goto-guidelines-btn");
+const goToGuidelinesBtn = document.querySelector(".goto-guidelines-btn")
+const evalRestrictDiv = document.querySelector(".eval-restrict")
+
+
 
 addClickListener(goToGuidelinesBtn, () => {
-    displayGuidelines("active-nav-btn")
-    navBtns.forEach((f) => {
-        f.classList.remove("active-nav-btn")
-    })
-    if (document.querySelector(".guidelines-nav-btn") != null ) document.querySelector(".guidelines-nav-btn").classList.add("active-nav-btn") 
-    if (currentTab != null) currentTab = document.querySelector(".nav-btn.active-nav-btn").textContent.trim();
+    displayGuidelines()
+    changeCurrentTab(".guidelines-nav-btn")
 })
 
 
@@ -278,4 +309,5 @@ function toggleElement(element) {
 function addClickListener(element, func) {
     if (element != null) element.addEventListener("click", func)
 }
+
 
