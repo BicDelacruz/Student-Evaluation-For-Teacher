@@ -1,0 +1,170 @@
+{
+    "faculty_assignments": [
+        {
+            "id": "fa_seed_001",
+            "department_code": "CCS",
+            "faculty_id": "FAC0001",
+            "subject_code": "IT 221",
+            "course_codes": [
+                "BSIT"
+            ],
+            "is_general_education": false,
+            "year_level": "2nd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026"
+        },
+        {
+            "id": "fa_seed_002",
+            "department_code": "CCS",
+            "faculty_id": "FAC0002",
+            "subject_code": "IT 121",
+            "course_codes": [
+                "BSIT"
+            ],
+            "is_general_education": false,
+            "year_level": "1st Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026"
+        },
+        {
+            "id": "fa_seed_003",
+            "department_code": "CCS",
+            "faculty_id": "FAC0002",
+            "subject_code": "CS 121",
+            "course_codes": [
+                "BSCS"
+            ],
+            "is_general_education": false,
+            "year_level": "2nd Year",
+            "semester": "1st Semester",
+            "academic_year": "2025-2026"
+        },
+        {
+            "id": "fa_seed_004",
+            "department_code": "CCS",
+            "faculty_id": "FAC0004",
+            "subject_code": "CS 321",
+            "course_codes": [
+                "BSCS"
+            ],
+            "is_general_education": false,
+            "year_level": "3rd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026"
+        },
+        {
+            "id": "fa_seed_005",
+            "department_code": "COED",
+            "faculty_id": "FAC0015",
+            "subject_code": "GE 201",
+            "course_codes": [],
+            "is_general_education": true,
+            "year_level": "2nd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026"
+        }
+    ],
+    "section_enrollments": [
+        {
+            "id": "se_seed_001",
+            "department_code": "CCS",
+            "course_code": "BSIT",
+            "section_name": "BSIT-2A",
+            "year_level": "2nd Year",
+            "semester": "2nd Semester",
+            "subject_type": "program_and_ge",
+            "subject_codes": [
+                "IT 221",
+                "GE 201"
+            ],
+            "academic_year": "2025-2026",
+            "status": "active"
+        },
+        {
+            "id": "se_seed_002",
+            "department_code": "CCS",
+            "course_code": "BSIT",
+            "section_name": "BSIT-2B",
+            "year_level": "2nd Year",
+            "semester": "2nd Semester",
+            "subject_type": "program_and_ge",
+            "subject_codes": [
+                "IT 221",
+                "GE 201"
+            ],
+            "academic_year": "2025-2026",
+            "status": "active"
+        },
+        {
+            "id": "se_seed_003",
+            "department_code": "CCS",
+            "course_code": "BSCS",
+            "section_name": "BSCS-3A",
+            "year_level": "3rd Year",
+            "semester": "2nd Semester",
+            "subject_type": "program_only",
+            "subject_codes": [
+                "CS 321"
+            ],
+            "academic_year": "2025-2026",
+            "status": "active"
+        },
+        {
+            "id": "se_seed_004",
+            "department_code": "CBA",
+            "course_code": "BSBA",
+            "section_name": "BSBA-1A",
+            "year_level": "1st Year",
+            "semester": "2nd Semester",
+            "subject_type": "program_only",
+            "subject_codes": [
+                "BA 121"
+            ],
+            "academic_year": "2025-2026",
+            "status": "active"
+        },
+        {
+            "id": "se_seed_005",
+            "department_code": "CCS",
+            "course_code": "BSIT",
+            "section_name": "BSIT-1A",
+            "year_level": "1st Year",
+            "semester": "2nd Semester",
+            "subject_type": "program_and_ge",
+            "subject_codes": [
+                "IT 121"
+            ],
+            "academic_year": "2025-2026",
+            "status": "active"
+        },
+        {
+            "id": "se_seed_006",
+            "department_code": "CCS",
+            "course_code": "BSIT",
+            "section_name": "BSIT-1B",
+            "year_level": "1st Year",
+            "semester": "2nd Semester",
+            "subject_type": "program_and_ge",
+            "subject_codes": [
+                "IT 121"
+            ],
+            "academic_year": "2025-2026",
+            "status": "active"
+        },
+        {
+            "id": "se_seed_007",
+            "department_code": "CCS",
+            "course_code": "BSCS",
+            "section_name": "BSCS-2A",
+            "year_level": "2nd Year",
+            "semester": "2nd Semester",
+            "subject_type": "program_and_ge",
+            "subject_codes": [
+                "CS 221",
+                "GE 201"
+            ],
+            "academic_year": "2025-2026",
+            "status": "active"
+        }
+    ]
+}

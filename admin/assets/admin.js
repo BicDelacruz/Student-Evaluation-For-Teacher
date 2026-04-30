@@ -7,6 +7,7 @@ document.addEventListener("DOMContentLoaded", () => {
     initializeSectionAutoFill();
     initializeFilterForm();
     initializeAcademicStructure();
+    initializeAssignmentManagement();
 });
 
 function initializeDarkMode() {
@@ -841,6 +842,727 @@ function setValue(container, selector, value) {
 
 function capitalize(value) {
     return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function initializeAssignmentManagement() {
+    if (!window.ADMIN_ASSIGNMENT_MANAGEMENT) {
+        return;
+    }
+
+    initializeAssignmentTabs();
+    initializeAssignmentFilters();
+    initializeAssignmentActions();
+    initializeAssignmentFacultyForms();
+    initializeAssignmentSectionForms();
+}
+
+function initializeAssignmentTabs() {
+    const container = document.querySelector("[data-assignment-tabs]");
+    if (!container) {
+        return;
+    }
+
+    const buttons = Array.from(container.querySelectorAll("[data-assignment-tab]"));
+    const panes = Array.from(document.querySelectorAll("[data-assignment-pane]"));
+    let activeTab = container.getAttribute("data-active-tab") || "faculty_to_subject";
+
+    const setActiveTab = (tab, pushHistory) => {
+        activeTab = tab;
+
+        buttons.forEach((button) => {
+            const isActive = button.getAttribute("data-assignment-tab") === tab;
+            button.classList.toggle("is-active", isActive);
+        });
+
+        panes.forEach((pane) => {
+            const isActive = pane.getAttribute("data-assignment-pane") === tab;
+            pane.classList.toggle("is-active", isActive);
+        });
+
+        const nextUrl = new URL(window.location.href);
+        nextUrl.searchParams.set("tab", tab);
+        if (pushHistory) {
+            window.history.pushState({}, "", nextUrl);
+        }
+    };
+
+    buttons.forEach((button) => {
+        button.addEventListener("click", (event) => {
+            event.preventDefault();
+            const tab = button.getAttribute("data-assignment-tab");
+            if (!tab || tab === activeTab) {
+                return;
+            }
+
+            setActiveTab(tab, true);
+        });
+    });
+
+    window.addEventListener("popstate", () => {
+        const currentUrl = new URL(window.location.href);
+        setActiveTab(currentUrl.searchParams.get("tab") || "faculty_to_subject", false);
+    });
+
+    setActiveTab(activeTab, false);
+}
+
+function initializeAssignmentFilters() {
+    const facultyState = {
+        search: "",
+        subject: "",
+        faculty: "",
+        course: "",
+    };
+    const sectionState = {
+        search: "",
+        course: "",
+        section: "",
+        year: "",
+    };
+
+    const facultyItems = Array.from(document.querySelectorAll('[data-assignment-type="faculty"]'));
+    const sectionItems = Array.from(document.querySelectorAll('[data-assignment-type="section"]'));
+
+    const applyFacultyFilters = () => {
+        let visibleCount = 0;
+        facultyItems.forEach((item) => {
+            const searchText = (item.getAttribute("data-search-text") || "").toLowerCase();
+            const subject = item.getAttribute("data-filter-subject") || "";
+            const faculty = item.getAttribute("data-filter-faculty") || "";
+            const course = item.getAttribute("data-filter-course") || "";
+            const courseList = course ? course.split(",") : [];
+
+            const matches =
+                (!facultyState.search || searchText.includes(facultyState.search)) &&
+                (!facultyState.subject || subject === facultyState.subject) &&
+                (!facultyState.faculty || faculty === facultyState.faculty) &&
+                (!facultyState.course || course === "ALL" || courseList.includes(facultyState.course));
+
+            item.hidden = !matches;
+            if (matches) {
+                visibleCount += 1;
+            }
+        });
+
+        const counter = document.querySelector('[data-assignment-count="faculty_to_subject"]');
+        if (counter) {
+            counter.textContent = String(visibleCount);
+        }
+    };
+
+    const applySectionFilters = () => {
+        let visibleCount = 0;
+        sectionItems.forEach((item) => {
+            const searchText = (item.getAttribute("data-search-text") || "").toLowerCase();
+            const course = item.getAttribute("data-filter-course") || "";
+            const section = item.getAttribute("data-filter-section") || "";
+            const year = item.getAttribute("data-filter-year") || "";
+
+            const matches =
+                (!sectionState.search || searchText.includes(sectionState.search)) &&
+                (!sectionState.course || course === sectionState.course) &&
+                (!sectionState.section || section === sectionState.section) &&
+                (!sectionState.year || year === sectionState.year);
+
+            item.hidden = !matches;
+            if (matches) {
+                visibleCount += 1;
+            }
+        });
+
+        const counter = document.querySelector('[data-assignment-count="section_to_subject"]');
+        if (counter) {
+            counter.textContent = String(visibleCount);
+        }
+    };
+
+    const facultySearch = document.querySelector('[data-assignment-search="faculty_to_subject"]');
+    if (facultySearch) {
+        facultySearch.addEventListener("input", () => {
+            facultyState.search = facultySearch.value.trim().toLowerCase();
+            applyFacultyFilters();
+        });
+    }
+
+    const facultySubjectFilter = document.querySelector('[data-assignment-filter="faculty-subject"]');
+    if (facultySubjectFilter) {
+        facultySubjectFilter.addEventListener("change", () => {
+            facultyState.subject = facultySubjectFilter.value;
+            applyFacultyFilters();
+        });
+    }
+
+    const facultyNameFilter = document.querySelector('[data-assignment-filter="faculty-name"]');
+    if (facultyNameFilter) {
+        facultyNameFilter.addEventListener("change", () => {
+            facultyState.faculty = facultyNameFilter.value;
+            applyFacultyFilters();
+        });
+    }
+
+    const facultyCourseFilter = document.querySelector('[data-assignment-filter="faculty-course"]');
+    if (facultyCourseFilter) {
+        facultyCourseFilter.addEventListener("change", () => {
+            facultyState.course = facultyCourseFilter.value;
+            applyFacultyFilters();
+        });
+    }
+
+    const sectionSearch = document.querySelector('[data-assignment-search="section_to_subject"]');
+    if (sectionSearch) {
+        sectionSearch.addEventListener("input", () => {
+            sectionState.search = sectionSearch.value.trim().toLowerCase();
+            applySectionFilters();
+        });
+    }
+
+    const sectionCourseFilter = document.querySelector('[data-assignment-filter="section-course"]');
+    if (sectionCourseFilter) {
+        sectionCourseFilter.addEventListener("change", () => {
+            sectionState.course = sectionCourseFilter.value;
+            applySectionFilters();
+        });
+    }
+
+    const sectionNameFilter = document.querySelector('[data-assignment-filter="section-name"]');
+    if (sectionNameFilter) {
+        sectionNameFilter.addEventListener("change", () => {
+            sectionState.section = sectionNameFilter.value;
+            applySectionFilters();
+        });
+    }
+
+    const sectionYearFilter = document.querySelector('[data-assignment-filter="section-year"]');
+    if (sectionYearFilter) {
+        sectionYearFilter.addEventListener("change", () => {
+            sectionState.year = sectionYearFilter.value;
+            applySectionFilters();
+        });
+    }
+
+    applyFacultyFilters();
+    applySectionFilters();
+}
+
+function initializeAssignmentActions() {
+    const currentRecords = {
+        faculty_assignment: null,
+        section_enrollment: null,
+    };
+
+    document.querySelectorAll("[data-assignment-json]").forEach((button) => {
+        button.addEventListener("click", () => {
+            const rawData = button.getAttribute("data-assignment-json");
+            const entity = button.getAttribute("data-assignment-entity");
+            const action = button.getAttribute("data-assignment-action");
+
+            if (!rawData || !entity || !action) {
+                return;
+            }
+
+            const record = JSON.parse(rawData);
+            currentRecords[entity] = record;
+
+            if (entity === "faculty_assignment" && action === "view") {
+                fillFacultyAssignmentView(record);
+            }
+
+            if (entity === "faculty_assignment" && action === "edit") {
+                fillFacultyAssignmentEdit(record);
+            }
+
+            if (entity === "section_enrollment" && action === "view") {
+                fillSectionEnrollmentView(record);
+            }
+
+            if (entity === "section_enrollment" && action === "edit") {
+                fillSectionEnrollmentEdit(record);
+            }
+        });
+    });
+}
+
+function initializeAssignmentFacultyForms() {
+    document.querySelectorAll("[data-assignment-faculty-form]").forEach((form) => {
+        const context = form.getAttribute("data-assignment-faculty-form");
+        if (!context) {
+            return;
+        }
+
+        const departmentSelect = form.querySelector(`[data-assignment-department="${context}"]`);
+        const geToggle = form.querySelector(`[data-assignment-ge-toggle="${context}"]`);
+        const subjectSelect = form.querySelector(`[data-assignment-subject-select="${context}"]`);
+
+        if (departmentSelect) {
+            departmentSelect.addEventListener("change", () => syncAssignmentFacultyForm(context));
+        }
+
+        if (geToggle) {
+            geToggle.addEventListener("change", () => syncAssignmentFacultyForm(context));
+        }
+
+        form.querySelectorAll('input[name="course_codes[]"]').forEach((checkbox) => {
+            checkbox.addEventListener("change", () => syncAssignmentFacultyForm(context));
+        });
+
+        if (subjectSelect) {
+            subjectSelect.addEventListener("change", () => syncAssignmentSubjectAutoFill(context));
+        }
+
+        syncAssignmentFacultyForm(context);
+    });
+}
+
+function syncAssignmentFacultyForm(context) {
+    const form = document.querySelector(`[data-assignment-faculty-form="${context}"]`);
+    if (!form) {
+        return;
+    }
+
+    const departmentSelect = form.querySelector(`[data-assignment-department="${context}"]`);
+    const facultySelect = form.querySelector(`[data-assignment-faculty-select="${context}"]`);
+    const geToggle = form.querySelector(`[data-assignment-ge-toggle="${context}"]`);
+    const courseWrap = form.querySelector(`[data-assignment-course-wrap="${context}"]`);
+    const subjectSelect = form.querySelector(`[data-assignment-subject-select="${context}"]`);
+    const submitButton = form.querySelector(`[data-assignment-submit="faculty-${context}"]`);
+    const courseSummary = form.querySelector(`[data-assignment-course-summary="${context}"]`);
+    const hiddenCoursesWrap = form.querySelector("[data-assignment-edit-hidden-courses]");
+
+    const selectedDepartmentCode = departmentSelect ? departmentSelect.value : "";
+    const selectedDepartmentName = assignmentDepartmentName(selectedDepartmentCode);
+    const isGe = Boolean(geToggle && geToggle.checked) || Boolean(form.querySelector('input[name="is_general_education"][value="1"]'));
+    const selectedCourses = Array.from(form.querySelectorAll('input[name="course_codes[]"]'))
+        .filter((checkbox) => checkbox.checked && !checkbox.disabled)
+        .map((checkbox) => checkbox.value);
+
+    if (facultySelect) {
+        let hasVisibleSelectedOption = false;
+        Array.from(facultySelect.options).forEach((option) => {
+            if (!option.value) {
+                option.hidden = false;
+                return;
+            }
+
+            const matchesDepartment = !selectedDepartmentName || option.getAttribute("data-department-name") === selectedDepartmentName;
+            option.hidden = !matchesDepartment;
+            if (option.value === facultySelect.value && matchesDepartment) {
+                hasVisibleSelectedOption = true;
+            }
+        });
+
+        if (facultySelect.value && !hasVisibleSelectedOption) {
+            facultySelect.value = "";
+        }
+    }
+
+    if (courseWrap) {
+        courseWrap.classList.toggle("is-hidden", isGe);
+    }
+
+    form.querySelectorAll('input[name="course_codes[]"]').forEach((checkbox) => {
+        const item = checkbox.closest(".assignment-checklist-item");
+        const itemDepartment = item ? item.getAttribute("data-department-code") : "";
+        const visible = !selectedDepartmentCode || itemDepartment === selectedDepartmentCode;
+        checkbox.disabled = isGe || !visible;
+        if (item) {
+            item.classList.toggle("is-hidden", isGe || !visible);
+        }
+        if (checkbox.disabled) {
+            checkbox.checked = false;
+        }
+    });
+
+    if (courseSummary) {
+        courseSummary.textContent = isGe
+            ? "All Courses (General Education)"
+            : (selectedCourses.length ? selectedCourses.join(", ") : "Saved course scope");
+    }
+
+    if (hiddenCoursesWrap && context === "edit") {
+        const hiddenCourses = Array.from(hiddenCoursesWrap.querySelectorAll('input[name="course_codes[]"]')).map((input) => input.value);
+        if (courseSummary) {
+            courseSummary.textContent = isGe ? "All Courses (General Education)" : (hiddenCourses.length ? hiddenCourses.join(", ") : "Saved course scope");
+        }
+    }
+
+    if (subjectSelect) {
+        let hasVisibleSelectedSubject = false;
+        Array.from(subjectSelect.options).forEach((option) => {
+            if (!option.value) {
+                option.hidden = false;
+                return;
+            }
+
+            const optionIsGe = option.getAttribute("data-is-ge") === "1";
+            const optionDepartment = option.getAttribute("data-department-code") || "";
+            const optionCourses = (option.getAttribute("data-course-codes") || "").split(",").filter(Boolean);
+
+            let visible = false;
+            if (isGe) {
+                visible = optionIsGe;
+            } else {
+                const hasCourseMatch = selectedCourses.length > 0 && selectedCourses.some((courseCode) => optionCourses.includes(courseCode));
+                visible = !optionIsGe && optionDepartment === selectedDepartmentCode && hasCourseMatch;
+            }
+
+            if (context === "edit" && !selectedCourses.length && !isGe) {
+                visible = !optionIsGe && optionDepartment === selectedDepartmentCode;
+            }
+
+            option.hidden = !visible;
+            if (option.value === subjectSelect.value && visible) {
+                hasVisibleSelectedSubject = true;
+            }
+        });
+
+        if (subjectSelect.value && !hasVisibleSelectedSubject) {
+            subjectSelect.value = "";
+        }
+    }
+
+    syncAssignmentSubjectAutoFill(context);
+
+    if (submitButton) {
+        const hasCourseSelection = isGe || selectedCourses.length > 0;
+        const hasSubjectSelection = Boolean(subjectSelect && subjectSelect.value);
+        submitButton.disabled = !(selectedDepartmentCode && hasCourseSelection && hasSubjectSelection);
+    }
+}
+
+function syncAssignmentSubjectAutoFill(context) {
+    const form = document.querySelector(`[data-assignment-faculty-form="${context}"]`);
+    if (!form) {
+        return;
+    }
+
+    const subjectSelect = form.querySelector(`[data-assignment-subject-select="${context}"]`);
+    const yearInput = form.querySelector(`[data-assignment-year-level="${context}"]`);
+    const semesterInput = form.querySelector(`[data-assignment-semester="${context}"]`);
+    if (!subjectSelect || !yearInput || !semesterInput) {
+        return;
+    }
+
+    const selectedOption = subjectSelect.options[subjectSelect.selectedIndex];
+    if (!selectedOption || !selectedOption.value) {
+        yearInput.value = "";
+        semesterInput.value = "";
+        return;
+    }
+
+    yearInput.value = selectedOption.getAttribute("data-year-level") || "";
+    semesterInput.value = selectedOption.getAttribute("data-semester") || "";
+}
+
+function initializeAssignmentSectionForms() {
+    document.querySelectorAll("[data-assignment-section-form]").forEach((form) => {
+        const context = form.getAttribute("data-assignment-section-form");
+        if (!context) {
+            return;
+        }
+
+        [
+            `[data-assignment-section-department="${context}"]`,
+            `[data-assignment-section-course="${context}"]`,
+            `[data-assignment-section-year="${context}"]`,
+            `[data-assignment-section-semester="${context}"]`,
+            `[data-assignment-subject-type="${context}"]`,
+            `[data-assignment-section-select="${context}"]`,
+        ].forEach((selector) => {
+            const field = form.querySelector(selector);
+            if (field) {
+                field.addEventListener("change", () => syncAssignmentSectionForm(context));
+            }
+        });
+
+        form.querySelectorAll('input[name="section_names[]"], input[name="subject_codes[]"]').forEach((checkbox) => {
+            checkbox.addEventListener("change", () => syncAssignmentSectionForm(context));
+        });
+
+        syncAssignmentSectionForm(context);
+    });
+}
+
+function syncAssignmentSectionForm(context) {
+    const form = document.querySelector(`[data-assignment-section-form="${context}"]`);
+    if (!form) {
+        return;
+    }
+
+    const departmentSelect = form.querySelector(`[data-assignment-section-department="${context}"]`);
+    const courseSelect = form.querySelector(`[data-assignment-section-course="${context}"]`);
+    const yearSelect = form.querySelector(`[data-assignment-section-year="${context}"]`);
+    const semesterSelect = form.querySelector(`[data-assignment-section-semester="${context}"]`);
+    const subjectTypeSelect = form.querySelector(`[data-assignment-subject-type="${context}"]`);
+    const sectionSelect = form.querySelector(`[data-assignment-section-select="${context}"]`);
+    const sectionChecklist = form.querySelector(`[data-assignment-section-checklist="${context}"]`);
+    const subjectChecklist = form.querySelector(`[data-assignment-subject-checklist="${context}"]`);
+    const submitButton = form.querySelector(`[data-assignment-submit="section-${context}"]`);
+
+    const departmentCode = departmentSelect ? departmentSelect.value : "";
+    const courseCode = courseSelect ? courseSelect.value : "";
+    const yearLevel = yearSelect ? yearSelect.value : "";
+    const semester = semesterSelect ? semesterSelect.value : "";
+    const subjectType = subjectTypeSelect ? subjectTypeSelect.value : "program_only";
+
+    if (courseSelect) {
+        let hasVisibleSelectedOption = false;
+        Array.from(courseSelect.options).forEach((option) => {
+            if (!option.value) {
+                option.hidden = false;
+                return;
+            }
+
+            const visible = !departmentCode || option.getAttribute("data-department-code") === departmentCode;
+            option.hidden = !visible;
+            if (option.value === courseSelect.value && visible) {
+                hasVisibleSelectedOption = true;
+            }
+        });
+
+        if (courseSelect.value && !hasVisibleSelectedOption) {
+            courseSelect.value = "";
+        }
+    }
+
+    if (sectionChecklist) {
+        sectionChecklist.querySelectorAll(".assignment-checklist-item").forEach((item) => {
+            const checkbox = item.querySelector('input[name="section_names[]"]');
+            if (!checkbox) {
+                return;
+            }
+
+            const visible =
+                (!departmentCode || item.getAttribute("data-department-code") === departmentCode) &&
+                (!courseCode || item.getAttribute("data-course-code") === courseCode) &&
+                (!yearLevel || item.getAttribute("data-year-level") === yearLevel);
+
+            item.classList.toggle("is-hidden", !visible);
+            checkbox.disabled = !visible;
+            if (!visible) {
+                checkbox.checked = false;
+            }
+        });
+    }
+
+    if (sectionSelect) {
+        let hasVisibleSelectedSection = false;
+        Array.from(sectionSelect.options).forEach((option) => {
+            if (!option.value) {
+                option.hidden = false;
+                return;
+            }
+
+            const visible =
+                (!departmentCode || option.getAttribute("data-department-code") === departmentCode) &&
+                (!courseCode || option.getAttribute("data-course-code") === courseCode) &&
+                (!yearLevel || option.getAttribute("data-year-level") === yearLevel);
+
+            option.hidden = !visible;
+            if (option.value === sectionSelect.value && visible) {
+                hasVisibleSelectedSection = true;
+            }
+        });
+
+        if (sectionSelect.value && !hasVisibleSelectedSection) {
+            sectionSelect.value = "";
+        }
+    }
+
+    if (subjectChecklist) {
+        subjectChecklist.querySelectorAll(".assignment-checklist-item").forEach((item) => {
+            const checkbox = item.querySelector('input[name="subject_codes[]"]');
+            if (!checkbox) {
+                return;
+            }
+
+            const itemIsGe = item.getAttribute("data-is-ge") === "1";
+            const itemSemester = item.getAttribute("data-semester") || "";
+            const itemYear = item.getAttribute("data-year-level") || "";
+            const courseCodes = (item.getAttribute("data-course-codes") || "").split(",").filter(Boolean);
+
+            const matchesType =
+                (subjectType === "program_only" && !itemIsGe) ||
+                (subjectType === "ge_only" && itemIsGe) ||
+                subjectType === "program_and_ge";
+
+            const matchesCourse = itemIsGe ? true : (!courseCode || courseCodes.includes(courseCode));
+            const visible = matchesType && matchesCourse && (!yearLevel || itemYear === yearLevel) && (!semester || itemSemester === semester);
+
+            item.classList.toggle("is-hidden", !visible);
+            checkbox.disabled = !visible;
+            if (!visible) {
+                checkbox.checked = false;
+            }
+        });
+    }
+
+    updateAssignmentSelectedCount(form, `[data-assignment-selected-count="sections-${context}"]`, 'input[name="section_names[]"]', "section(s) selected");
+    updateAssignmentSelectedCount(form, `[data-assignment-selected-count="subjects-${context}"]`, 'input[name="subject_codes[]"]', "subject(s) selected");
+
+    if (submitButton) {
+        const hasSections = context === "edit"
+            ? Boolean(sectionSelect && sectionSelect.value)
+            : Array.from(form.querySelectorAll('input[name="section_names[]"]')).some((checkbox) => checkbox.checked && !checkbox.disabled);
+        const hasSubjects = Array.from(form.querySelectorAll('input[name="subject_codes[]"]')).some((checkbox) => checkbox.checked && !checkbox.disabled);
+        submitButton.disabled = !(departmentCode && courseCode && yearLevel && semester && hasSections && hasSubjects);
+    }
+}
+
+function updateAssignmentSelectedCount(form, counterSelector, checkboxSelector, suffix) {
+    const counter = form.querySelector(counterSelector);
+    if (!counter) {
+        return;
+    }
+
+    const count = Array.from(form.querySelectorAll(checkboxSelector)).filter((checkbox) => checkbox.checked && !checkbox.disabled).length;
+    counter.textContent = `${count} ${suffix}`;
+}
+
+function fillFacultyAssignmentView(record) {
+    setAssignmentViewValue("faculty-member", assignmentFacultyName(record.faculty_id));
+    setAssignmentViewValue("faculty-department", assignmentDepartmentName(record.department_code));
+    setAssignmentViewValue("faculty-subject", assignmentSubjectLabel(record.subject_code));
+    setAssignmentViewValue("faculty-courses", assignmentCourseScopeLabel(record));
+    setAssignmentViewValue("faculty-year-level", record.year_level || "");
+    setAssignmentViewValue("faculty-semester", record.semester || "");
+    setAssignmentViewValue("faculty-academic-year", record.academic_year || "");
+}
+
+function fillFacultyAssignmentEdit(record) {
+    const form = document.querySelector('[data-assignment-faculty-form="edit"]');
+    if (!form) {
+        return;
+    }
+
+    setValue(form, '[name="id"]', record.id || "");
+    setValue(form, '[name="department_code"]', record.department_code || "");
+    setValue(form, '[name="faculty_id"]', record.faculty_id || "");
+    setValue(form, '[name="subject_code"]', record.subject_code || "");
+    setValue(form, '[name="year_level"]', record.year_level || "");
+    setValue(form, '[name="semester"]', record.semester || "");
+    setValue(form, '[name="academic_year"]', record.academic_year || "");
+
+    const hiddenCoursesWrap = form.querySelector("[data-assignment-edit-hidden-courses]");
+    if (hiddenCoursesWrap) {
+        const courseInputs = Array.isArray(record.course_codes)
+            ? record.course_codes.map((courseCode) => `<input type="hidden" name="course_codes[]" value="${escapeHtml(courseCode)}">`).join("")
+            : "";
+        const geInput = record.is_general_education ? '<input type="hidden" name="is_general_education" value="1">' : "";
+        hiddenCoursesWrap.innerHTML = `${courseInputs}${geInput}`;
+    }
+
+    syncAssignmentFacultyForm("edit");
+}
+
+function fillSectionEnrollmentView(record) {
+    setAssignmentViewValue("section-department", assignmentDepartmentName(record.department_code));
+    setAssignmentViewValue("section-course", assignmentCourseLabel(record.course_code));
+    setAssignmentViewValue("section-year-level", record.year_level || "");
+    setAssignmentViewValue("section-name", record.section_name || "");
+    setAssignmentViewValue("section-semester", record.semester || "");
+    setAssignmentViewValue("section-academic-year", record.academic_year || "");
+
+    const statusBadge = document.querySelector('[data-assignment-view-status="section-status"]');
+    if (statusBadge) {
+        const status = record.status || "active";
+        statusBadge.textContent = status;
+        statusBadge.className = `status-badge ${status === "inactive" ? "inactive" : "active"}`;
+    }
+
+    const list = document.querySelector('[data-assignment-view-list="section-subjects"]');
+    if (list) {
+        const items = (record.subject_codes || []).map((subjectCode) => {
+            const facultyAssignment = findMatchingFacultyAssignment(record, subjectCode);
+            const facultyText = facultyAssignment ? assignmentFacultyName(facultyAssignment.faculty_id) : "No faculty assigned yet";
+            return `<div class="assignment-detail-item"><strong>${escapeHtml(assignmentSubjectLabel(subjectCode))}</strong><span>Faculty: ${escapeHtml(facultyText)}</span></div>`;
+        });
+        list.innerHTML = items.length ? items.join("") : '<div class="assignment-detail-item"><span>No subjects assigned.</span></div>';
+    }
+}
+
+function fillSectionEnrollmentEdit(record) {
+    const form = document.querySelector('[data-assignment-section-form="edit"]');
+    if (!form) {
+        return;
+    }
+
+    setValue(form, '[name="id"]', record.id || "");
+    setValue(form, '[name="department_code"]', record.department_code || "");
+    setValue(form, '[name="course_code"]', record.course_code || "");
+    setValue(form, '[name="year_level"]', record.year_level || "");
+    setValue(form, '[name="semester"]', record.semester || "");
+    setValue(form, '[name="section_name"]', record.section_name || "");
+    setValue(form, '[name="subject_type"]', record.subject_type || "program_only");
+    setValue(form, '[name="academic_year"]', record.academic_year || "");
+    setValue(form, '[name="status"]', record.status || "active");
+
+    form.querySelectorAll('input[name="subject_codes[]"]').forEach((checkbox) => {
+        checkbox.checked = Array.isArray(record.subject_codes) && record.subject_codes.includes(checkbox.value);
+    });
+
+    syncAssignmentSectionForm("edit");
+}
+
+function setAssignmentViewValue(fieldName, value) {
+    const field = document.querySelector(`[data-assignment-view-field="${fieldName}"]`);
+    if (field) {
+        field.value = value || "";
+    }
+}
+
+function assignmentDepartmentName(code) {
+    const record = (window.ADMIN_ASSIGNMENT_MANAGEMENT.departments || []).find((department) => department.code === code);
+    return record ? record.name : code;
+}
+
+function assignmentCourseLabel(code) {
+    const record = (window.ADMIN_ASSIGNMENT_MANAGEMENT.courses || []).find((course) => course.code === code);
+    return record ? `${record.code} - ${record.name}` : code;
+}
+
+function assignmentFacultyName(id) {
+    const record = (window.ADMIN_ASSIGNMENT_MANAGEMENT.faculty || []).find((faculty) => faculty.faculty_id === id);
+    if (!record) {
+        return id;
+    }
+
+    return [record.first_name, record.middle_name, record.last_name].filter(Boolean).join(" ");
+}
+
+function assignmentSubjectLabel(code) {
+    const record = (window.ADMIN_ASSIGNMENT_MANAGEMENT.subjects || []).find((subject) => subject.code === code);
+    return record ? `${record.code} - ${record.title}` : code;
+}
+
+function assignmentCourseScopeLabel(record) {
+    if (record.is_general_education) {
+        return "All Courses";
+    }
+
+    return Array.isArray(record.course_codes) && record.course_codes.length ? record.course_codes.join(", ") : "No Course Scope";
+}
+
+function findMatchingFacultyAssignment(enrollmentRecord, subjectCode) {
+    return (window.ADMIN_ASSIGNMENT_MANAGEMENT.facultyAssignments || []).find((assignment) => {
+        if (assignment.subject_code !== subjectCode) {
+            return false;
+        }
+
+        if (assignment.semester !== enrollmentRecord.semester || assignment.academic_year !== enrollmentRecord.academic_year) {
+            return false;
+        }
+
+        return assignment.is_general_education || (assignment.course_codes || []).includes(enrollmentRecord.course_code);
+    }) || null;
+}
+
+function escapeHtml(value) {
+    return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
 }
 
 

@@ -95,7 +95,7 @@ function admin_nav_items(): array
         'students' => ['label' => 'Student Management', 'href' => 'students.php', 'icon' => 'students'],
         'faculty' => ['label' => 'Faculty Management', 'href' => 'faculty_management.php', 'icon' => 'faculty'],
         'structure' => ['label' => 'Academic Structure', 'href' => 'academic_structure.php', 'icon' => 'structure'],
-        'assignments' => ['label' => 'Assignment Management', 'href' => 'placeholder.php?page=assignments', 'icon' => 'assignments'],
+        'assignments' => ['label' => 'Assignment Management', 'href' => 'assignment_management.php', 'icon' => 'assignments'],
         'setup' => ['label' => 'Evaluation Setup', 'href' => 'placeholder.php?page=setup', 'icon' => 'setup'],
         'monitoring' => ['label' => 'Submission Monitoring', 'href' => 'placeholder.php?page=monitoring', 'icon' => 'monitoring'],
         'reports' => ['label' => 'Reports', 'href' => 'placeholder.php?page=reports', 'icon' => 'reports'],
@@ -642,5 +642,4 @@ function build_faculty_record(array $payload, ?array $existing = null): array
         'status' => in_array($payload['status'], ['active', 'inactive'], true) ? $payload['status'] : 'active',
     ];
 }
-
 
