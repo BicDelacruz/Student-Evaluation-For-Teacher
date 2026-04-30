@@ -35,6 +35,10 @@ function admin_icon(string $name): string
 function render_admin_layout_start(string $title, string $activeNav, string $pageHeading, string $pageSubtitle): void
 {
     $navItems = admin_nav_items();
+    $assetVersion = (string) max(
+        (int) @filemtime(__DIR__ . '/../assets/admin.css'),
+        (int) @filemtime(__DIR__ . '/../assets/admin.js')
+    );
     ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -42,7 +46,7 @@ function render_admin_layout_start(string $title, string $activeNav, string $pag
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?></title>
-    <link rel="stylesheet" href="assets/admin.css">
+    <link rel="stylesheet" href="assets/admin.css?v=<?= htmlspecialchars($assetVersion, ENT_QUOTES, 'UTF-8') ?>">
 </head>
 <body class="admin-body">
     <div class="admin-shell">
@@ -83,10 +87,14 @@ function render_admin_layout_start(string $title, string $activeNav, string $pag
 
 function render_admin_layout_end(): void
 {
+    $assetVersion = (string) max(
+        (int) @filemtime(__DIR__ . '/../assets/admin.css'),
+        (int) @filemtime(__DIR__ . '/../assets/admin.js')
+    );
     ?>
         </main>
     </div>
-    <script src="assets/admin.js" defer></script>
+    <script src="assets/admin.js?v=<?= htmlspecialchars($assetVersion, ENT_QUOTES, 'UTF-8') ?>" defer></script>
 </body>
 </html>
 <?php

@@ -47,8 +47,8 @@ select {
 }
 
 svg {
-    width: 100%;
-    height: 100%;
+    display: block;
+    max-width: 100%;
     fill: none;
     stroke: currentColor;
     stroke-width: 1.8;
@@ -141,6 +141,35 @@ svg {
     width: 22px;
     height: 22px;
     flex: 0 0 22px;
+}
+
+.sidebar-icon,
+.button-icon,
+.search-icon-inline,
+.quick-action-icon,
+.placeholder-icon,
+.structure-tab-icon,
+.icon-button,
+.icon-submit {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+}
+
+.sidebar-icon svg,
+.button-icon svg,
+.search-icon-inline svg,
+.quick-action-icon svg,
+.placeholder-icon svg,
+.structure-tab-icon svg,
+.icon-button svg,
+.icon-submit svg,
+.stat-icon svg,
+.qr-icon svg,
+.auth-shield svg {
+    width: 100%;
+    height: 100%;
 }
 
 .sidebar-button {
@@ -474,6 +503,7 @@ svg {
     width: 24px;
     height: 24px;
     color: #68798f;
+    pointer-events: none;
 }
 
 .filters-grid {
@@ -486,6 +516,7 @@ svg {
 .filter-panel select,
 .modal-grid input,
 .modal-grid select,
+.modal-grid textarea,
 .login-form-shell input,
 .search-row input {
     min-height: 54px;
@@ -499,6 +530,7 @@ svg {
 .filter-panel select:focus,
 .modal-grid input:focus,
 .modal-grid select:focus,
+.modal-grid textarea:focus,
 .login-form-shell input:focus,
 .search-row input:focus {
     outline: none;
@@ -667,8 +699,16 @@ svg {
     font-weight: 600;
 }
 
+.modal-grid textarea {
+    width: 100%;
+    resize: vertical;
+    padding: 14px 18px;
+    min-height: 120px;
+}
+
 .modal-field input[readonly],
-.modal-field select[disabled] {
+.modal-field select[disabled],
+.modal-field textarea[readonly] {
     background: #f5f7fb;
     color: #48576d;
 }
@@ -838,6 +878,243 @@ svg {
     flex-wrap: wrap;
 }
 
+.structure-tabs {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    padding: 8px;
+    margin-bottom: 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+}
+
+.structure-tab-button {
+    width: 100%;
+    min-height: 48px;
+    border-radius: 12px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    color: var(--text);
+    white-space: nowrap;
+    transition: background-color 180ms, color 180ms;
+}
+
+.structure-tab-button:hover {
+    background: #f4f7fb;
+}
+
+.structure-tab-button.is-active {
+    background: var(--navy);
+    color: #fff;
+}
+
+.structure-tab-icon {
+    width: 18px;
+    height: 18px;
+}
+
+.structure-pane {
+    display: none !important;
+}
+
+.structure-pane.is-active {
+    display: block !important;
+}
+
+.structure-pane-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+
+.structure-pane-header h2 {
+    margin: 0;
+    font-size: 22px;
+}
+
+.structure-search-card {
+    margin-bottom: 16px;
+}
+
+.structure-table-card {
+    margin-top: 0;
+}
+
+.structure-card-list,
+.structure-card-grid {
+    display: grid;
+    gap: 16px;
+}
+
+.structure-card-list {
+    grid-template-columns: 1fr;
+}
+
+.structure-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.structure-card {
+    position: relative;
+    padding: 20px 22px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    box-shadow: var(--shadow);
+}
+
+.structure-card h3 {
+    margin: 10px 0 10px;
+    font-size: 18px;
+}
+
+.structure-card p {
+    margin: 0;
+    color: var(--muted);
+    line-height: 1.6;
+}
+
+.structure-card-actions {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.course-card-heading,
+.subject-card-heading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding-right: 110px;
+}
+
+.course-card-heading strong,
+.subject-card-heading strong,
+.section-card h3 {
+    font-size: 28px;
+    line-height: 1;
+}
+
+.card-meta-row,
+.section-card-meta {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-top: 16px;
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.section-card-meta {
+    flex-direction: column;
+    gap: 8px;
+}
+
+.subject-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.subject-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.subject-badge.units {
+    background: var(--navy);
+    color: #fff;
+}
+
+.subject-badge.semester {
+    background: var(--blue-soft);
+    color: var(--blue);
+}
+
+.subject-badge.ge {
+    background: var(--green-soft);
+    color: var(--green);
+}
+
+.structure-modal-card {
+    width: min(100%, 780px);
+}
+
+.structure-modal-tall {
+    width: min(100%, 860px);
+}
+
+.structure-modal-grid.single-column {
+    grid-template-columns: 1fr;
+}
+
+.structure-modal-note {
+    margin: -6px 0 18px;
+    color: var(--muted);
+}
+
+.modal-checkbox-field {
+    padding-top: 4px;
+}
+
+.checkbox-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+}
+
+.checkbox-inline input {
+    width: 18px;
+    height: 18px;
+    min-height: 18px;
+}
+
+.course-checklist {
+    max-height: 170px;
+    overflow: auto;
+    padding: 10px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: #f8fafc;
+    display: grid;
+    gap: 10px;
+}
+
+.course-checklist-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 10px;
+}
+
+.course-checklist-item:hover {
+    background: #eef2f7;
+}
+
+.course-checklist-item.is-hidden,
+[data-subject-department-wrap].is-hidden,
+[data-subject-courses-wrap].is-hidden {
+    display: none;
+}
+
 .sr-only {
     position: absolute;
     width: 1px;
@@ -875,9 +1152,21 @@ body.dark-mode .search-row input,
 body.dark-mode .filter-panel select,
 body.dark-mode .modal-grid input,
 body.dark-mode .modal-grid select,
+body.dark-mode .modal-grid textarea,
 body.dark-mode .pin-input {
     background: var(--surface-soft);
     color: var(--text);
+}
+
+body.dark-mode .structure-tabs,
+body.dark-mode .structure-card,
+body.dark-mode .course-checklist {
+    background: var(--surface);
+}
+
+body.dark-mode .course-checklist-item:hover,
+body.dark-mode .structure-tab-button:hover {
+    background: #22304a;
 }
 
 body.dark-mode .secondary-button,
@@ -896,7 +1185,9 @@ body.dark-mode .students-table th {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .filters-grid {
+    .filters-grid,
+    .structure-card-grid,
+    .structure-tabs {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
@@ -923,7 +1214,8 @@ body.dark-mode .students-table th {
 
     .page-header,
     .filter-toolbar,
-    .filter-meta {
+    .filter-meta,
+    .structure-pane-header {
         flex-direction: column;
         align-items: stretch;
     }
@@ -933,7 +1225,9 @@ body.dark-mode .students-table th {
     .stats-grid,
     .quick-actions-grid,
     .filters-grid,
-    .modal-actions {
+    .modal-actions,
+    .structure-tabs,
+    .structure-card-grid {
         grid-template-columns: 1fr;
     }
 
@@ -968,6 +1262,17 @@ body.dark-mode .students-table th {
         margin-bottom: 4px;
         text-transform: uppercase;
         letter-spacing: 0.04em;
+    }
+
+    .course-card-heading,
+    .subject-card-heading {
+        padding-right: 0;
+    }
+
+    .structure-card-actions {
+        position: static;
+        justify-content: flex-end;
+        margin-bottom: 12px;
     }
 }
 

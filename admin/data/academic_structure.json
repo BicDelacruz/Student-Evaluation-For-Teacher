@@ -1,0 +1,2277 @@
+{
+    "departments": [
+        {
+            "code": "CAS",
+            "name": "College of Arts and Sciences (CAS)",
+            "head": "Dr. Benjamin R. Morales"
+        },
+        {
+            "code": "CBA",
+            "name": "College of Business and Accountancy (CBA)",
+            "head": "Prof. Jennifer L. Aquino"
+        },
+        {
+            "code": "CCS",
+            "name": "College of Computer Studies (CCS)",
+            "head": "Dr. Roberto M. Santos"
+        },
+        {
+            "code": "COE",
+            "name": "College of Engineering (COE)",
+            "head": "Engr. Ricardo B. Cruz"
+        },
+        {
+            "code": "COED",
+            "name": "College of Education (COED)",
+            "head": "Dr. Maria T. Reyes"
+        },
+        {
+            "code": "CON",
+            "name": "College of Nursing (CON)",
+            "head": "Dr. Angelica S. Fernandez"
+        }
+    ],
+    "courses": [
+        {
+            "code": "ABCOMM",
+            "status": "active",
+            "name": "Bachelor of Arts in Communication",
+            "description": "Liberal arts program covering media, writing, and strategic communication",
+            "department_code": "CAS",
+            "department_name": "College of Arts and Sciences (CAS)",
+            "year_levels": 4,
+            "student_count": 265
+        },
+        {
+            "code": "BEED",
+            "status": "active",
+            "name": "Bachelor of Elementary Education",
+            "description": "Teacher education program for elementary classroom instruction",
+            "department_code": "COED",
+            "department_name": "College of Education (COED)",
+            "year_levels": 4,
+            "student_count": 340
+        },
+        {
+            "code": "BSA",
+            "status": "active",
+            "name": "Bachelor of Science in Accountancy",
+            "description": "Four-year program in accounting and financial management",
+            "department_code": "CBA",
+            "department_name": "College of Business and Accountancy (CBA)",
+            "year_levels": 4,
+            "student_count": 550
+        },
+        {
+            "code": "BSBA",
+            "status": "active",
+            "name": "Bachelor of Science in Business Administration",
+            "description": "Business degree covering marketing, management, and operations",
+            "department_code": "CBA",
+            "department_name": "College of Business and Accountancy (CBA)",
+            "year_levels": 4,
+            "student_count": 820
+        },
+        {
+            "code": "BSCE",
+            "status": "active",
+            "name": "Bachelor of Science in Civil Engineering",
+            "description": "Engineering program focused on structural design and construction systems",
+            "department_code": "COE",
+            "department_name": "College of Engineering (COE)",
+            "year_levels": 4,
+            "student_count": 430
+        },
+        {
+            "code": "BSCPE",
+            "status": "active",
+            "name": "Bachelor of Science in Computer Engineering",
+            "description": "Program covering hardware systems, embedded devices, and software integration",
+            "department_code": "COE",
+            "department_name": "College of Engineering (COE)",
+            "year_levels": 4,
+            "student_count": 390
+        },
+        {
+            "code": "BSCS",
+            "status": "active",
+            "name": "Bachelor of Science in Computer Science",
+            "description": "Four-year program emphasizing computational theory and software development",
+            "department_code": "CCS",
+            "department_name": "College of Computer Studies (CCS)",
+            "year_levels": 4,
+            "student_count": 600
+        },
+        {
+            "code": "BSED",
+            "status": "active",
+            "name": "Bachelor of Secondary Education",
+            "description": "Teacher education program with subject-area specialization for secondary level",
+            "department_code": "COED",
+            "department_name": "College of Education (COED)",
+            "year_levels": 4,
+            "student_count": 420
+        },
+        {
+            "code": "BSEE",
+            "status": "active",
+            "name": "Bachelor of Science in Electrical Engineering",
+            "description": "Engineering program on power systems, circuits, and industrial applications",
+            "department_code": "COE",
+            "department_name": "College of Engineering (COE)",
+            "year_levels": 4,
+            "student_count": 360
+        },
+        {
+            "code": "BSIT",
+            "status": "active",
+            "name": "Bachelor of Science in Information Technology",
+            "description": "Four-year program focused on practical IT skills and technologies",
+            "department_code": "CCS",
+            "department_name": "College of Computer Studies (CCS)",
+            "year_levels": 4,
+            "student_count": 1400
+        },
+        {
+            "code": "BSME",
+            "status": "inactive",
+            "name": "Bachelor of Science in Mechanical Engineering",
+            "description": "Engineering program centered on mechanics, machines, and thermal systems",
+            "department_code": "COE",
+            "department_name": "College of Engineering (COE)",
+            "year_levels": 4,
+            "student_count": 280
+        },
+        {
+            "code": "BSN",
+            "status": "active",
+            "name": "Bachelor of Science in Nursing",
+            "description": "Health sciences program focused on clinical practice and patient care",
+            "department_code": "CON",
+            "department_name": "College of Nursing (CON)",
+            "year_levels": 4,
+            "student_count": 510
+        },
+        {
+            "code": "BSPSYCH",
+            "status": "active",
+            "name": "Bachelor of Science in Psychology",
+            "description": "Behavioral science program exploring research, development, and counseling foundations",
+            "department_code": "CAS",
+            "department_name": "College of Arts and Sciences (CAS)",
+            "year_levels": 4,
+            "student_count": 300
+        }
+    ],
+    "sections": [
+        {
+            "name": "BEED-1A",
+            "department_code": "COED",
+            "course_code": "BEED",
+            "year_level": "1st Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BEED-1B",
+            "department_code": "COED",
+            "course_code": "BEED",
+            "year_level": "1st Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 1
+        },
+        {
+            "name": "BEED-2A",
+            "department_code": "COED",
+            "course_code": "BEED",
+            "year_level": "2nd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BEED-2B",
+            "department_code": "COED",
+            "course_code": "BEED",
+            "year_level": "2nd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 1
+        },
+        {
+            "name": "BEED-3A",
+            "department_code": "COED",
+            "course_code": "BEED",
+            "year_level": "3rd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BEED-3B",
+            "department_code": "COED",
+            "course_code": "BEED",
+            "year_level": "3rd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 1
+        },
+        {
+            "name": "BEED-4A",
+            "department_code": "COED",
+            "course_code": "BEED",
+            "year_level": "4th Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BEED-4B",
+            "department_code": "COED",
+            "course_code": "BEED",
+            "year_level": "4th Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 1
+        },
+        {
+            "name": "BSA-1A",
+            "department_code": "CBA",
+            "course_code": "BSA",
+            "year_level": "1st Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSA-1B",
+            "department_code": "CBA",
+            "course_code": "BSA",
+            "year_level": "1st Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 1
+        },
+        {
+            "name": "BSA-2A",
+            "department_code": "CBA",
+            "course_code": "BSA",
+            "year_level": "2nd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSA-2B",
+            "department_code": "CBA",
+            "course_code": "BSA",
+            "year_level": "2nd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 1
+        },
+        {
+            "name": "BSA-3A",
+            "department_code": "CBA",
+            "course_code": "BSA",
+            "year_level": "3rd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSA-3B",
+            "department_code": "CBA",
+            "course_code": "BSA",
+            "year_level": "3rd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 1
+        },
+        {
+            "name": "BSA-4A",
+            "department_code": "CBA",
+            "course_code": "BSA",
+            "year_level": "4th Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSA-4B",
+            "department_code": "CBA",
+            "course_code": "BSA",
+            "year_level": "4th Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 1
+        },
+        {
+            "name": "BSBA-1A",
+            "department_code": "CBA",
+            "course_code": "BSBA",
+            "year_level": "1st Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSBA-1B",
+            "department_code": "CBA",
+            "course_code": "BSBA",
+            "year_level": "1st Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 1
+        },
+        {
+            "name": "BSBA-2A",
+            "department_code": "CBA",
+            "course_code": "BSBA",
+            "year_level": "2nd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSBA-2B",
+            "department_code": "CBA",
+            "course_code": "BSBA",
+            "year_level": "2nd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 1
+        },
+        {
+            "name": "BSBA-3A",
+            "department_code": "CBA",
+            "course_code": "BSBA",
+            "year_level": "3rd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSBA-3B",
+            "department_code": "CBA",
+            "course_code": "BSBA",
+            "year_level": "3rd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 1
+        },
+        {
+            "name": "BSBA-4A",
+            "department_code": "CBA",
+            "course_code": "BSBA",
+            "year_level": "4th Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSBA-4B",
+            "department_code": "CBA",
+            "course_code": "BSBA",
+            "year_level": "4th Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 1
+        },
+        {
+            "name": "BSCE-1A",
+            "department_code": "COE",
+            "course_code": "BSCE",
+            "year_level": "1st Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSCE-1B",
+            "department_code": "COE",
+            "course_code": "BSCE",
+            "year_level": "1st Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 1
+        },
+        {
+            "name": "BSCE-2A",
+            "department_code": "COE",
+            "course_code": "BSCE",
+            "year_level": "2nd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSCE-2B",
+            "department_code": "COE",
+            "course_code": "BSCE",
+            "year_level": "2nd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 1
+        },
+        {
+            "name": "BSCE-3A",
+            "department_code": "COE",
+            "course_code": "BSCE",
+            "year_level": "3rd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSCE-3B",
+            "department_code": "COE",
+            "course_code": "BSCE",
+            "year_level": "3rd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 1
+        },
+        {
+            "name": "BSCE-4A",
+            "department_code": "COE",
+            "course_code": "BSCE",
+            "year_level": "4th Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSCE-4B",
+            "department_code": "COE",
+            "course_code": "BSCE",
+            "year_level": "4th Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 1
+        },
+        {
+            "name": "BSCPE-1A",
+            "department_code": "COE",
+            "course_code": "BSCPE",
+            "year_level": "1st Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSCPE-1B",
+            "department_code": "COE",
+            "course_code": "BSCPE",
+            "year_level": "1st Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 1
+        },
+        {
+            "name": "BSCPE-2A",
+            "department_code": "COE",
+            "course_code": "BSCPE",
+            "year_level": "2nd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSCPE-2B",
+            "department_code": "COE",
+            "course_code": "BSCPE",
+            "year_level": "2nd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 1
+        },
+        {
+            "name": "BSCPE-3A",
+            "department_code": "COE",
+            "course_code": "BSCPE",
+            "year_level": "3rd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSCPE-3B",
+            "department_code": "COE",
+            "course_code": "BSCPE",
+            "year_level": "3rd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 1
+        },
+        {
+            "name": "BSCPE-4A",
+            "department_code": "COE",
+            "course_code": "BSCPE",
+            "year_level": "4th Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSCPE-4B",
+            "department_code": "COE",
+            "course_code": "BSCPE",
+            "year_level": "4th Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 1
+        },
+        {
+            "name": "BSCS-1A",
+            "department_code": "CCS",
+            "course_code": "BSCS",
+            "year_level": "1st Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSCS-1B",
+            "department_code": "CCS",
+            "course_code": "BSCS",
+            "year_level": "1st Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 1
+        },
+        {
+            "name": "BSCS-2A",
+            "department_code": "CCS",
+            "course_code": "BSCS",
+            "year_level": "2nd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSCS-2B",
+            "department_code": "CCS",
+            "course_code": "BSCS",
+            "year_level": "2nd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 1
+        },
+        {
+            "name": "BSCS-3A",
+            "department_code": "CCS",
+            "course_code": "BSCS",
+            "year_level": "3rd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 1
+        },
+        {
+            "name": "BSCS-3B",
+            "department_code": "CCS",
+            "course_code": "BSCS",
+            "year_level": "3rd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 1
+        },
+        {
+            "name": "BSCS-4A",
+            "department_code": "CCS",
+            "course_code": "BSCS",
+            "year_level": "4th Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSED-1A",
+            "department_code": "COED",
+            "course_code": "BSED",
+            "year_level": "1st Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSED-2A",
+            "department_code": "COED",
+            "course_code": "BSED",
+            "year_level": "2nd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSED-3A",
+            "department_code": "COED",
+            "course_code": "BSED",
+            "year_level": "3rd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSED-4A",
+            "department_code": "COED",
+            "course_code": "BSED",
+            "year_level": "4th Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSEE-1A",
+            "department_code": "COE",
+            "course_code": "BSEE",
+            "year_level": "1st Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSEE-1B",
+            "department_code": "COE",
+            "course_code": "BSEE",
+            "year_level": "1st Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 1
+        },
+        {
+            "name": "BSEE-2A",
+            "department_code": "COE",
+            "course_code": "BSEE",
+            "year_level": "2nd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSEE-2B",
+            "department_code": "COE",
+            "course_code": "BSEE",
+            "year_level": "2nd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 1
+        },
+        {
+            "name": "BSEE-3A",
+            "department_code": "COE",
+            "course_code": "BSEE",
+            "year_level": "3rd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSEE-3B",
+            "department_code": "COE",
+            "course_code": "BSEE",
+            "year_level": "3rd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 1
+        },
+        {
+            "name": "BSEE-4A",
+            "department_code": "COE",
+            "course_code": "BSEE",
+            "year_level": "4th Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSEE-4B",
+            "department_code": "COE",
+            "course_code": "BSEE",
+            "year_level": "4th Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 1
+        },
+        {
+            "name": "BSIT-1A",
+            "department_code": "CCS",
+            "course_code": "BSIT",
+            "year_level": "1st Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSIT-1B",
+            "department_code": "CCS",
+            "course_code": "BSIT",
+            "year_level": "1st Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 1
+        },
+        {
+            "name": "BSIT-1C",
+            "department_code": "CCS",
+            "course_code": "BSIT",
+            "year_level": "1st Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSIT-1D",
+            "department_code": "CCS",
+            "course_code": "BSIT",
+            "year_level": "1st Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSIT-2A",
+            "department_code": "CCS",
+            "course_code": "BSIT",
+            "year_level": "2nd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 1
+        },
+        {
+            "name": "BSIT-2B",
+            "department_code": "CCS",
+            "course_code": "BSIT",
+            "year_level": "2nd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSIT-2C",
+            "department_code": "CCS",
+            "course_code": "BSIT",
+            "year_level": "2nd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSIT-2D",
+            "department_code": "CCS",
+            "course_code": "BSIT",
+            "year_level": "2nd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSIT-3A",
+            "department_code": "CCS",
+            "course_code": "BSIT",
+            "year_level": "3rd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSIT-3B",
+            "department_code": "CCS",
+            "course_code": "BSIT",
+            "year_level": "3rd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 1
+        },
+        {
+            "name": "BSIT-3C",
+            "department_code": "CCS",
+            "course_code": "BSIT",
+            "year_level": "3rd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSIT-4A",
+            "department_code": "CCS",
+            "course_code": "BSIT",
+            "year_level": "4th Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSIT-4B",
+            "department_code": "CCS",
+            "course_code": "BSIT",
+            "year_level": "4th Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 1
+        },
+        {
+            "name": "BSIT-4C",
+            "department_code": "CCS",
+            "course_code": "BSIT",
+            "year_level": "4th Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSME-1A",
+            "department_code": "COE",
+            "course_code": "BSME",
+            "year_level": "1st Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSME-1B",
+            "department_code": "COE",
+            "course_code": "BSME",
+            "year_level": "1st Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 1
+        },
+        {
+            "name": "BSME-2A",
+            "department_code": "COE",
+            "course_code": "BSME",
+            "year_level": "2nd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSME-2B",
+            "department_code": "COE",
+            "course_code": "BSME",
+            "year_level": "2nd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 1
+        },
+        {
+            "name": "BSME-3A",
+            "department_code": "COE",
+            "course_code": "BSME",
+            "year_level": "3rd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSME-3B",
+            "department_code": "COE",
+            "course_code": "BSME",
+            "year_level": "3rd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 1
+        },
+        {
+            "name": "BSME-4A",
+            "department_code": "COE",
+            "course_code": "BSME",
+            "year_level": "4th Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSME-4B",
+            "department_code": "COE",
+            "course_code": "BSME",
+            "year_level": "4th Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 1
+        },
+        {
+            "name": "BSN-1A",
+            "department_code": "CON",
+            "course_code": "BSN",
+            "year_level": "1st Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSN-2A",
+            "department_code": "CON",
+            "course_code": "BSN",
+            "year_level": "2nd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSN-3A",
+            "department_code": "CON",
+            "course_code": "BSN",
+            "year_level": "3rd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSN-4A",
+            "department_code": "CON",
+            "course_code": "BSN",
+            "year_level": "4th Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        },
+        {
+            "name": "BSPSYCH-3A",
+            "department_code": "CAS",
+            "course_code": "BSPSYCH",
+            "year_level": "3rd Year",
+            "semester": "2nd Semester",
+            "academic_year": "2025-2026",
+            "total_students": 0
+        }
+    ],
+    "subjects": [
+        {
+            "code": "AC 111",
+            "units": "3",
+            "title": "BSA Foundations",
+            "description": "Core subject for Bachelor of Science in Accountancy during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "CBA",
+            "course_codes": [
+                "BSA"
+            ],
+            "year_level": "1st Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "AC 121",
+            "units": "3",
+            "title": "BSA Applications",
+            "description": "Core subject for Bachelor of Science in Accountancy during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "CBA",
+            "course_codes": [
+                "BSA"
+            ],
+            "year_level": "1st Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "AC 211",
+            "units": "3",
+            "title": "BSA Methods",
+            "description": "Core subject for Bachelor of Science in Accountancy during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "CBA",
+            "course_codes": [
+                "BSA"
+            ],
+            "year_level": "2nd Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "AC 221",
+            "units": "3",
+            "title": "BSA Studio",
+            "description": "Core subject for Bachelor of Science in Accountancy during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "CBA",
+            "course_codes": [
+                "BSA"
+            ],
+            "year_level": "2nd Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "AC 311",
+            "units": "3",
+            "title": "BSA Analysis",
+            "description": "Core subject for Bachelor of Science in Accountancy during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "CBA",
+            "course_codes": [
+                "BSA"
+            ],
+            "year_level": "3rd Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "AC 321",
+            "units": "3",
+            "title": "BSA Integration",
+            "description": "Core subject for Bachelor of Science in Accountancy during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "CBA",
+            "course_codes": [
+                "BSA"
+            ],
+            "year_level": "3rd Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "AC 411",
+            "units": "3",
+            "title": "BSA Seminar",
+            "description": "Core subject for Bachelor of Science in Accountancy during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "CBA",
+            "course_codes": [
+                "BSA"
+            ],
+            "year_level": "4th Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "AC 421",
+            "units": "3",
+            "title": "BSA Capstone",
+            "description": "Core subject for Bachelor of Science in Accountancy during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "CBA",
+            "course_codes": [
+                "BSA"
+            ],
+            "year_level": "4th Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "BA 111",
+            "units": "3",
+            "title": "BSBA Foundations",
+            "description": "Core subject for Bachelor of Science in Business Administration during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "CBA",
+            "course_codes": [
+                "BSBA"
+            ],
+            "year_level": "1st Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "BA 121",
+            "units": "3",
+            "title": "BSBA Applications",
+            "description": "Core subject for Bachelor of Science in Business Administration during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "CBA",
+            "course_codes": [
+                "BSBA"
+            ],
+            "year_level": "1st Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "BA 211",
+            "units": "3",
+            "title": "BSBA Methods",
+            "description": "Core subject for Bachelor of Science in Business Administration during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "CBA",
+            "course_codes": [
+                "BSBA"
+            ],
+            "year_level": "2nd Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "BA 221",
+            "units": "3",
+            "title": "BSBA Studio",
+            "description": "Core subject for Bachelor of Science in Business Administration during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "CBA",
+            "course_codes": [
+                "BSBA"
+            ],
+            "year_level": "2nd Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "BA 311",
+            "units": "3",
+            "title": "BSBA Analysis",
+            "description": "Core subject for Bachelor of Science in Business Administration during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "CBA",
+            "course_codes": [
+                "BSBA"
+            ],
+            "year_level": "3rd Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "BA 321",
+            "units": "3",
+            "title": "BSBA Integration",
+            "description": "Core subject for Bachelor of Science in Business Administration during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "CBA",
+            "course_codes": [
+                "BSBA"
+            ],
+            "year_level": "3rd Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "BA 411",
+            "units": "3",
+            "title": "BSBA Seminar",
+            "description": "Core subject for Bachelor of Science in Business Administration during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "CBA",
+            "course_codes": [
+                "BSBA"
+            ],
+            "year_level": "4th Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "BA 421",
+            "units": "3",
+            "title": "BSBA Capstone",
+            "description": "Core subject for Bachelor of Science in Business Administration during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "CBA",
+            "course_codes": [
+                "BSBA"
+            ],
+            "year_level": "4th Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "CE 111",
+            "units": "3",
+            "title": "BSCE Foundations",
+            "description": "Core subject for Bachelor of Science in Civil Engineering during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "COE",
+            "course_codes": [
+                "BSCE"
+            ],
+            "year_level": "1st Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "CE 121",
+            "units": "3",
+            "title": "BSCE Applications",
+            "description": "Core subject for Bachelor of Science in Civil Engineering during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "COE",
+            "course_codes": [
+                "BSCE"
+            ],
+            "year_level": "1st Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "CE 211",
+            "units": "3",
+            "title": "BSCE Methods",
+            "description": "Core subject for Bachelor of Science in Civil Engineering during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "COE",
+            "course_codes": [
+                "BSCE"
+            ],
+            "year_level": "2nd Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "CE 221",
+            "units": "3",
+            "title": "BSCE Studio",
+            "description": "Core subject for Bachelor of Science in Civil Engineering during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "COE",
+            "course_codes": [
+                "BSCE"
+            ],
+            "year_level": "2nd Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "CE 311",
+            "units": "3",
+            "title": "BSCE Analysis",
+            "description": "Core subject for Bachelor of Science in Civil Engineering during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "COE",
+            "course_codes": [
+                "BSCE"
+            ],
+            "year_level": "3rd Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "CE 321",
+            "units": "3",
+            "title": "BSCE Integration",
+            "description": "Core subject for Bachelor of Science in Civil Engineering during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "COE",
+            "course_codes": [
+                "BSCE"
+            ],
+            "year_level": "3rd Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "CE 411",
+            "units": "3",
+            "title": "BSCE Seminar",
+            "description": "Core subject for Bachelor of Science in Civil Engineering during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "COE",
+            "course_codes": [
+                "BSCE"
+            ],
+            "year_level": "4th Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "CE 421",
+            "units": "3",
+            "title": "BSCE Capstone",
+            "description": "Core subject for Bachelor of Science in Civil Engineering during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "COE",
+            "course_codes": [
+                "BSCE"
+            ],
+            "year_level": "4th Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "COM 111",
+            "units": "3",
+            "title": "ABCOMM Foundations",
+            "description": "Core subject for Bachelor of Arts in Communication during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "CAS",
+            "course_codes": [
+                "ABCOMM"
+            ],
+            "year_level": "1st Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "COM 121",
+            "units": "3",
+            "title": "ABCOMM Applications",
+            "description": "Core subject for Bachelor of Arts in Communication during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "CAS",
+            "course_codes": [
+                "ABCOMM"
+            ],
+            "year_level": "1st Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "COM 211",
+            "units": "3",
+            "title": "ABCOMM Methods",
+            "description": "Core subject for Bachelor of Arts in Communication during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "CAS",
+            "course_codes": [
+                "ABCOMM"
+            ],
+            "year_level": "2nd Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "COM 221",
+            "units": "3",
+            "title": "ABCOMM Studio",
+            "description": "Core subject for Bachelor of Arts in Communication during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "CAS",
+            "course_codes": [
+                "ABCOMM"
+            ],
+            "year_level": "2nd Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "CS 111",
+            "units": "3",
+            "title": "BSCS Foundations",
+            "description": "Core subject for Bachelor of Science in Computer Science during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "CCS",
+            "course_codes": [
+                "BSCS"
+            ],
+            "year_level": "1st Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "CS 121",
+            "units": "3",
+            "title": "BSCS Applications",
+            "description": "Core subject for Bachelor of Science in Computer Science during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "CCS",
+            "course_codes": [
+                "BSCS"
+            ],
+            "year_level": "1st Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "CS 211",
+            "units": "3",
+            "title": "BSCS Methods",
+            "description": "Core subject for Bachelor of Science in Computer Science during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "CCS",
+            "course_codes": [
+                "BSCS"
+            ],
+            "year_level": "2nd Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "CS 221",
+            "units": "3",
+            "title": "BSCS Studio",
+            "description": "Core subject for Bachelor of Science in Computer Science during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "CCS",
+            "course_codes": [
+                "BSCS"
+            ],
+            "year_level": "2nd Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "CS 311",
+            "units": "3",
+            "title": "BSCS Analysis",
+            "description": "Core subject for Bachelor of Science in Computer Science during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "CCS",
+            "course_codes": [
+                "BSCS"
+            ],
+            "year_level": "3rd Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "CS 321",
+            "units": "3",
+            "title": "BSCS Integration",
+            "description": "Core subject for Bachelor of Science in Computer Science during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "CCS",
+            "course_codes": [
+                "BSCS"
+            ],
+            "year_level": "3rd Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "CS 411",
+            "units": "3",
+            "title": "BSCS Seminar",
+            "description": "Core subject for Bachelor of Science in Computer Science during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "CCS",
+            "course_codes": [
+                "BSCS"
+            ],
+            "year_level": "4th Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "CS 421",
+            "units": "3",
+            "title": "BSCS Capstone",
+            "description": "Core subject for Bachelor of Science in Computer Science during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "CCS",
+            "course_codes": [
+                "BSCS"
+            ],
+            "year_level": "4th Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "CpE 111",
+            "units": "3",
+            "title": "BSCPE Foundations",
+            "description": "Core subject for Bachelor of Science in Computer Engineering during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "COE",
+            "course_codes": [
+                "BSCPE"
+            ],
+            "year_level": "1st Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "CpE 121",
+            "units": "3",
+            "title": "BSCPE Applications",
+            "description": "Core subject for Bachelor of Science in Computer Engineering during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "COE",
+            "course_codes": [
+                "BSCPE"
+            ],
+            "year_level": "1st Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "CpE 211",
+            "units": "3",
+            "title": "BSCPE Methods",
+            "description": "Core subject for Bachelor of Science in Computer Engineering during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "COE",
+            "course_codes": [
+                "BSCPE"
+            ],
+            "year_level": "2nd Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "CpE 221",
+            "units": "3",
+            "title": "BSCPE Studio",
+            "description": "Core subject for Bachelor of Science in Computer Engineering during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "COE",
+            "course_codes": [
+                "BSCPE"
+            ],
+            "year_level": "2nd Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "CpE 311",
+            "units": "3",
+            "title": "BSCPE Analysis",
+            "description": "Core subject for Bachelor of Science in Computer Engineering during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "COE",
+            "course_codes": [
+                "BSCPE"
+            ],
+            "year_level": "3rd Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "CpE 321",
+            "units": "3",
+            "title": "BSCPE Integration",
+            "description": "Core subject for Bachelor of Science in Computer Engineering during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "COE",
+            "course_codes": [
+                "BSCPE"
+            ],
+            "year_level": "3rd Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "CpE 411",
+            "units": "3",
+            "title": "BSCPE Seminar",
+            "description": "Core subject for Bachelor of Science in Computer Engineering during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "COE",
+            "course_codes": [
+                "BSCPE"
+            ],
+            "year_level": "4th Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "CpE 421",
+            "units": "3",
+            "title": "BSCPE Capstone",
+            "description": "Core subject for Bachelor of Science in Computer Engineering during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "COE",
+            "course_codes": [
+                "BSCPE"
+            ],
+            "year_level": "4th Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "ED 111",
+            "units": "3",
+            "title": "BEED Foundations",
+            "description": "Core subject for Bachelor of Elementary Education during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "COED",
+            "course_codes": [
+                "BEED"
+            ],
+            "year_level": "1st Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "ED 121",
+            "units": "3",
+            "title": "BEED Applications",
+            "description": "Core subject for Bachelor of Elementary Education during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "COED",
+            "course_codes": [
+                "BEED"
+            ],
+            "year_level": "1st Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "ED 211",
+            "units": "3",
+            "title": "BEED Methods",
+            "description": "Core subject for Bachelor of Elementary Education during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "COED",
+            "course_codes": [
+                "BEED"
+            ],
+            "year_level": "2nd Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "ED 221",
+            "units": "3",
+            "title": "BEED Studio",
+            "description": "Core subject for Bachelor of Elementary Education during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "COED",
+            "course_codes": [
+                "BEED"
+            ],
+            "year_level": "2nd Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "ED 311",
+            "units": "3",
+            "title": "BEED Analysis",
+            "description": "Core subject for Bachelor of Elementary Education during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "COED",
+            "course_codes": [
+                "BEED"
+            ],
+            "year_level": "3rd Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "ED 321",
+            "units": "3",
+            "title": "BEED Integration",
+            "description": "Core subject for Bachelor of Elementary Education during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "COED",
+            "course_codes": [
+                "BEED"
+            ],
+            "year_level": "3rd Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "ED 411",
+            "units": "3",
+            "title": "BEED Seminar",
+            "description": "Core subject for Bachelor of Elementary Education during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "COED",
+            "course_codes": [
+                "BEED"
+            ],
+            "year_level": "4th Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "ED 421",
+            "units": "3",
+            "title": "BEED Capstone",
+            "description": "Core subject for Bachelor of Elementary Education during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "COED",
+            "course_codes": [
+                "BEED"
+            ],
+            "year_level": "4th Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "EE 111",
+            "units": "3",
+            "title": "BSEE Foundations",
+            "description": "Core subject for Bachelor of Science in Electrical Engineering during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "COE",
+            "course_codes": [
+                "BSEE"
+            ],
+            "year_level": "1st Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "EE 121",
+            "units": "3",
+            "title": "BSEE Applications",
+            "description": "Core subject for Bachelor of Science in Electrical Engineering during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "COE",
+            "course_codes": [
+                "BSEE"
+            ],
+            "year_level": "1st Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "EE 211",
+            "units": "3",
+            "title": "BSEE Methods",
+            "description": "Core subject for Bachelor of Science in Electrical Engineering during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "COE",
+            "course_codes": [
+                "BSEE"
+            ],
+            "year_level": "2nd Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "EE 221",
+            "units": "3",
+            "title": "BSEE Studio",
+            "description": "Core subject for Bachelor of Science in Electrical Engineering during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "COE",
+            "course_codes": [
+                "BSEE"
+            ],
+            "year_level": "2nd Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "EE 311",
+            "units": "3",
+            "title": "BSEE Analysis",
+            "description": "Core subject for Bachelor of Science in Electrical Engineering during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "COE",
+            "course_codes": [
+                "BSEE"
+            ],
+            "year_level": "3rd Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "EE 321",
+            "units": "3",
+            "title": "BSEE Integration",
+            "description": "Core subject for Bachelor of Science in Electrical Engineering during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "COE",
+            "course_codes": [
+                "BSEE"
+            ],
+            "year_level": "3rd Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "EE 411",
+            "units": "3",
+            "title": "BSEE Seminar",
+            "description": "Core subject for Bachelor of Science in Electrical Engineering during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "COE",
+            "course_codes": [
+                "BSEE"
+            ],
+            "year_level": "4th Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "EE 421",
+            "units": "3",
+            "title": "BSEE Capstone",
+            "description": "Core subject for Bachelor of Science in Electrical Engineering during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "COE",
+            "course_codes": [
+                "BSEE"
+            ],
+            "year_level": "4th Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "GE 101",
+            "units": "3",
+            "title": "Understanding the Self",
+            "description": "Philosophical and psychological perspectives on the self",
+            "is_general_education": true,
+            "department_code": "ALL",
+            "course_codes": [],
+            "year_level": "1st Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "GE 102",
+            "units": "3",
+            "title": "Purposive Communication",
+            "description": "Development of communication skills in various contexts",
+            "is_general_education": true,
+            "department_code": "ALL",
+            "course_codes": [],
+            "year_level": "1st Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "GE 201",
+            "units": "3",
+            "title": "Rizal: Life and Works",
+            "description": "Study of Jose Rizal's life, writings, and contributions",
+            "is_general_education": true,
+            "department_code": "ALL",
+            "course_codes": [],
+            "year_level": "2nd Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "IT 111",
+            "units": "3",
+            "title": "BSIT Foundations",
+            "description": "Core subject for Bachelor of Science in Information Technology during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "CCS",
+            "course_codes": [
+                "BSIT"
+            ],
+            "year_level": "1st Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "IT 121",
+            "units": "3",
+            "title": "BSIT Applications",
+            "description": "Core subject for Bachelor of Science in Information Technology during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "CCS",
+            "course_codes": [
+                "BSIT"
+            ],
+            "year_level": "1st Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "IT 211",
+            "units": "3",
+            "title": "BSIT Methods",
+            "description": "Core subject for Bachelor of Science in Information Technology during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "CCS",
+            "course_codes": [
+                "BSIT"
+            ],
+            "year_level": "2nd Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "IT 221",
+            "units": "3",
+            "title": "Human Computer Interaction",
+            "description": "Principles and practices of user-centered interface design and evaluation",
+            "is_general_education": false,
+            "department_code": "CCS",
+            "course_codes": [
+                "BSIT"
+            ],
+            "year_level": "2nd Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "IT 311",
+            "units": "3",
+            "title": "BSIT Analysis",
+            "description": "Core subject for Bachelor of Science in Information Technology during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "CCS",
+            "course_codes": [
+                "BSIT"
+            ],
+            "year_level": "3rd Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "IT 321",
+            "units": "3",
+            "title": "BSIT Integration",
+            "description": "Core subject for Bachelor of Science in Information Technology during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "CCS",
+            "course_codes": [
+                "BSIT"
+            ],
+            "year_level": "3rd Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "IT 411",
+            "units": "3",
+            "title": "BSIT Seminar",
+            "description": "Core subject for Bachelor of Science in Information Technology during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "CCS",
+            "course_codes": [
+                "BSIT"
+            ],
+            "year_level": "4th Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "IT 421",
+            "units": "3",
+            "title": "BSIT Capstone",
+            "description": "Core subject for Bachelor of Science in Information Technology during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "CCS",
+            "course_codes": [
+                "BSIT"
+            ],
+            "year_level": "4th Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "ME 111",
+            "units": "3",
+            "title": "BSME Foundations",
+            "description": "Core subject for Bachelor of Science in Mechanical Engineering during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "COE",
+            "course_codes": [
+                "BSME"
+            ],
+            "year_level": "1st Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "ME 121",
+            "units": "3",
+            "title": "BSME Applications",
+            "description": "Core subject for Bachelor of Science in Mechanical Engineering during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "COE",
+            "course_codes": [
+                "BSME"
+            ],
+            "year_level": "1st Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "ME 211",
+            "units": "3",
+            "title": "BSME Methods",
+            "description": "Core subject for Bachelor of Science in Mechanical Engineering during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "COE",
+            "course_codes": [
+                "BSME"
+            ],
+            "year_level": "2nd Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "ME 221",
+            "units": "3",
+            "title": "BSME Studio",
+            "description": "Core subject for Bachelor of Science in Mechanical Engineering during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "COE",
+            "course_codes": [
+                "BSME"
+            ],
+            "year_level": "2nd Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "ME 311",
+            "units": "3",
+            "title": "BSME Analysis",
+            "description": "Core subject for Bachelor of Science in Mechanical Engineering during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "COE",
+            "course_codes": [
+                "BSME"
+            ],
+            "year_level": "3rd Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "ME 321",
+            "units": "3",
+            "title": "BSME Integration",
+            "description": "Core subject for Bachelor of Science in Mechanical Engineering during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "COE",
+            "course_codes": [
+                "BSME"
+            ],
+            "year_level": "3rd Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "ME 411",
+            "units": "3",
+            "title": "BSME Seminar",
+            "description": "Core subject for Bachelor of Science in Mechanical Engineering during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "COE",
+            "course_codes": [
+                "BSME"
+            ],
+            "year_level": "4th Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "ME 421",
+            "units": "3",
+            "title": "BSME Capstone",
+            "description": "Core subject for Bachelor of Science in Mechanical Engineering during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "COE",
+            "course_codes": [
+                "BSME"
+            ],
+            "year_level": "4th Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "N 111",
+            "units": "3",
+            "title": "BSN Foundations",
+            "description": "Core subject for Bachelor of Science in Nursing during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "CON",
+            "course_codes": [
+                "BSN"
+            ],
+            "year_level": "1st Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "N 121",
+            "units": "3",
+            "title": "BSN Applications",
+            "description": "Core subject for Bachelor of Science in Nursing during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "CON",
+            "course_codes": [
+                "BSN"
+            ],
+            "year_level": "1st Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "N 211",
+            "units": "3",
+            "title": "BSN Methods",
+            "description": "Core subject for Bachelor of Science in Nursing during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "CON",
+            "course_codes": [
+                "BSN"
+            ],
+            "year_level": "2nd Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "N 221",
+            "units": "3",
+            "title": "BSN Studio",
+            "description": "Core subject for Bachelor of Science in Nursing during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "CON",
+            "course_codes": [
+                "BSN"
+            ],
+            "year_level": "2nd Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "N 311",
+            "units": "3",
+            "title": "BSN Analysis",
+            "description": "Core subject for Bachelor of Science in Nursing during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "CON",
+            "course_codes": [
+                "BSN"
+            ],
+            "year_level": "3rd Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "N 321",
+            "units": "3",
+            "title": "BSN Integration",
+            "description": "Core subject for Bachelor of Science in Nursing during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "CON",
+            "course_codes": [
+                "BSN"
+            ],
+            "year_level": "3rd Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "N 411",
+            "units": "3",
+            "title": "BSN Seminar",
+            "description": "Core subject for Bachelor of Science in Nursing during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "CON",
+            "course_codes": [
+                "BSN"
+            ],
+            "year_level": "4th Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "N 421",
+            "units": "3",
+            "title": "BSN Capstone",
+            "description": "Core subject for Bachelor of Science in Nursing during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "CON",
+            "course_codes": [
+                "BSN"
+            ],
+            "year_level": "4th Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "PSY 111",
+            "units": "3",
+            "title": "BSPSYCH Foundations",
+            "description": "Core subject for Bachelor of Science in Psychology during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "CAS",
+            "course_codes": [
+                "BSPSYCH"
+            ],
+            "year_level": "1st Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "PSY 121",
+            "units": "3",
+            "title": "BSPSYCH Applications",
+            "description": "Core subject for Bachelor of Science in Psychology during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "CAS",
+            "course_codes": [
+                "BSPSYCH"
+            ],
+            "year_level": "1st Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "PSY 211",
+            "units": "3",
+            "title": "BSPSYCH Methods",
+            "description": "Core subject for Bachelor of Science in Psychology during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "CAS",
+            "course_codes": [
+                "BSPSYCH"
+            ],
+            "year_level": "2nd Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "PSY 221",
+            "units": "3",
+            "title": "BSPSYCH Studio",
+            "description": "Core subject for Bachelor of Science in Psychology during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "CAS",
+            "course_codes": [
+                "BSPSYCH"
+            ],
+            "year_level": "2nd Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "PSY 311",
+            "units": "3",
+            "title": "BSPSYCH Analysis",
+            "description": "Core subject for Bachelor of Science in Psychology during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "CAS",
+            "course_codes": [
+                "BSPSYCH"
+            ],
+            "year_level": "3rd Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "PSY 321",
+            "units": "3",
+            "title": "BSPSYCH Integration",
+            "description": "Core subject for Bachelor of Science in Psychology during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "CAS",
+            "course_codes": [
+                "BSPSYCH"
+            ],
+            "year_level": "3rd Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "PSY 411",
+            "units": "3",
+            "title": "BSPSYCH Seminar",
+            "description": "Core subject for Bachelor of Science in Psychology during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "CAS",
+            "course_codes": [
+                "BSPSYCH"
+            ],
+            "year_level": "4th Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "PSY 421",
+            "units": "3",
+            "title": "BSPSYCH Capstone",
+            "description": "Core subject for Bachelor of Science in Psychology during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "CAS",
+            "course_codes": [
+                "BSPSYCH"
+            ],
+            "year_level": "4th Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "SE 111",
+            "units": "3",
+            "title": "BSED Foundations",
+            "description": "Core subject for Bachelor of Secondary Education during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "COED",
+            "course_codes": [
+                "BSED"
+            ],
+            "year_level": "1st Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "SE 121",
+            "units": "3",
+            "title": "BSED Applications",
+            "description": "Core subject for Bachelor of Secondary Education during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "COED",
+            "course_codes": [
+                "BSED"
+            ],
+            "year_level": "1st Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "SE 211",
+            "units": "3",
+            "title": "BSED Methods",
+            "description": "Core subject for Bachelor of Secondary Education during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "COED",
+            "course_codes": [
+                "BSED"
+            ],
+            "year_level": "2nd Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "SE 221",
+            "units": "3",
+            "title": "BSED Studio",
+            "description": "Core subject for Bachelor of Secondary Education during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "COED",
+            "course_codes": [
+                "BSED"
+            ],
+            "year_level": "2nd Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "SE 311",
+            "units": "3",
+            "title": "BSED Analysis",
+            "description": "Core subject for Bachelor of Secondary Education during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "COED",
+            "course_codes": [
+                "BSED"
+            ],
+            "year_level": "3rd Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "SE 321",
+            "units": "3",
+            "title": "BSED Integration",
+            "description": "Core subject for Bachelor of Secondary Education during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "COED",
+            "course_codes": [
+                "BSED"
+            ],
+            "year_level": "3rd Year",
+            "semester": "2nd Semester"
+        },
+        {
+            "code": "SE 411",
+            "units": "3",
+            "title": "BSED Seminar",
+            "description": "Core subject for Bachelor of Secondary Education during the 1st semester.",
+            "is_general_education": false,
+            "department_code": "COED",
+            "course_codes": [
+                "BSED"
+            ],
+            "year_level": "4th Year",
+            "semester": "1st Semester"
+        },
+        {
+            "code": "SE 421",
+            "units": "3",
+            "title": "BSED Capstone",
+            "description": "Core subject for Bachelor of Secondary Education during the 2nd semester.",
+            "is_general_education": false,
+            "department_code": "COED",
+            "course_codes": [
+                "BSED"
+            ],
+            "year_level": "4th Year",
+            "semester": "2nd Semester"
+        }
+    ]
+}
