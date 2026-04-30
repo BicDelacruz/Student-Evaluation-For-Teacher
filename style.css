@@ -1,5 +1,13 @@
 * {
     font-family: 'Poppins', sans-serif;
+    box-sizing: border-box; 
+}
+
+* [class$="-btn"] {
+    text-align: center;
+    cursor: pointer;
+    border-radius: 0.5rem;
+    padding: 1rem;
 }
 
 * [class$="-btn"] {
@@ -10,10 +18,12 @@
 }
 
 .login-body {
-    height: 100dvh;
+    min-height: 100dvh;
     margin: 0;
-    padding: 0;
-    background-color: rgb(26, 35, 50);
+    padding: 1.5rem;
+    background:
+        radial-gradient(circle at top, rgba(255, 255, 255, 0.08), transparent 30%),
+        linear-gradient(180deg, rgb(29, 39, 56) 0%, rgb(34, 46, 64) 100%);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -30,16 +40,295 @@
 
 .login-container,
 .twofa-container {
-    padding-left: 1.5rem;
-    padding-right: 1.5rem;
-    width: 25vw;
-    height: 95vh;
+    width: min(100%, 31.5rem);
+    padding: 2.6rem 2.2rem 2.2rem;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-direction: column;
-    border-radius: 0.5rem;
+    border-radius: 1rem;
     background-color: white;
+    box-shadow: 0 32px 70px rgba(12, 18, 29, 0.28);
+    border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.login-shell {
+    width: fit-content;
+    display: flex;
+    justify-content: center;
+}
+
+.login-shell.hidden,
+.twofa-container.hidden {
+    display: none;
+}
+
+.login-container {
+    gap: 0.5rem;
+}
+
+.login-form-shell {
+    width: 100%;
+}
+
+.login-logo {
+    width: 7rem;
+    max-width: 40%;
+}
+
+.login-title {
+    color: rgb(18, 43, 83);
+    font-size: clamp(1.9rem, 2.2vw, 2.3rem);
+    font-weight: 700;
+    text-align: center;
+    line-height: 1.15;
+    margin-top: 0.8rem;
+}
+
+.login-subtitle {
+    color: rgb(101, 113, 132);
+    font-size: 1rem;
+    text-align: center;
+    margin-top: 0.15rem;
+}
+
+.login-form {
+    margin-top: 1.7rem;
+}
+
+.login-label {
+    color: rgb(16, 24, 40);
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.login-input,
+.verification-input {
+    width: 100%;
+    min-height: 3.5rem;
+    background-color: rgb(248, 250, 252);
+    border: 1.5px solid rgb(209, 213, 219);
+    padding: 0.95rem 1rem;
+    border-radius: 0.8rem;
+    font-size: 1rem;
+    color: rgb(17, 24, 39);
+    transition: border-color 180ms, box-shadow 180ms, background-color 180ms;
+}
+
+.login-input::placeholder,
+.verification-input::placeholder {
+    color: rgb(148, 163, 184);
+}
+
+.login-input:focus,
+.verification-input:focus,
+.history-search-input:focus,
+.settings-password-body [class$="-input"]:focus {
+    outline: none;
+    border-color: rgb(26, 35, 50);
+    box-shadow: 0 0 0 4px rgba(26, 35, 50, 0.08);
+    background-color: white;
+}
+
+.password-field {
+    width: 100%;
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.password-field .login-input {
+    padding-right: 3.8rem;
+}
+
+.password-toggle {
+    position: absolute;
+    right: 0.85rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border: none;
+    background: transparent;
+    color: rgb(100, 116, 139);
+    cursor: pointer;
+}
+
+.password-toggle .eye-open {
+    display: none;
+}
+
+.password-toggle.is-visible .eye-open {
+    display: block;
+}
+
+.password-toggle.is-visible .eye-closed {
+    display: none;
+}
+
+.password-toggle:focus-visible {
+    outline: 2px solid rgba(26, 35, 50, 0.25);
+    outline-offset: 0.2rem;
+    border-radius: 999px;
+}
+
+.demo-credentials {
+    width: 100%;
+    margin-top: 1.6rem;
+    padding: 1.15rem 1.2rem;
+    border-radius: 0.9rem;
+    border: 1px solid rgba(244, 197, 66, 0.5);
+    background: linear-gradient(180deg, rgb(255, 250, 240) 0%, rgb(255, 247, 224) 100%);
+    color: rgb(78, 93, 120);
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    line-height: 1.45;
+}
+
+.demo-title {
+    color: rgb(16, 24, 40);
+    font-weight: 700;
+}
+
+.login-feedback {
+    width: 100%;
+    margin-top: 1.2rem;
+    padding: 0.95rem 1rem;
+    border-radius: 0.85rem;
+    border: 1px solid transparent;
+    font-size: 0.96rem;
+    line-height: 1.45;
+}
+
+.login-feedback.is-error {
+    background: rgb(254, 234, 234);
+    border-color: rgb(244, 188, 188);
+    color: rgb(175, 31, 31);
+}
+
+.login-feedback.is-success {
+    background: rgb(233, 250, 240);
+    border-color: rgb(179, 230, 196);
+    color: rgb(15, 125, 64);
+}
+
+.twofa-container {
+    gap: 0.7rem;
+}
+
+.twofa-container .login-logo {
+    width: 6.2rem;
+    margin-bottom: 0.2rem;
+}
+
+.twofa-shield {
+    width: 4rem;
+    height: 4rem;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgb(248, 197, 58);
+    color: rgb(29, 39, 56);
+    margin-top: 0.4rem;
+}
+
+.twofa-title {
+    color: rgb(18, 43, 83);
+    font-size: clamp(1.8rem, 2vw, 2.2rem);
+    font-weight: 700;
+    text-align: center;
+    margin-top: 0.7rem;
+}
+
+.twofa-subtitle {
+    color: rgb(101, 113, 132);
+    font-size: 1rem;
+    text-align: center;
+    margin-top: 0.1rem;
+}
+
+.qr-panel {
+    width: 100%;
+    margin-top: 1.6rem;
+    padding: 1.6rem 1.3rem 1.35rem;
+    border-radius: 0.95rem;
+    border: 2px dashed rgb(210, 214, 220);
+    background: linear-gradient(180deg, rgb(252, 252, 252) 0%, rgb(248, 249, 251) 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    text-align: center;
+}
+
+.qr-icon-wrap {
+    color: rgb(35, 45, 62);
+}
+
+.qr-caption {
+    max-width: 18rem;
+    color: rgb(18, 43, 83);
+    font-size: 0.98rem;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.twofa-pin-label {
+    color: rgb(18, 43, 83);
+    font-size: 1rem;
+    font-weight: 600;
+    text-align: center;
+    margin-top: 1.5rem;
+}
+
+.pin-inputs {
+    display: flex;
+    justify-content: center;
+    gap: 0.65rem;
+    width: 100%;
+    margin-top: 0.85rem;
+}
+
+.pin-input {
+    width: 3.3rem;
+    height: 3.45rem;
+    border-radius: 0.7rem;
+    border: 2px solid rgb(212, 216, 223);
+    background-color: rgb(248, 250, 252);
+    text-align: center;
+    font-size: 1.35rem;
+    font-weight: 600;
+    color: rgb(17, 24, 39);
+    transition: border-color 180ms, box-shadow 180ms, background-color 180ms;
+}
+
+.pin-input:focus {
+    outline: none;
+    border-color: rgb(26, 35, 50);
+    box-shadow: 0 0 0 4px rgba(26, 35, 50, 0.08);
+    background-color: white;
+}
+
+.twofa-actions {
+    margin-top: 1.45rem;
+}
+
+.twofa-actions .back-btn {
+    color: rgb(18, 43, 83);
+    background-color: white;
+}
+
+.twofa-demo {
+    width: 100%;
+    margin-top: 0.7rem;
+    padding: 1rem 1.1rem;
+    border-radius: 0.9rem;
+    border: 1px solid rgba(244, 197, 66, 0.55);
+    background: linear-gradient(180deg, rgb(255, 250, 240) 0%, rgb(255, 247, 224) 100%);
+    color: rgb(18, 43, 83);
 }
 
 .category {
@@ -49,7 +338,7 @@
     align-items: center;
     gap: 1rem;
     margin-top: 1rem;
-}  
+}
 
 .category-login-btn{
     display: flex;
@@ -81,25 +370,22 @@
 }
 
 
-.login-container img,
+.login-container img:not(.login-logo),
 .twofa-container img {
     width: 10vw;
+    min-width: 4.8rem;
 }
 
 .input-fields {
     width: 100%;
     display: flex;
     flex-direction: column;
-    margin-top: 1.8rem;
+    gap: 0.85rem;
 }
 
 .login-container input,
 .verification-input {
-    height: 2rem;
-    background-color: rgb(248, 249, 250);
-    border: 3px solid rgb(228, 230, 231);
-    padding: 0.2rem 0rem 0.2rem 0.7rem;
-    border-radius: 0.5rem;
+    height: auto;
 }
 
 .verification-input {
@@ -136,11 +422,16 @@
 .verify-btn,
 .passkey-btn,
 .back-btn {
-    height: 2.5rem;
+    width: 100%;
+    cursor: pointer;
+    border-radius: 0.8rem;
+    min-height: 3.5rem;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 500ms;
+    transition: all 180ms;
+    font-size: 1rem;
+    font-weight: 600;
 }
 
 .login-btn:hover,
@@ -148,7 +439,22 @@
 .verify-btn:hover,
 .passkey-btn:hover,
 .back-btn:hover {
-    border: 2px solid gray;
+    transform: translateY(-1px);
+}
+
+.login-btn:hover,
+.verify-btn:hover {
+    background-color: rgb(36, 49, 69);
+    border-color: rgb(36, 49, 69);
+}
+
+.clear-btn:hover {
+    border-color: rgb(220, 220, 220);
+    background-color: rgb(239, 241, 244);
+}
+
+.back-btn:hover {
+    border-color: rgb(180, 180, 180);
 }
 
 .nav-container {
@@ -365,7 +671,7 @@
 .assigned-status, .history-status-txt {
     text-align: center;
     padding: 1rem 3rem;
-    max-height: 1rem;
+    
     background-color: rgb(117, 204, 147);
     color: rgb(0, 115, 33);
     border-radius: 0.5rem;
@@ -771,4 +1077,33 @@
 .border-sides {
     border-left: 2px solid rgba(26, 35, 50, 0.3);
     border-right: 2px solid rgba(26, 35, 50, 0.3);
+}
+
+@media (max-width: 640px) {
+    .login-body {
+        padding: 1rem;
+    }
+
+    .login-container,
+    .twofa-container {
+        padding: 2rem 1.2rem 1.4rem;
+        border-radius: 0.9rem;
+    }
+
+    .login-title {
+        font-size: 1.75rem;
+    }
+
+    .demo-credentials {
+        font-size: 0.95rem;
+    }
+
+    .pin-inputs {
+        gap: 0.45rem;
+    }
+
+    .pin-input {
+        width: 3rem;
+        height: 3.2rem;
+    }
 }

@@ -1,86 +1,102 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Student Evaluation System</title>
     <link rel="stylesheet" href="style.css">
 </head>
-
 <body class="login-body">
-    <div class="login-container">
-        <img src="img/logo.png" alt="">
-        <div style="font-size: 1.2rem; text-align: center;">Student Evaluation For Teacher</div>
-        <div style="color: rgb(105, 105, 105); margin-top: 0.5rem; text-align: center; margin-bottom: 1rem;">Sign in to continue</div>
-        <div style="width: 100%; font-size: 0.8rem;">Login As</div>
-        
-        <div class="category">
-            <div class="category-login-btn active-login-catergory">
-                <svg class="student-svg-on" width="2.5rem" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" version="1.1" fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="m14.25 9.25v-3.25l-6.25-3.25-6.25 3.25 6.25 3.25 3.25-1.5v3.5c0 1-1.5 2-3.25 2s-3.25-1-3.25-2v-3.5"></path> </g></svg>
-                <svg class="student-svg-off" width="2.5rem" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" version="1.1" fill="none" stroke="#000000" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="m14.25 9.25v-3.25l-6.25-3.25-6.25 3.25 6.25 3.25 3.25-1.5v3.5c0 1-1.5 2-3.25 2s-3.25-1-3.25-2v-3.5"></path> </g></svg>
-                &nbsp; Student
-            </div>
-            
-            <div class="category-login-btn">
-                <svg class="faculty-svg-on" width="2.5rem" fill="#ffffff" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" stroke="#ffffff"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"><path d="M16 15.503A5.041 5.041 0 1 0 16 5.42a5.041 5.041 0 0 0 0 10.083zm0 2.215c-6.703 0-11 3.699-11 5.5v3.363h22v-3.363c0-2.178-4.068-5.5-11-5.5z"></path></g></svg>
-                <svg class="faculty-svg-off" width="2.5rem" fill="#000000" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" stroke="#000000"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"><path d="M16 15.503A5.041 5.041 0 1 0 16 5.42a5.041 5.041 0 0 0 0 10.083zm0 2.215c-6.703 0-11 3.699-11 5.5v3.363h22v-3.363c0-2.178-4.068-5.5-11-5.5z"></path></g></svg>
-                &nbsp; Faculty
+    <div class="login-shell">
+        <div class="login-container">
+            <img class="login-logo" src="img/logo.png" alt="School logo">
+            <div class="login-title">Student Evaluation for Teacher</div>
+            <div class="login-subtitle">Sign in to continue</div>
+
+            <div class="login-feedback hidden" id="login-feedback" role="alert"></div>
+
+            <form class="input-fields login-form login-form-shell" action="admin/process_login.php" method="post" novalidate>
+                <label class="login-label" for="university-id">University ID Number</label>
+                <input id="university-id" name="university_id" type="text" class="id-input login-input" placeholder="Enter your ID number" autocomplete="username" required>
+
+                <label class="login-label" for="password">Password</label>
+                <div class="password-field">
+                    <input id="password" name="password" type="password" class="password-input login-input" placeholder="Enter your password" autocomplete="current-password" required>
+                    <button type="button" class="password-toggle" aria-label="Show password" aria-pressed="false">
+                        <svg class="eye-open" width="1.4rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M2 12C3.73 7.61 7.52 5 12 5C16.48 5 20.27 7.61 22 12C20.27 16.39 16.48 19 12 19C7.52 19 3.73 16.39 2 12Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+                            <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.8"></circle>
+                        </svg>
+                        <svg class="eye-closed" width="1.4rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M3 3L21 21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+                            <path d="M10.58 10.58C10.21 10.95 10 11.46 10 12C10 13.1 10.9 14 12 14C12.54 14 13.05 13.79 13.42 13.42" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+                            <path d="M9.88 5.09C10.56 5.03 11.27 5 12 5C16.48 5 20.27 7.61 22 12C21.48 13.33 20.75 14.52 19.84 15.53" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+                            <path d="M6.23 6.23C4.47 7.5 3.02 9.43 2 12C3.73 16.39 7.52 19 12 19C13.8 19 15.48 18.58 16.97 17.84" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <button type="submit" class="login-btn">Login</button>
+                <button type="button" class="clear-btn" id="clear-login">Clear</button>
+            </form>
+
+            <div class="demo-credentials">
+                <div class="demo-title">Demo Credentials:</div>
+                <div><b>Student:</b> 24-001234 | student123</div>
+                <div><b>Faculty:</b> FAC0001 | faculty123</div>
+                <div><b>Admin:</b> admin | admin</div>
             </div>
         </div>
-
-        <div class="input-fields">
-
-            <div class="idnum-label" style="font-size: 0.8rem; margin-bottom: 0.5rem;">Student ID Number</div>
-            <input type="text" class="id-input" placeholder="Enter your student ID">
-
-            <br>
-
-            <div style="font-size: 0.8rem; margin-bottom: 0.5rem;">Password</div>
-            <input type="password" class="password-input" placeholder="Enter your password">
-
-            <br>
-
-            <div class="login-btn" style="text-align: center;">Login</div>
-            <br>
-            <div class="clear-btn" style="text-align: center;">Clear</div>
-
-        </div>
-        
-        <br>
     </div>
 
-    <div class="twofa-container">
-        <div style="display: flex;">
-            <img src="img/logo.png" alt="">
-            <svg viewBox="-2.4 -2.4 28.80 28.80" fill="none" xmlns="http://www.w3.org/2000/svg" width="5rem"><g id="SVGRepo_bgCarrier" stroke-width="0"><rect x="-2.4" y="-2.4" width="28.80" height="28.80" rx="14.4" fill=" rgb(244, 197, 66)" strokewidth="0"></rect></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M20 6C20 6 19.1843 6 19.0001 6C16.2681 6 13.8871 4.93485 11.9999 3C10.1128 4.93478 7.73199 6 5.00009 6C4.81589 6 4.00009 6 4.00009 6C4.00009 6 4 8 4 9.16611C4 14.8596 7.3994 19.6436 12 21C16.6006 19.6436 20 14.8596 20 9.16611C20 8 20 6 20 6Z" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path> </g></svg>
-        </div>
-        <div style="font-size: 1.2rem; text-align: center; margin-top: 1rem;">Two-Factor Authentication</div>
-        <div style="color: rgb(105, 105, 105); margin-top: 0.5rem; text-align: center; font-size: 0.8rem;">Enter the 6-digit PIN sent to your registered email</div>
+    <script>
+        (function () {
+            const searchParams = new URLSearchParams(window.location.search);
+            const feedback = document.getElementById("login-feedback");
+            const passwordToggle = document.querySelector(".password-toggle");
+            const passwordInput = document.getElementById("password");
+            const clearButton = document.getElementById("clear-login");
+            const form = document.querySelector(".login-form-shell");
 
-        <div class="input-fields">
-            <div style="font-size: 0.8rem; margin-bottom: 0.5rem;">Verification PIN</div>
-            <input type="number" class="verification-input" placeholder="000000">
-            
-            <br>
+            const errorMessage = searchParams.get("error");
+            const noticeMessage = searchParams.get("message");
 
-            <div class="verify-btn">Verify Identity</div>
+            if (feedback && (errorMessage || noticeMessage)) {
+                feedback.textContent = errorMessage || noticeMessage;
+                feedback.classList.remove("hidden");
+                feedback.classList.toggle("is-error", Boolean(errorMessage));
+                feedback.classList.toggle("is-success", Boolean(noticeMessage));
+            }
 
-            <div class="passkey-btn">
-                <svg width= "2rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M6.89258 17.7897C6.9083 17.7633 6.92441 17.7369 6.9409 17.7107C8.14358 15.7988 8.8398 13.5379 8.8398 11.1034C8.8398 9.14189 10.4299 7.55176 12.3915 7.55176C14.353 7.55176 15.9431 9.14189 15.9431 11.1034C15.9431 12.0065 15.8816 12.8957 15.7626 13.7672M13.8825 19.8437C14.4257 18.7596 14.871 17.6179 15.2069 16.4309M18.6156 17.4359C19.1883 15.4236 19.4949 13.2993 19.4949 11.1033C19.4949 7.18026 16.3147 4 12.3916 4C11.0978 4 9.88477 4.34591 8.83997 4.9503M4.40039 14.9783C4.96924 13.8073 5.28831 12.4926 5.28831 11.1033C5.28831 9.8095 5.63422 8.59646 6.2386 7.55166M12.3915 11.1035C12.3915 14.2265 11.4958 17.1403 9.94727 19.6019" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path> </g></svg>
-                &nbsp; Use Passkey
-            </div>
+            if (passwordToggle && passwordInput) {
+                passwordToggle.addEventListener("click", () => {
+                    const shouldShowPassword = passwordInput.type === "password";
+                    passwordInput.type = shouldShowPassword ? "text" : "password";
+                    passwordToggle.classList.toggle("is-visible", shouldShowPassword);
+                    passwordToggle.setAttribute("aria-label", shouldShowPassword ? "Hide password" : "Show password");
+                    passwordToggle.setAttribute("aria-pressed", shouldShowPassword ? "true" : "false");
+                });
+            }
 
-            <div class="back-btn">
-                <svg width= "1.5rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path fill-rule="evenodd" clip-rule="evenodd" d="M11.7071 4.29289C12.0976 4.68342 12.0976 5.31658 11.7071 5.70711L6.41421 11H20C20.5523 11 21 11.4477 21 12C21 12.5523 20.5523 13 20 13H6.41421L11.7071 18.2929C12.0976 18.6834 12.0976 19.3166 11.7071 19.7071C11.3166 20.0976 10.6834 20.0976 10.2929 19.7071L3.29289 12.7071C3.10536 12.5196 3 12.2652 3 12C3 11.7348 3.10536 11.4804 3.29289 11.2929L10.2929 4.29289C10.6834 3.90237 11.3166 3.90237 11.7071 4.29289Z" fill="#000000"></path> </g></svg>
-                &nbsp; Back to Login
-            </div>
-        </div>
-
-        <br>
-        <div style="font-size: 0.6rem; color: rgb(105, 105, 105); margin-top: 0.5rem; text-align: center;"><b>Demo PIN </b>: 123456</div>
-    </div>
-    <script src="main.js" defer></script>
+            if (clearButton && form) {
+                clearButton.addEventListener("click", () => {
+                    form.reset();
+                    if (feedback) {
+                        feedback.classList.add("hidden");
+                        feedback.classList.remove("is-error", "is-success");
+                        feedback.textContent = "";
+                    }
+                    if (passwordInput) {
+                        passwordInput.type = "password";
+                    }
+                    if (passwordToggle) {
+                        passwordToggle.classList.remove("is-visible");
+                        passwordToggle.setAttribute("aria-label", "Show password");
+                        passwordToggle.setAttribute("aria-pressed", "false");
+                    }
+                });
+            }
+        }());
+    </script>
 </body>
-
 </html>
