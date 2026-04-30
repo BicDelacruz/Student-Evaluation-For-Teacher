@@ -2,6 +2,13 @@
     font-family: 'Poppins', sans-serif;
 }
 
+* [class$="-btn"] {
+    text-align: center;
+    cursor: pointer;
+    border-radius: 0.5rem;
+    padding: 1rem;
+}
+
 .login-body {
     height: 100dvh;
     margin: 0;
@@ -33,7 +40,6 @@
     flex-direction: column;
     border-radius: 0.5rem;
     background-color: white;
-
 }
 
 .category {
@@ -50,8 +56,7 @@
     padding: 0.5rem;
     width: 70%;
     border: 2px solid rgba(26, 35, 50, 0.3);
-    text-align: center;
-    border-radius: 0.5rem;
+
     justify-content: center;
     align-items: center;
     cursor: pointer;
@@ -131,8 +136,6 @@
 .verify-btn,
 .passkey-btn,
 .back-btn {
-    cursor: pointer;
-    border-radius: 0.5rem;
     height: 2.5rem;
     display: flex;
     align-items: center;
@@ -236,8 +239,6 @@
     padding: 0.7rem 1rem;
     width: 80%;
     background-color: rgb(252, 221, 221);
-    border-radius: 0.5rem;
-    cursor: pointer;
 }
 
 .warning-btn-1, .warning-btn-2 {
@@ -313,11 +314,8 @@
 .dash-refresh-btn {
     display: flex;
     align-items: center;
-    text-align: center;
     padding: 0.5rem;
-    border-radius: 0.5rem;
     border: 2px solid rgba(26, 35, 50, 0.3);
-    cursor: pointer;
 }
 
 .dash-stats, .history-stats {
@@ -367,8 +365,20 @@
 .assigned-status, .history-status-txt {
     text-align: center;
     padding: 1rem 3rem;
-    background-color: rgb(244, 197, 66);
+    max-height: 1rem;
+    background-color: rgb(117, 204, 147);
+    color: rgb(0, 115, 33);
     border-radius: 0.5rem;
+}
+
+.pending-status {
+    background-color: rgb(244, 197, 66);
+    color: rgb(116, 85, 0);
+}
+
+.completed-status {
+    background-color: rgb(117, 204, 147);
+    color: rgb(0, 115, 33);
 }
 
 .dash-stats-card [class$="-txt"], .history-stats-card [class$="-txt"] {
@@ -456,17 +466,26 @@
 .guide-proceed-btn {
     cursor: not-allowed;
     background-color: rgb(210, 210, 210);
-    text-align: center;
     padding: 1rem;
-    border-radius: 0.5rem;
+}
+
+.guide-proceed-btn-accepted {
+    cursor: pointer;
+    background-color: rgb(26, 35, 50);
+    color: white;
 }
 
 .eval-container {
     display: flex;
     flex-direction: column;
-    align-items: center;
     justify-content: center;
     padding: 2rem;
+}
+
+.eval-restrict {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 .eval-restrict-title {
@@ -502,15 +521,38 @@
     color: maroon;
 }
 
+.eval-card {
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    flex-grow: 1;
+    border: 2px solid rgba(26, 35, 50, 0.3);
+}
+
+.eval-card-wrapper {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    flex: 1;
+    justify-content: space-between;
+    align-items: center;
+    align-content: center;
+    margin-top: 2rem;
+    gap: 1.5rem;
+}
+
+.start-eval-btn {
+    color: white;
+    padding: 1rem;
+    margin-top: 1rem;
+    background-color: rgb(26, 35, 50);
+}
+
 .goto-guidelines-btn {
     padding: 1rem;
-    text-align: center;
     background-color: rgb(26, 35, 50);
     color: white;
     margin-top: 1rem;
-    border-radius: 0.5rem;
     width: 95%;
-    cursor: pointer;
 }
 
 .history-container {
@@ -554,10 +596,7 @@
 
 .history-search-parent [class$="-btn"] {
     padding: 1rem 2rem;
-    text-align: center;
-    cursor: pointer;
     border: 2px solid rgba(26, 35, 50, 0.3);
-    border-radius: 0.5rem;
     width: 10%;
 }
 
@@ -629,7 +668,6 @@
 .settings-password-body [class$="-input"] {
     padding: 1rem 0rem;
     border: 2px solid rgba(26, 35, 50, 0.3);
-    border-radius: 0.5rem;
     width: 100%;
     text-indent: 1rem;
     margin-top: 0.5rem;
@@ -647,7 +685,6 @@
     color: white;
     cursor: pointer;
     text-align: center;
-    border-radius: 0.5rem;
 }
 
 .update-pass-btn:hover {
@@ -690,7 +727,6 @@
     align-items: center;
     padding: 1rem;
     color: maroon;
-    border-radius: 0.5rem;
     background-color: rgb(242, 190, 190);
     border: 2px solid rgb(220, 36, 36);
 }
@@ -705,7 +741,6 @@
 }
 
 .warning {
-    border-radius: 0.5rem;
     padding: 1.5rem;
     color: rgb(105, 105, 105);
     background-color: rgb(255, 225, 225);
@@ -717,7 +752,6 @@
     color: white;
     background-color: rgb(26, 35, 50);
     text-align: center;
-    border-radius: 0.5rem;
 }
 
 .hidden {
