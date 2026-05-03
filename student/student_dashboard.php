@@ -469,7 +469,7 @@ function svg_icon(string $name, string $color = "currentColor"): string
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Dashboard – Student Evaluation for Teacher</title>
+    <title>Student Dashboard - Student Evaluation for Teacher</title>
     <link rel="stylesheet" href="student-dashboard.css">
     <style>
         .tab-panel { display: none; }
