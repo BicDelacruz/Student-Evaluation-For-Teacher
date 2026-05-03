@@ -162,7 +162,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
             if (!$challenge) {
                 $error_message = "Verification code expired. Please go back and login again.";
-            } elseif (!password_verify($pin_code, $challenge["challenge_code_hash"])) {
+            } elseif (!password_verify($pin_code, trim($challenge["challenge_code_hash"])) ) {
                 $error_message = "Invalid verification PIN.";
             } else {
                 $update_challenge_query = "
