@@ -155,7 +155,7 @@ $end_date = $current_period ? date("n/j/Y", strtotime($current_period["end_date"
     <title>Admin Dashboard</title>
     <link rel="stylesheet" href="admin-dashboard.css">
 </head>
-<body>
+<body class="admin-dashboard-page">
     <aside class="sidebar">
         <div class="brand">
             <img src="../img/eastgate_college_logo.png" alt="Eastgate College Logo">
@@ -165,9 +165,9 @@ $end_date = $current_period ? date("n/j/Y", strtotime($current_period["end_date"
 
         <nav class="nav-menu">
             <a class="nav-link active" href="admin_dashboard.php"><?php echo icon_svg("dashboard"); ?> Dashboard</a>
-            <a class="nav-link" href="#"><?php echo icon_svg("students"); ?> Student Management</a>
-            <a class="nav-link" href="#"><?php echo icon_svg("faculty"); ?> Faculty Management</a>
-            <a class="nav-link" href="#"><?php echo icon_svg("book"); ?> Academic Structure</a>
+            <a class="nav-link" href="student_management.php"><?php echo icon_svg("students"); ?> Student Management</a>
+            <a class="nav-link" href="faculty_management.php"><?php echo icon_svg("faculty"); ?> Faculty Management</a>
+            <a class="nav-link" href="academic_structure.php"><?php echo icon_svg("book"); ?> Academic Structure</a>
             <a class="nav-link" href="#"><?php echo icon_svg("faculty"); ?> Assignment Management</a>
             <a class="nav-link" href="#"><?php echo icon_svg("settings"); ?> Evaluation Setup</a>
             <a class="nav-link" href="#"><?php echo icon_svg("clipboard"); ?> Submission Monitoring</a>

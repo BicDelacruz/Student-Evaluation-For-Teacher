@@ -191,13 +191,24 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             />
 
             <button type="button" class="password-toggle" id="passwordToggle" aria-label="Show password">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <path d="M3 3L21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                <path d="M10.73 5.08C11.15 5.03 11.57 5 12 5C17 5 20.73 8.11 22 12C21.63 13.13 20.93 14.19 19.98 15.1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                <path d="M6.61 6.61C4.55 7.86 3 9.78 2 12C3.27 15.89 7 19 12 19C13.52 19 14.93 18.7 16.18 18.16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                <path d="M9.88 9.88C9.34 10.42 9 11.17 9 12C9 13.66 10.34 15 12 15C12.83 15 13.58 14.66 14.12 14.12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-              </svg>
-            </button>
+                <!-- Eye Open Icon (hidden by default) -->
+                <span class="eye-open-icon" style="display: none;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                </span>
+
+                <!-- Eye Closed Icon (visible by default) -->
+                <span class="eye-closed-icon" style="display: flex;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 3L21 21"></path>
+                        <path d="M10.73 5.08C11.15 5.03 11.57 5 12 5C17 5 20.73 8.11 22 12C21.63 13.13 20.93 14.19 19.98 15.1"></path>
+                        <path d="M6.61 6.61C4.55 7.86 3 9.78 2 12C3.27 15.89 7 19 12 19C13.52 19 14.93 18.7 16.18 18.16"></path>
+                        <path d="M9.88 9.88C9.34 10.42 9 11.17 9 12C9 13.66 10.34 15 12 15C12.83 15 13.58 14.66 14.12 14.12"></path>
+                    </svg>
+                </span>
+                </button>
           </div>
         </div>
 
@@ -220,7 +231,22 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     const clearLoginForm = document.getElementById("clearLoginForm");
 
     passwordToggle.addEventListener("click", function () {
-      passwordInput.type = passwordInput.type === "password" ? "text" : "password";
+    const eyeOpen = document.querySelector(".eye-open-icon");
+    const eyeClosed = document.querySelector(".eye-closed-icon");
+
+    if (passwordInput.type === "password") {
+        // Show password and open eye icon
+        passwordInput.type = "text";
+        eyeOpen.style.display = "flex";
+        eyeClosed.style.display = "none";
+        passwordToggle.setAttribute("aria-label", "Hide password");
+    } else {
+        // Hide password and slashed eye icon
+        passwordInput.type = "password";
+        eyeOpen.style.display = "none";
+        eyeClosed.style.display = "flex";
+        passwordToggle.setAttribute("aria-label", "Show password");
+    }
     });
 
     clearLoginForm.addEventListener("click", function () {
