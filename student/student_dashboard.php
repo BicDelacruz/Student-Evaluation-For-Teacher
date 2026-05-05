@@ -366,6 +366,7 @@ foreach ($eval_form_items as $item) {
         "statement"    => $item["statement_text_snapshot"],
     ];
 }
+/*
 
 $use_fallback_criteria = empty($eval_categories);
 if ($use_fallback_criteria) {
@@ -414,6 +415,7 @@ if ($use_fallback_criteria) {
         ],
     ];
 }
+ */
 
 $total_items = 0;
 foreach ($eval_categories as $stmts) {
