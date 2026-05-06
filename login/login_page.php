@@ -157,7 +157,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
   <link rel="stylesheet" href="login-page.css" />
 </head>
-<body>
+<body class="login-body">
   <main class="login-page">
     <section class="login-card">
       <img src="../img/eastgate_college_logo.png" alt="Eastgate College Logo" class="school-logo" />
