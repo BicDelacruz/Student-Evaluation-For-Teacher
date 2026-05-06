@@ -76,9 +76,15 @@ function post_array($key)
     return [$_POST[$key]];
 }
 
+function placeholders($items)
+{
+    return implode(",", array_fill(0, count($items), "?"));
+}
+
 function year_label($year)
 {
     $year = (int)$year;
+
     return match ($year) {
         1 => "1st Year",
         2 => "2nd Year",
@@ -104,7 +110,7 @@ function format_subject_list($subject_list)
     $items = array_filter(array_map("trim", explode("||", (string)$subject_list)));
 
     if (empty($items)) {
-        return '<span class="muted-text">No subjects listed</span>';
+        return '<span class="muted-text">No active subjects listed</span>';
     }
 
     $html = '<ol class="subjects-taken-list">';
@@ -181,57 +187,81 @@ function get_term_id($pdo, $academic_year_id, $semester)
 
 function call_or_insert_offering($pdo, $section_id, $subject_id, $term_id, $admin_id)
 {
-    try {
-        $stmt = $pdo->prepare("CALL sp_create_section_subject_offering(?, ?, ?, ?)");
-        $stmt->execute([$section_id, $subject_id, $term_id, $admin_id]);
-        $stmt->closeCursor();
-    } catch (Throwable $e) {
-        $stmt = $pdo->prepare("
-            INSERT INTO section_subject_offering
-                (section_id, subject_id, term_id, created_by_admin_id, offering_status)
-            VALUES
-                (?, ?, ?, ?, 'Active')
-            ON DUPLICATE KEY UPDATE
-                offering_status = 'Active',
-                updated_at = CURRENT_TIMESTAMP
-        ");
-        $stmt->execute([$section_id, $subject_id, $term_id, $admin_id]);
-    }
-
-    $offering = fetch_one(
+    $existing = fetch_one(
         $pdo,
-        "SELECT section_subject_offering_id FROM section_subject_offering WHERE section_id = ? AND subject_id = ? AND term_id = ? LIMIT 1",
+        "SELECT section_subject_offering_id
+         FROM section_subject_offering
+         WHERE section_id = ?
+         AND subject_id = ?
+         AND term_id = ?
+         LIMIT 1",
         [$section_id, $subject_id, $term_id]
     );
 
-    return $offering ? (int)$offering["section_subject_offering_id"] : 0;
+    if ($existing) {
+        $stmt = $pdo->prepare("
+            UPDATE section_subject_offering
+            SET offering_status = 'Active',
+                updated_at = CURRENT_TIMESTAMP
+            WHERE section_subject_offering_id = ?
+        ");
+        $stmt->execute([(int)$existing["section_subject_offering_id"]]);
+
+        return (int)$existing["section_subject_offering_id"];
+    }
+
+    $stmt = $pdo->prepare("
+        INSERT INTO section_subject_offering
+            (section_id, subject_id, term_id, created_by_admin_id, offering_status)
+        VALUES
+            (?, ?, ?, ?, 'Active')
+    ");
+    $stmt->execute([$section_id, $subject_id, $term_id, $admin_id]);
+
+    return (int)$pdo->lastInsertId();
 }
 
 function call_or_insert_assignment($pdo, $offering_id, $faculty_id, $term_id, $admin_id)
 {
-    try {
-        $stmt = $pdo->prepare("CALL sp_create_teaching_assignment(?, ?, ?, ?)");
-        $stmt->execute([$offering_id, $faculty_id, $term_id, $admin_id]);
-        $stmt->closeCursor();
-    } catch (Throwable $e) {
+    $existing = fetch_one(
+        $pdo,
+        "SELECT teaching_assignment_id
+         FROM teaching_assignment
+         WHERE section_subject_offering_id = ?
+         LIMIT 1",
+        [$offering_id]
+    );
+
+    if ($existing) {
         $stmt = $pdo->prepare("
-            INSERT INTO teaching_assignment
-                (section_subject_offering_id, faculty_id, term_id, created_by_admin_id, assignment_status)
-            VALUES
-                (?, ?, ?, ?, 'Active')
-            ON DUPLICATE KEY UPDATE
+            UPDATE teaching_assignment
+            SET faculty_id = ?,
+                term_id = ?,
                 assignment_status = 'Active',
                 updated_at = CURRENT_TIMESTAMP
+            WHERE teaching_assignment_id = ?
         ");
-        $stmt->execute([$offering_id, $faculty_id, $term_id, $admin_id]);
+        $stmt->execute([$faculty_id, $term_id, (int)$existing["teaching_assignment_id"]]);
+
+        return (int)$existing["teaching_assignment_id"];
     }
+
+    $stmt = $pdo->prepare("
+        INSERT INTO teaching_assignment
+            (section_subject_offering_id, faculty_id, term_id, created_by_admin_id, assignment_status)
+        VALUES
+            (?, ?, ?, ?, 'Active')
+    ");
+    $stmt->execute([$offering_id, $faculty_id, $term_id, $admin_id]);
+
+    return (int)$pdo->lastInsertId();
 }
 
-function flash_redirect($type, $message, $tab = "faculty")
+function flash_redirect($type, $message, $panel = "faculty")
 {
     $_SESSION["flash_type"] = $type;
     $_SESSION["flash_message"] = $message;
-    header("Location: assignment_management.php?panel=" . urlencode($tab));
+    header("Location: assignment_management.php?panel=" . urlencode($panel));
     exit;
 }
 
@@ -282,7 +312,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
             $faculty = fetch_one(
                 $pdo,
-                "SELECT faculty_id, faculty_number, full_name FROM faculty WHERE faculty_id = ? AND faculty_status = 'Active'",
+                "SELECT faculty_id, faculty_number, full_name
+                 FROM faculty
+                 WHERE faculty_id = ?
+                 AND faculty_status = 'Active'",
                 [$faculty_id]
             );
 
@@ -290,13 +323,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 flash_redirect("error", "The selected faculty member is inactive or does not exist.", "faculty");
             }
 
-            $placeholders = implode(",", array_fill(0, count($course_ids), "?"));
+            $course_placeholders = placeholders($course_ids);
             $section_params = array_merge($course_ids, [$term_id, $year_level]);
 
             $sections = fetch_all(
                 $pdo,
-                "SELECT section_id, section_name FROM section
-                 WHERE course_id IN ($placeholders)
+                "SELECT section_id, section_name
+                 FROM section
+                 WHERE course_id IN ($course_placeholders)
                  AND term_id = ?
                  AND year_level = ?
                  AND section_status = 'Active'",
@@ -309,15 +343,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
             $pdo->beginTransaction();
 
-            $created_count = 0;
-
             foreach ($sections as $section) {
                 foreach ($subject_ids as $subject_id) {
-                    $offering_id = call_or_insert_offering($pdo, (int)$section["section_id"], $subject_id, $term_id, $admin_id);
-                    if ($offering_id > 0) {
-                        call_or_insert_assignment($pdo, $offering_id, $faculty_id, $term_id, $admin_id);
-                        $created_count++;
-                    }
+                    $offering_id = call_or_insert_offering($pdo, (int)$section["section_id"], (int)$subject_id, $term_id, $admin_id);
+                    call_or_insert_assignment($pdo, $offering_id, $faculty_id, $term_id, $admin_id);
                 }
             }
 
@@ -341,18 +370,73 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 flash_redirect("error", "Please complete all required assignment fields.", "faculty");
             }
 
+            $faculty = fetch_one(
+                $pdo,
+                "SELECT faculty_id FROM faculty WHERE faculty_id = ? AND faculty_status = 'Active'",
+                [$faculty_id]
+            );
+
+            if (!$faculty) {
+                flash_redirect("error", "The selected faculty member is inactive or does not exist.", "faculty");
+            }
+
             $pdo->beginTransaction();
 
             $offering_id = call_or_insert_offering($pdo, $section_id, $subject_id, $term_id, $admin_id);
 
-            $stmt = $pdo->prepare("
-                UPDATE teaching_assignment
-                SET faculty_id = ?,
-                    section_subject_offering_id = ?,
-                    assignment_status = 'Active'
-                WHERE teaching_assignment_id = ?
-            ");
-            $stmt->execute([$faculty_id, $offering_id, $teaching_assignment_id]);
+            $duplicate = fetch_one(
+                $pdo,
+                "SELECT teaching_assignment_id
+                 FROM teaching_assignment
+                 WHERE section_subject_offering_id = ?
+                 AND teaching_assignment_id <> ?
+                 LIMIT 1",
+                [$offering_id, $teaching_assignment_id]
+            );
+
+            if ($duplicate) {
+                $stmt = $pdo->prepare("
+                    UPDATE teaching_assignment
+                    SET faculty_id = ?,
+                        term_id = ?,
+                        assignment_status = 'Active',
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE teaching_assignment_id = ?
+                ");
+                $stmt->execute([$faculty_id, $term_id, (int)$duplicate["teaching_assignment_id"]]);
+
+                $stmt = $pdo->prepare("
+                    DELETE FROM teaching_assignment
+                    WHERE teaching_assignment_id = ?
+                    AND NOT EXISTS (
+                        SELECT 1
+                        FROM student_evaluation_task
+                        WHERE student_evaluation_task.teaching_assignment_id = teaching_assignment.teaching_assignment_id
+                    )
+                ");
+                $stmt->execute([$teaching_assignment_id]);
+
+                if ($stmt->rowCount() === 0) {
+                    $stmt = $pdo->prepare("
+                        UPDATE teaching_assignment
+                        SET assignment_status = 'Inactive',
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE teaching_assignment_id = ?
+                    ");
+                    $stmt->execute([$teaching_assignment_id]);
+                }
+            } else {
+                $stmt = $pdo->prepare("
+                    UPDATE teaching_assignment
+                    SET faculty_id = ?,
+                        section_subject_offering_id = ?,
+                        term_id = ?,
+                        assignment_status = 'Active',
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE teaching_assignment_id = ?
+                ");
+                $stmt->execute([$faculty_id, $offering_id, $term_id, $teaching_assignment_id]);
+            }
 
             $pdo->commit();
 
@@ -375,7 +459,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             );
 
             if ((int)$linked["total"] > 0) {
-                $stmt = $pdo->prepare("UPDATE teaching_assignment SET assignment_status = 'Inactive' WHERE teaching_assignment_id = ?");
+                $stmt = $pdo->prepare("
+                    UPDATE teaching_assignment
+                    SET assignment_status = 'Inactive',
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE teaching_assignment_id = ?
+                ");
                 $stmt->execute([$teaching_assignment_id]);
 
                 flash_redirect(
@@ -398,8 +487,38 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 flash_redirect("error", "Invalid assignment selected.", "faculty");
             }
 
-            $stmt = $pdo->prepare("UPDATE teaching_assignment SET assignment_status = 'Active' WHERE teaching_assignment_id = ?");
+            $assignment = fetch_one(
+                $pdo,
+                "SELECT section_subject_offering_id
+                 FROM teaching_assignment
+                 WHERE teaching_assignment_id = ?
+                 LIMIT 1",
+                [$teaching_assignment_id]
+            );
+
+            if (!$assignment) {
+                flash_redirect("error", "Assignment record was not found.", "faculty");
+            }
+
+            $pdo->beginTransaction();
+
+            $stmt = $pdo->prepare("
+                UPDATE section_subject_offering
+                SET offering_status = 'Active',
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE section_subject_offering_id = ?
+            ");
+            $stmt->execute([(int)$assignment["section_subject_offering_id"]]);
+
+            $stmt = $pdo->prepare("
+                UPDATE teaching_assignment
+                SET assignment_status = 'Active',
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE teaching_assignment_id = ?
+            ");
             $stmt->execute([$teaching_assignment_id]);
+
+            $pdo->commit();
 
             flash_redirect("success", "Faculty assignment successfully activated.", "faculty");
         }
@@ -471,23 +590,38 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
             $pdo->beginTransaction();
 
-            $current_offerings = fetch_all(
+            $selected_placeholders = placeholders($subject_ids);
+            $params = array_merge([$section_id, $term_id], $subject_ids);
+
+            $offerings_to_deactivate = fetch_all(
                 $pdo,
-                "SELECT section_subject_offering_id, subject_id
+                "SELECT section_subject_offering_id
                  FROM section_subject_offering
-                 WHERE section_id = ? AND term_id = ?",
-                [$section_id, $term_id]
+                 WHERE section_id = ?
+                 AND term_id = ?
+                 AND subject_id NOT IN ($selected_placeholders)",
+                $params
             );
 
-            foreach ($current_offerings as $offering) {
-                if (!in_array((int)$offering["subject_id"], $subject_ids, true)) {
-                    $stmt = $pdo->prepare("
-                        UPDATE section_subject_offering
-                        SET offering_status = 'Inactive'
-                        WHERE section_subject_offering_id = ?
-                    ");
-                    $stmt->execute([(int)$offering["section_subject_offering_id"]]);
-                }
+            if (!empty($offerings_to_deactivate)) {
+                $offering_ids = array_map(fn($row) => (int)$row["section_subject_offering_id"], $offerings_to_deactivate);
+                $offering_placeholders = placeholders($offering_ids);
+
+                $stmt = $pdo->prepare("
+                    UPDATE teaching_assignment
+                    SET assignment_status = 'Inactive',
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE section_subject_offering_id IN ($offering_placeholders)
+                ");
+                $stmt->execute($offering_ids);
+
+                $stmt = $pdo->prepare("
+                    UPDATE section_subject_offering
+                    SET offering_status = 'Inactive',
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE section_subject_offering_id IN ($offering_placeholders)
+                ");
+                $stmt->execute($offering_ids);
             }
 
             foreach ($subject_ids as $subject_id) {
@@ -519,12 +653,40 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             );
 
             if ((int)$linked["total"] > 0) {
+                $pdo->beginTransaction();
+
+                $offerings = fetch_all(
+                    $pdo,
+                    "SELECT section_subject_offering_id
+                     FROM section_subject_offering
+                     WHERE section_id = ?
+                     AND term_id = ?",
+                    [$section_id, $term_id]
+                );
+
+                if (!empty($offerings)) {
+                    $offering_ids = array_map(fn($row) => (int)$row["section_subject_offering_id"], $offerings);
+                    $offering_placeholders = placeholders($offering_ids);
+
+                    $stmt = $pdo->prepare("
+                        UPDATE teaching_assignment
+                        SET assignment_status = 'Inactive',
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE section_subject_offering_id IN ($offering_placeholders)
+                    ");
+                    $stmt->execute($offering_ids);
+                }
+
                 $stmt = $pdo->prepare("
                     UPDATE section_subject_offering
-                    SET offering_status = 'Inactive'
-                    WHERE section_id = ? AND term_id = ?
+                    SET offering_status = 'Inactive',
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE section_id = ?
+                    AND term_id = ?
                 ");
                 $stmt->execute([$section_id, $term_id]);
+
+                $pdo->commit();
 
                 flash_redirect(
                     "warning",
@@ -547,12 +709,29 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 flash_redirect("error", "Invalid section enrollment selected.", "section");
             }
 
+            $pdo->beginTransaction();
+
             $stmt = $pdo->prepare("
                 UPDATE section_subject_offering
-                SET offering_status = 'Active'
-                WHERE section_id = ? AND term_id = ?
+                SET offering_status = 'Active',
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE section_id = ?
+                AND term_id = ?
             ");
             $stmt->execute([$section_id, $term_id]);
+
+            $stmt = $pdo->prepare("
+                UPDATE teaching_assignment ta
+                INNER JOIN section_subject_offering sso
+                    ON sso.section_subject_offering_id = ta.section_subject_offering_id
+                SET ta.assignment_status = 'Active',
+                    ta.updated_at = CURRENT_TIMESTAMP
+                WHERE sso.section_id = ?
+                AND sso.term_id = ?
+            ");
+            $stmt->execute([$section_id, $term_id]);
+
+            $pdo->commit();
 
             flash_redirect("success", "Section enrollment successfully activated.", "section");
         }
@@ -561,8 +740,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $pdo->rollBack();
         }
 
-        $target_tab = str_contains($action, "enrollment") || str_contains($action, "enroll") ? "section" : "faculty";
-        flash_redirect("error", "System error: " . $e->getMessage(), $target_tab);
+        $target_panel = str_contains((string)$action, "enrollment") || str_contains((string)$action, "enroll") ? "section" : "faculty";
+        flash_redirect("error", "System error: " . $e->getMessage(), $target_panel);
     }
 }
 
@@ -640,7 +819,12 @@ $faculty_assignments = fetch_all(
         ta.section_subject_offering_id,
         ta.faculty_id,
         ta.term_id,
-        ta.assignment_status,
+        CASE
+            WHEN ta.assignment_status = 'Active' AND sso.offering_status = 'Active' THEN 'Active'
+            ELSE 'Inactive'
+        END AS assignment_status,
+        ta.assignment_status AS raw_assignment_status,
+        sso.offering_status,
         f.faculty_number,
         f.full_name AS faculty_name,
         f.department_id AS faculty_department_id,
@@ -704,9 +888,27 @@ $section_enrollments = fetch_all(
             WHEN SUM(CASE WHEN sso.offering_status = 'Active' THEN 1 ELSE 0 END) > 0 THEN 'Active'
             ELSE 'Inactive'
         END AS enrollment_status,
-        GROUP_CONCAT(DISTINCT s.subject_id ORDER BY s.subject_code SEPARATOR ',') AS subject_ids,
-        GROUP_CONCAT(DISTINCT CONCAT(s.subject_code, ' - ', s.subject_title) ORDER BY s.subject_code SEPARATOR '||') AS subject_list,
-        GROUP_CONCAT(DISTINCT CONCAT(s.subject_code, '::', s.subject_title, '::', COALESCE(f.full_name, 'Unassigned')) ORDER BY s.subject_code SEPARATOR '||') AS subject_detail_list
+        GROUP_CONCAT(
+            DISTINCT CASE
+                WHEN sso.offering_status = 'Active' THEN s.subject_id
+            END
+            ORDER BY s.subject_code
+            SEPARATOR ','
+        ) AS subject_ids,
+        GROUP_CONCAT(
+            DISTINCT CASE
+                WHEN sso.offering_status = 'Active' THEN CONCAT(s.subject_code, ' - ', s.subject_title)
+            END
+            ORDER BY s.subject_code
+            SEPARATOR '||'
+        ) AS subject_list,
+        GROUP_CONCAT(
+            DISTINCT CASE
+                WHEN sso.offering_status = 'Active' THEN CONCAT(s.subject_code, '::', s.subject_title, '::', COALESCE(f.full_name, 'Unassigned'))
+            END
+            ORDER BY s.subject_code
+            SEPARATOR '||'
+        ) AS subject_detail_list
      FROM section_subject_offering sso
      INNER JOIN section sec
         ON sec.section_id = sso.section_id
@@ -907,7 +1109,7 @@ $js_section_enrollments = json_encode($section_enrollments);
                             data-semester="<?php echo h($assignment["term_name"]); ?>"
                             data-subject="<?php echo h($assignment["subject_id"]); ?>"
                             data-faculty="<?php echo h($assignment["faculty_id"]); ?>"
-                            data-search="<?php echo h(strtolower($assignment["faculty_name"] . " " . $assignment["subject_code"] . " " . $assignment["subject_title"] . " " . $assignment["course_code"] . " " . $assignment["section_name"])); ?>"
+                            data-search="<?php echo h(strtolower($assignment["faculty_name"] . " " . $assignment["faculty_number"] . " " . $assignment["subject_code"] . " " . $assignment["subject_title"] . " " . $assignment["course_code"] . " " . $assignment["section_name"])); ?>"
                         >
                             <td>
                                 <strong><?php echo h($assignment["faculty_name"]); ?></strong>
@@ -1453,6 +1655,7 @@ function escapeHtml(value) {
 
 function openModal(id) {
     const modal = document.getElementById(id);
+
     if (modal) {
         modal.classList.add("show");
         document.body.classList.add("modal-open");
@@ -1461,6 +1664,7 @@ function openModal(id) {
 
 function closeModal(id) {
     const modal = document.getElementById(id);
+
     if (modal) {
         modal.classList.remove("show");
         document.body.classList.remove("modal-open");
@@ -1494,6 +1698,7 @@ qsa("[data-tab-button]").forEach(button => {
 
 function setOptions(select, rows, valueKey, labelBuilder, placeholder) {
     select.innerHTML = `<option value="">${placeholder}</option>`;
+
     rows.forEach(row => {
         const option = document.createElement("option");
         option.value = row[valueKey];
@@ -1579,10 +1784,6 @@ function getCourseSubjects(courseIds, yearLevel, semester, subjectType) {
 
 function updateAssignFacultyLists() {
     const departmentId = qs("#assignDepartment").value;
-    const academicYearId = qs("#assignAcademicYear").value;
-    const yearLevel = qs("#assignYearLevel").value;
-    const semester = qs("#assignSemester").value;
-    const generalOnly = qs("#assignGeneralOnly").checked;
 
     const facultyRows = DATA.faculties.filter(f => String(f.department_id) === String(departmentId));
     setOptions(qs("#assignFaculty"), facultyRows, "faculty_id", f => `${f.full_name} (${f.faculty_number})`, "Select Faculty Member");
@@ -1640,6 +1841,7 @@ function updateAssignSubjectList() {
 function updateEnrollCourseList() {
     const departmentId = qs("#enrollDepartment").value;
     const courseRows = DATA.courses.filter(c => String(c.department_id) === String(departmentId));
+
     setOptions(qs("#enrollCourse"), courseRows, "course_id", c => `${c.course_code} - ${c.course_name}`, "Select Course");
     updateEnrollLists();
 }
@@ -1694,6 +1896,7 @@ function updateEnrollLists() {
 function updateCheckedCount(listSelector, textSelector, label) {
     const count = selectedValues(listSelector).length;
     const target = qs(textSelector);
+
     if (target) {
         target.textContent = `${count} ${label}(s) selected`;
     }
@@ -1701,12 +1904,16 @@ function updateCheckedCount(listSelector, textSelector, label) {
 
 ["assignDepartment", "assignAcademicYear", "assignYearLevel", "assignSemester", "assignGeneralOnly"].forEach(id => {
     const element = qs("#" + id);
-    if (element) element.addEventListener("change", updateAssignFacultyLists);
+    if (element) {
+        element.addEventListener("change", updateAssignFacultyLists);
+    }
 });
 
 ["enrollCourse", "enrollAcademicYear", "enrollYearLevel", "enrollSemester", "enrollSubjectType"].forEach(id => {
     const element = qs("#" + id);
-    if (element) element.addEventListener("change", updateEnrollLists);
+    if (element) {
+        element.addEventListener("change", updateEnrollLists);
+    }
 });
 
 qs("#enrollDepartment")?.addEventListener("change", updateEnrollCourseList);
@@ -1736,7 +1943,10 @@ function filterFacultyAssignments() {
             (!faculty || row.dataset.faculty === faculty);
 
         row.style.display = match ? "" : "none";
-        if (match) visible++;
+
+        if (match) {
+            visible++;
+        }
     });
 
     qs("#facultyAssignmentCount").textContent = `(${visible})`;
@@ -1772,7 +1982,10 @@ function filterSectionEnrollments() {
             (!status || row.dataset.status === status);
 
         row.style.display = match ? "" : "none";
-        if (match) visible++;
+
+        if (match) {
+            visible++;
+        }
     });
 
     qs("#sectionEnrollmentCount").textContent = `(${visible})`;
@@ -1987,7 +2200,7 @@ function viewEnrollment(sectionId, termId) {
                 <label>Subjects Taken by the Section</label>
                 <div class="readonly-box subject-box">
                     <ul class="organized-subject-list">
-                        ${detailItems || "<li><strong>No subjects found.</strong></li>"}
+                        ${detailItems || "<li><strong>No active subjects found.</strong></li>"}
                     </ul>
                 </div>
             </div>
