@@ -835,7 +835,7 @@ $has_filters = $faculty_search !== ""
             <a class="nav-link" href="student_management.php"><?php echo icon_svg("students"); ?> Student Management</a>
             <a class="nav-link active" href="faculty_management.php"><?php echo icon_svg("faculty"); ?> Faculty Management</a>
             <a class="nav-link" href="academic_structure.php"><?php echo icon_svg("book"); ?> Academic Structure</a>
-            <a class="nav-link" href="#"><?php echo icon_svg("assignment"); ?> Assignment Management</a>
+            <a class="nav-link" href="assignment_management.php"><?php echo icon_svg("assignment"); ?> Assignment Management</a>
             <a class="nav-link" href="#"><?php echo icon_svg("settings"); ?> Evaluation Setup</a>
             <a class="nav-link" href="#"><?php echo icon_svg("clipboard"); ?> Submission Monitoring</a>
             <a class="nav-link" href="#"><?php echo icon_svg("reports"); ?> Reports</a>
