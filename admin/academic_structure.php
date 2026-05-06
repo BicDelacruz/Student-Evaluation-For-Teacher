@@ -5,6 +5,8 @@ session_start();
 
 require_once dirname(__DIR__) . "/database_connector.php";
 
+$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
 if (isset($_GET["logout"])) {
     session_unset();
     session_destroy();
@@ -17,7 +19,7 @@ if (
     empty($_SESSION["authenticated_role"]) ||
     strtolower((string) $_SESSION["authenticated_role"]) !== "admin"
 ) {
-    header("Location: ../login-page/login_page.php");
+    header("Location: ../login/login_page.php");
     exit;
 }
 
@@ -49,16 +51,68 @@ function count_rows(PDO $pdo, string $sql, array $params = []): int
     return (int) $statement->fetchColumn();
 }
 
+function fetch_one(PDO $pdo, string $sql, array $params = []): array|false
+{
+    $statement = $pdo->prepare($sql);
+    $statement->execute($params);
+    return $statement->fetch(PDO::FETCH_ASSOC);
+}
+
 function get_admin_id(PDO $pdo, int $user_id): int
 {
-    $statement = $pdo->prepare("SELECT admin_id FROM `admin` WHERE user_id = :user_id LIMIT 1");
-    $statement->execute(["user_id" => $user_id]);
+    $statement = $pdo->prepare("
+        SELECT admin_id
+        FROM `admin`
+        WHERE user_id = :user_id
+        LIMIT 1
+    ");
+
+    $statement->execute([
+        "user_id" => $user_id
+    ]);
 
     return (int) $statement->fetchColumn();
 }
 
+function valid_status(string $status, array $allowed, string $default = "Active"): string
+{
+    return in_array($status, $allowed, true) ? $status : $default;
+}
+
+function valid_term_name(string $term_name): string
+{
+    $term_name = clean_string($term_name);
+
+    $allowed_terms = [
+        "First Semester",
+        "Second Semester",
+        "Summer"
+    ];
+
+    return in_array($term_name, $allowed_terms, true) ? $term_name : "First Semester";
+}
+
+function year_level_label(int $year_level): string
+{
+    return match ($year_level) {
+        1 => "1st Year",
+        2 => "2nd Year",
+        3 => "3rd Year",
+        4 => "4th Year",
+        5 => "5th Year",
+        6 => "6th Year",
+        default => $year_level . "th Year"
+    };
+}
+
 function find_or_create_term(PDO $pdo, int $academic_year_id, string $term_name): int
 {
+    $term_name = valid_term_name($term_name);
+
+    if ($academic_year_id <= 0) {
+        return 0;
+    }
+
     $statement = $pdo->prepare("
         SELECT term_id
         FROM term
@@ -89,10 +143,26 @@ function find_or_create_term(PDO $pdo, int $academic_year_id, string $term_name)
         "academic_year_id" => $academic_year_id
     ]);
 
-    $academic_year = $year_statement->fetch();
+    $academic_year = $year_statement->fetch(PDO::FETCH_ASSOC);
 
-    $start_date = $academic_year["start_date"] ?? date("Y") . "-01-01";
-    $end_date = $academic_year["end_date"] ?? date("Y") . "-12-31";
+    if (!$academic_year) {
+        return 0;
+    }
+
+    $start_date = (string) $academic_year["start_date"];
+    $end_date = (string) $academic_year["end_date"];
+
+    if ($term_name === "Second Semester") {
+        $start_year = (int) substr($start_date, 0, 4) + 1;
+        $start_date = $start_year . "-01-10";
+        $end_date = $start_year . "-05-30";
+    }
+
+    if ($term_name === "Summer") {
+        $start_year = (int) substr($end_date, 0, 4);
+        $start_date = $start_year . "-06-01";
+        $end_date = $start_year . "-07-15";
+    }
 
     $insert = $pdo->prepare("
         INSERT INTO term (
@@ -121,17 +191,84 @@ function find_or_create_term(PDO $pdo, int $academic_year_id, string $term_name)
     return (int) $pdo->lastInsertId();
 }
 
+function upsert_course_subject(PDO $pdo, int $course_id, int $subject_id, int $year_level, string $term_name): void
+{
+    $term_name = valid_term_name($term_name);
+
+    $existing = fetch_one(
+        $pdo,
+        "
+        SELECT course_subject_id
+        FROM course_subject
+        WHERE course_id = :course_id
+        AND subject_id = :subject_id
+        AND year_level = :year_level
+        AND term_name = :term_name
+        LIMIT 1
+        ",
+        [
+            "course_id" => $course_id,
+            "subject_id" => $subject_id,
+            "year_level" => $year_level,
+            "term_name" => $term_name
+        ]
+    );
+
+    if ($existing) {
+        $statement = $pdo->prepare("
+            UPDATE course_subject
+            SET
+                is_required = 1,
+                course_subject_status = 'Active'
+            WHERE course_subject_id = :course_subject_id
+        ");
+
+        $statement->execute([
+            "course_subject_id" => (int) $existing["course_subject_id"]
+        ]);
+
+        return;
+    }
+
+    $statement = $pdo->prepare("
+        INSERT INTO course_subject (
+            course_id,
+            subject_id,
+            year_level,
+            term_name,
+            is_required,
+            course_subject_status
+        )
+        VALUES (
+            :course_id,
+            :subject_id,
+            :year_level,
+            :term_name,
+            1,
+            'Active'
+        )
+    ");
+
+    $statement->execute([
+        "course_id" => $course_id,
+        "subject_id" => $subject_id,
+        "year_level" => $year_level,
+        "term_name" => $term_name
+    ]);
+}
+
 function icon_svg(string $name): string
 {
     $icons = [
         "dashboard" => '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
         "students" => '<svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>',
         "faculty" => '<svg viewBox="0 0 24 24"><path d="M18 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9.5" cy="7" r="4"></circle><path d="M20 8v6"></path><path d="M23 11h-6"></path></svg>',
+        "assignment" => '<svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><path d="M20 8v6"></path><path d="M23 11h-6"></path></svg>',
         "book" => '<svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5z"/></svg>',
         "building" => '<svg viewBox="0 0 24 24"><path d="M4 21V8l8-5 8 5v13"/><path d="M9 21v-8h6v8"/><path d="M7 10h.01"/><path d="M17 10h.01"/></svg>',
         "cap" => '<svg viewBox="0 0 24 24"><path d="M22 10L12 5 2 10l10 5 10-5z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/></svg>',
         "section" => '<svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6"/><path d="M16 11h6"/></svg>',
-       "settings" => '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1v.17a2 2 0 1 1-4 0V21a1.7 1.7 0 0 0-.4-1 1.7 1.7 0 0 0-1-.6 1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1-.4H2.83a2 2 0 1 1 0-4H3a1.7 1.7 0 0 0 1-.4 1.7 1.7 0 0 0 .6-1 1.7 1.7 0 0 0-.34-1.88l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1V2.83a2 2 0 1 1 4 0V3a1.7 1.7 0 0 0 .4 1 1.7 1.7 0 0 0 1 .6 1.7 1.7 0 0 0 1.88-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.2.3.4.7.6 1h.17a2 2 0 1 1 0 4H20a1.7 1.7 0 0 0-.6 1z"></path></svg>',
+        "settings" => '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1v.17a2 2 0 1 1-4 0V21a1.7 1.7 0 0 0-.4-1 1.7 1.7 0 0 0-1-.6 1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1-.4H2.83a2 2 0 1 1 0-4H3a1.7 1.7 0 0 0 1-.4 1.7 1.7 0 0 0 .6-1 1.7 1.7 0 0 0-.34-1.88l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1V2.83a2 2 0 1 1 4 0V3a1.7 1.7 0 0 0 .4 1 1.7 1.7 0 0 0 1 .6 1.7 1.7 0 0 0 1.88-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.2.3.4.7.6 1h.17a2 2 0 1 1 0 4H20a1.7 1.7 0 0 0-.6 1z"></path></svg>',
         "clipboard" => '<svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path><rect x="9" y="3" width="6" height="4" rx="1"></rect><path d="M9 12h6"></path><path d="M9 16h6"></path></svg>',
         "chart" => '<svg viewBox="0 0 24 24"><path d="M3 3v18h18"></path><path d="M7 16V9"></path><path d="M12 16V5"></path><path d="M17 16v-3"></path></svg>',
         "megaphone" => '<svg viewBox="0 0 24 24"><path d="M3 11v2a2 2 0 0 0 2 2h2l5 4V5L7 9H5a2 2 0 0 0-2 2z"></path><path d="M16 9a5 5 0 0 1 0 6"></path></svg>',
@@ -169,6 +306,24 @@ try {
                 redirect_panel("departments", "Department code and name are required.", "error");
             }
 
+            $duplicate = count_rows(
+                $pdo,
+                "
+                SELECT COUNT(*)
+                FROM department
+                WHERE department_code = :department_code
+                OR department_name = :department_name
+                ",
+                [
+                    "department_code" => $department_code,
+                    "department_name" => $department_name
+                ]
+            );
+
+            if ($duplicate > 0) {
+                redirect_panel("departments", "Department code or name already exists.", "error");
+            }
+
             $statement = $pdo->prepare("
                 INSERT INTO department (
                     department_code,
@@ -198,13 +353,41 @@ try {
             $department_code = strtoupper(clean_string($_POST["department_code"] ?? ""));
             $department_name = clean_string($_POST["department_name"] ?? "");
             $department_head_faculty_id = ($_POST["department_head_faculty_id"] ?? "") !== "" ? (int) $_POST["department_head_faculty_id"] : null;
+            $department_status = valid_status($_POST["department_status"] ?? "Active", ["Active", "Inactive"], "Active");
+
+            if ($department_id <= 0 || $department_code === "" || $department_name === "") {
+                redirect_panel("departments", "Please complete all department fields.", "error");
+            }
+
+            $duplicate = count_rows(
+                $pdo,
+                "
+                SELECT COUNT(*)
+                FROM department
+                WHERE department_id <> :department_id
+                AND (
+                    department_code = :department_code
+                    OR department_name = :department_name
+                )
+                ",
+                [
+                    "department_id" => $department_id,
+                    "department_code" => $department_code,
+                    "department_name" => $department_name
+                ]
+            );
+
+            if ($duplicate > 0) {
+                redirect_panel("departments", "Department code or name already exists.", "error");
+            }
 
             $statement = $pdo->prepare("
                 UPDATE department
                 SET
                     department_code = :department_code,
                     department_name = :department_name,
-                    department_head_faculty_id = :department_head_faculty_id
+                    department_head_faculty_id = :department_head_faculty_id,
+                    department_status = :department_status
                 WHERE department_id = :department_id
             ");
 
@@ -212,7 +395,8 @@ try {
                 "department_id" => $department_id,
                 "department_code" => $department_code,
                 "department_name" => $department_name,
-                "department_head_faculty_id" => $department_head_faculty_id
+                "department_head_faculty_id" => $department_head_faculty_id,
+                "department_status" => $department_status
             ]);
 
             redirect_panel("departments", "Department {$department_code} successfully updated!");
@@ -220,6 +404,10 @@ try {
 
         if ($form_action === "delete_department") {
             $department_id = (int) ($_POST["department_id"] ?? 0);
+
+            if ($department_id <= 0) {
+                redirect_panel("departments", "Invalid department selected.", "error");
+            }
 
             $linked_records =
                 count_rows($pdo, "SELECT COUNT(*) FROM course WHERE department_id = :id", ["id" => $department_id]) +
@@ -240,15 +428,51 @@ try {
                 redirect_panel("departments", "You cannot delete an entity with record inside. This will mark as inactive.", "warning");
             }
 
-            $statement = $pdo->prepare("DELETE FROM department WHERE department_id = :department_id");
-            $statement->execute(["department_id" => $department_id]);
+            $statement = $pdo->prepare("
+                DELETE FROM department
+                WHERE department_id = :department_id
+            ");
+
+            $statement->execute([
+                "department_id" => $department_id
+            ]);
 
             redirect_panel("departments", "Department successfully deleted!");
         }
 
         if ($form_action === "add_course") {
+            $department_id = (int) ($_POST["department_id"] ?? 0);
             $course_code = strtoupper(clean_string($_POST["course_code"] ?? ""));
             $course_name = clean_string($_POST["course_name"] ?? "");
+            $course_description = clean_string($_POST["course_description"] ?? "");
+            $number_of_year_level = (int) ($_POST["number_of_year_level"] ?? 4);
+            $course_status = valid_status($_POST["course_status"] ?? "Active", ["Active", "Inactive"], "Active");
+
+            if ($department_id <= 0 || $course_code === "" || $course_name === "") {
+                redirect_panel("courses", "Department, course code, and course name are required.", "error");
+            }
+
+            if ($number_of_year_level < 1 || $number_of_year_level > 6) {
+                redirect_panel("courses", "Number of year levels must be from 1 to 6.", "error");
+            }
+
+            $duplicate = count_rows(
+                $pdo,
+                "
+                SELECT COUNT(*)
+                FROM course
+                WHERE course_code = :course_code
+                OR course_name = :course_name
+                ",
+                [
+                    "course_code" => $course_code,
+                    "course_name" => $course_name
+                ]
+            );
+
+            if ($duplicate > 0) {
+                redirect_panel("courses", "Course code or name already exists.", "error");
+            }
 
             $statement = $pdo->prepare("
                 INSERT INTO course (
@@ -270,12 +494,12 @@ try {
             ");
 
             $statement->execute([
-                "department_id" => (int) $_POST["department_id"],
+                "department_id" => $department_id,
                 "course_code" => $course_code,
                 "course_name" => $course_name,
-                "course_description" => clean_string($_POST["course_description"] ?? ""),
-                "number_of_year_level" => (int) ($_POST["number_of_year_level"] ?? 4),
-                "course_status" => $_POST["course_status"] ?? "Active"
+                "course_description" => $course_description,
+                "number_of_year_level" => $number_of_year_level,
+                "course_status" => $course_status
             ]);
 
             redirect_panel("courses", "Course {$course_code} successfully added!");
@@ -283,7 +507,42 @@ try {
 
         if ($form_action === "update_course") {
             $course_id = (int) ($_POST["course_id"] ?? 0);
+            $department_id = (int) ($_POST["department_id"] ?? 0);
             $course_code = strtoupper(clean_string($_POST["course_code"] ?? ""));
+            $course_name = clean_string($_POST["course_name"] ?? "");
+            $course_description = clean_string($_POST["course_description"] ?? "");
+            $number_of_year_level = (int) ($_POST["number_of_year_level"] ?? 4);
+            $course_status = valid_status($_POST["course_status"] ?? "Active", ["Active", "Inactive"], "Active");
+
+            if ($course_id <= 0 || $department_id <= 0 || $course_code === "" || $course_name === "") {
+                redirect_panel("courses", "Please complete all course fields.", "error");
+            }
+
+            if ($number_of_year_level < 1 || $number_of_year_level > 6) {
+                redirect_panel("courses", "Number of year levels must be from 1 to 6.", "error");
+            }
+
+            $duplicate = count_rows(
+                $pdo,
+                "
+                SELECT COUNT(*)
+                FROM course
+                WHERE course_id <> :course_id
+                AND (
+                    course_code = :course_code
+                    OR course_name = :course_name
+                )
+                ",
+                [
+                    "course_id" => $course_id,
+                    "course_code" => $course_code,
+                    "course_name" => $course_name
+                ]
+            );
+
+            if ($duplicate > 0) {
+                redirect_panel("courses", "Course code or name already exists.", "error");
+            }
 
             $statement = $pdo->prepare("
                 UPDATE course
@@ -299,12 +558,12 @@ try {
 
             $statement->execute([
                 "course_id" => $course_id,
-                "department_id" => (int) $_POST["department_id"],
+                "department_id" => $department_id,
                 "course_code" => $course_code,
-                "course_name" => clean_string($_POST["course_name"] ?? ""),
-                "course_description" => clean_string($_POST["course_description"] ?? ""),
-                "number_of_year_level" => (int) $_POST["number_of_year_level"],
-                "course_status" => $_POST["course_status"] ?? "Active"
+                "course_name" => $course_name,
+                "course_description" => $course_description,
+                "number_of_year_level" => $number_of_year_level,
+                "course_status" => $course_status
             ]);
 
             redirect_panel("courses", "Course {$course_code} successfully updated!");
@@ -313,43 +572,113 @@ try {
         if ($form_action === "delete_course") {
             $course_id = (int) ($_POST["course_id"] ?? 0);
 
+            if ($course_id <= 0) {
+                redirect_panel("courses", "Invalid course selected.", "error");
+            }
+
             $linked_records =
                 count_rows($pdo, "SELECT COUNT(*) FROM student WHERE course_id = :id", ["id" => $course_id]) +
                 count_rows($pdo, "SELECT COUNT(*) FROM section WHERE course_id = :id", ["id" => $course_id]) +
                 count_rows($pdo, "SELECT COUNT(*) FROM course_subject WHERE course_id = :id", ["id" => $course_id]);
 
             if ($linked_records > 0) {
-                $statement = $pdo->prepare("UPDATE course SET course_status = 'Inactive' WHERE course_id = :course_id");
-                $statement->execute(["course_id" => $course_id]);
+                $statement = $pdo->prepare("
+                    UPDATE course
+                    SET course_status = 'Inactive'
+                    WHERE course_id = :course_id
+                ");
+
+                $statement->execute([
+                    "course_id" => $course_id
+                ]);
 
                 redirect_panel("courses", "You cannot delete an entity with record inside. This will mark as inactive.", "warning");
             }
 
-            $statement = $pdo->prepare("DELETE FROM course WHERE course_id = :course_id");
-            $statement->execute(["course_id" => $course_id]);
+            $statement = $pdo->prepare("
+                DELETE FROM course
+                WHERE course_id = :course_id
+            ");
+
+            $statement->execute([
+                "course_id" => $course_id
+            ]);
 
             redirect_panel("courses", "Course successfully deleted!");
         }
 
         if ($form_action === "add_sections") {
             $course_id = (int) ($_POST["course_id"] ?? 0);
-            $year_level = (int) ($_POST["year_level"] ?? 1);
+            $year_level = (int) ($_POST["year_level"] ?? 0);
             $academic_year_id = (int) ($_POST["academic_year_id"] ?? 0);
-            $term_name = $_POST["term_name"] ?? "First Semester";
+            $term_name = valid_term_name($_POST["term_name"] ?? "First Semester");
             $maximum_student_count = (int) ($_POST["maximum_student_count"] ?? 50);
 
-            if ($course_id <= 0 || $academic_year_id <= 0) {
-                redirect_panel("sections", "Course and academic year are required.", "error");
+            if ($course_id <= 0) {
+                redirect_panel("sections", "Please select a course.", "error");
+            }
+
+            if ($year_level < 1 || $year_level > 6) {
+                redirect_panel("sections", "Please select a valid year level.", "error");
+            }
+
+            if ($academic_year_id <= 0) {
+                redirect_panel("sections", "Please select an academic year.", "error");
+            }
+
+            if ($maximum_student_count < 1 || $maximum_student_count > 500) {
+                redirect_panel("sections", "Maximum students must be from 1 to 500.", "error");
             }
 
             $term_id = find_or_create_term($pdo, $academic_year_id, $term_name);
-            $created_count = 0;
-            $created_names = [];
+
+            if ($term_id <= 0) {
+                redirect_panel("sections", "Unable to find or create the selected semester.", "error");
+            }
+
+            $section_names = [];
 
             for ($i = 1; $i <= 5; $i++) {
                 $section_name = strtoupper(clean_string($_POST["section_name_" . $i] ?? ""));
 
-                if ($section_name === "") {
+                if ($section_name !== "") {
+                    $section_names[] = $section_name;
+                }
+            }
+
+            $section_names = array_values(array_unique($section_names));
+
+            if (empty($section_names)) {
+                redirect_panel("sections", "Please enter at least one section name.", "error");
+            }
+
+            $pdo->beginTransaction();
+
+            $created_count = 0;
+            $created_names = [];
+            $duplicate_names = [];
+
+            foreach ($section_names as $section_name) {
+                $duplicate = count_rows(
+                    $pdo,
+                    "
+                    SELECT COUNT(*)
+                    FROM section
+                    WHERE course_id = :course_id
+                    AND term_id = :term_id
+                    AND year_level = :year_level
+                    AND section_name = :section_name
+                    ",
+                    [
+                        "course_id" => $course_id,
+                        "term_id" => $term_id,
+                        "year_level" => $year_level,
+                        "section_name" => $section_name
+                    ]
+                );
+
+                if ($duplicate > 0) {
+                    $duplicate_names[] = $section_name;
                     continue;
                 }
 
@@ -357,19 +686,19 @@ try {
                     INSERT INTO section (
                         course_id,
                         term_id,
+                        academic_year_id,
                         section_name,
                         year_level,
                         maximum_student_count,
-                        adviser_faculty_id,
                         section_status
                     )
                     VALUES (
                         :course_id,
                         :term_id,
+                        :academic_year_id,
                         :section_name,
                         :year_level,
                         :maximum_student_count,
-                        NULL,
                         'Active'
                     )
                 ");
@@ -377,6 +706,7 @@ try {
                 $statement->execute([
                     "course_id" => $course_id,
                     "term_id" => $term_id,
+                    "academic_year_id" => $academic_year_id,
                     "section_name" => $section_name,
                     "year_level" => $year_level,
                     "maximum_student_count" => $maximum_student_count
@@ -386,29 +716,85 @@ try {
                 $created_names[] = $section_name;
             }
 
+            $pdo->commit();
+
             if ($created_count === 0) {
-                redirect_panel("sections", "Please enter at least one section name.", "error");
+                redirect_panel("sections", "No new section was added because the section already exists for the selected course, year level, and semester.", "error");
             }
 
             $message = $created_count === 1
                 ? "Section {$created_names[0]} successfully added!"
                 : "{$created_count} sections successfully added!";
 
+            if (!empty($duplicate_names)) {
+                $message .= " Duplicate skipped: " . implode(", ", $duplicate_names) . ".";
+            }
+
             redirect_panel("sections", $message);
         }
 
         if ($form_action === "update_section") {
             $section_id = (int) ($_POST["section_id"] ?? 0);
+            $course_id = (int) ($_POST["course_id"] ?? 0);
             $section_name = strtoupper(clean_string($_POST["section_name"] ?? ""));
+            $year_level = (int) ($_POST["year_level"] ?? 0);
             $academic_year_id = (int) ($_POST["academic_year_id"] ?? 0);
-            $term_name = $_POST["term_name"] ?? "First Semester";
+            $term_name = valid_term_name($_POST["term_name"] ?? "First Semester");
+            $maximum_student_count = (int) ($_POST["maximum_student_count"] ?? 50);
+            $section_status = valid_status($_POST["section_status"] ?? "Active", ["Active", "Inactive", "Closed"], "Active");
+
+            if ($section_id <= 0 || $course_id <= 0 || $section_name === "") {
+                redirect_panel("sections", "Please complete all section fields.", "error");
+            }
+
+            if ($year_level < 1 || $year_level > 6) {
+                redirect_panel("sections", "Please select a valid year level.", "error");
+            }
+
+            if ($academic_year_id <= 0) {
+                redirect_panel("sections", "Please select an academic year.", "error");
+            }
+
+            if ($maximum_student_count < 1 || $maximum_student_count > 500) {
+                redirect_panel("sections", "Maximum students must be from 1 to 500.", "error");
+            }
+
             $term_id = find_or_create_term($pdo, $academic_year_id, $term_name);
+
+            if ($term_id <= 0) {
+                redirect_panel("sections", "Unable to find or create the selected semester.", "error");
+            }
+
+            $duplicate = count_rows(
+                $pdo,
+                "
+                SELECT COUNT(*)
+                FROM section
+                WHERE section_id <> :section_id
+                AND course_id = :course_id
+                AND term_id = :term_id
+                AND year_level = :year_level
+                AND section_name = :section_name
+                ",
+                [
+                    "section_id" => $section_id,
+                    "course_id" => $course_id,
+                    "term_id" => $term_id,
+                    "year_level" => $year_level,
+                    "section_name" => $section_name
+                ]
+            );
+
+            if ($duplicate > 0) {
+                redirect_panel("sections", "This section already exists for the selected course, year level, and semester.", "error");
+            }
 
             $statement = $pdo->prepare("
                 UPDATE section
                 SET
                     course_id = :course_id,
                     term_id = :term_id,
+                    academic_year_id = :academic_year_id,
                     section_name = :section_name,
                     year_level = :year_level,
                     maximum_student_count = :maximum_student_count,
@@ -418,12 +804,13 @@ try {
 
             $statement->execute([
                 "section_id" => $section_id,
-                "course_id" => (int) $_POST["course_id"],
+                "course_id" => $course_id,
                 "term_id" => $term_id,
+                "academic_year_id" => $academic_year_id,
                 "section_name" => $section_name,
-                "year_level" => (int) $_POST["year_level"],
-                "maximum_student_count" => (int) ($_POST["maximum_student_count"] ?? 50),
-                "section_status" => $_POST["section_status"] ?? "Active"
+                "year_level" => $year_level,
+                "maximum_student_count" => $maximum_student_count,
+                "section_status" => $section_status
             ]);
 
             redirect_panel("sections", "Section {$section_name} successfully updated!");
@@ -432,19 +819,36 @@ try {
         if ($form_action === "delete_section") {
             $section_id = (int) ($_POST["section_id"] ?? 0);
 
+            if ($section_id <= 0) {
+                redirect_panel("sections", "Invalid section selected.", "error");
+            }
+
             $linked_records =
                 count_rows($pdo, "SELECT COUNT(*) FROM student_section_enrollment WHERE section_id = :id", ["id" => $section_id]) +
                 count_rows($pdo, "SELECT COUNT(*) FROM section_subject_offering WHERE section_id = :id", ["id" => $section_id]);
 
             if ($linked_records > 0) {
-                $statement = $pdo->prepare("UPDATE section SET section_status = 'Inactive' WHERE section_id = :section_id");
-                $statement->execute(["section_id" => $section_id]);
+                $statement = $pdo->prepare("
+                    UPDATE section
+                    SET section_status = 'Inactive'
+                    WHERE section_id = :section_id
+                ");
+
+                $statement->execute([
+                    "section_id" => $section_id
+                ]);
 
                 redirect_panel("sections", "You cannot delete an entity with record inside. This will mark as inactive.", "warning");
             }
 
-            $statement = $pdo->prepare("DELETE FROM section WHERE section_id = :section_id");
-            $statement->execute(["section_id" => $section_id]);
+            $statement = $pdo->prepare("
+                DELETE FROM section
+                WHERE section_id = :section_id
+            ");
+
+            $statement->execute([
+                "section_id" => $section_id
+            ]);
 
             redirect_panel("sections", "Section successfully deleted!");
         }
@@ -458,15 +862,51 @@ try {
             $subject_description = clean_string($_POST["subject_description"] ?? "");
             $subject_unit = (float) ($_POST["subject_unit"] ?? 3);
             $year_level = (int) ($_POST["year_level"] ?? 1);
-            $term_name = $_POST["term_name"] ?? "First Semester";
+            $term_name = valid_term_name($_POST["term_name"] ?? "First Semester");
             $is_general_education = isset($_POST["is_general_education"]);
             $course_ids = $_POST["course_ids"] ?? [];
 
+            if ($department_id <= 0 || $subject_code === "" || $subject_title === "") {
+                throw new RuntimeException("Department, subject code, and subject title are required.");
+            }
+
+            if ($subject_unit <= 0 || $subject_unit > 9) {
+                throw new RuntimeException("Subject units must be from 1 to 9.");
+            }
+
+            if ($year_level < 1 || $year_level > 6) {
+                throw new RuntimeException("Please select a valid year level.");
+            }
+
+            $duplicate = count_rows(
+                $pdo,
+                "
+                SELECT COUNT(*)
+                FROM subject
+                WHERE subject_code = :subject_code
+                ",
+                [
+                    "subject_code" => $subject_code
+                ]
+            );
+
+            if ($duplicate > 0) {
+                throw new RuntimeException("Subject code already exists.");
+            }
+
             if ($is_general_education && count($course_ids) === 0) {
                 $course_ids = array_column(
-                    $pdo->query("SELECT course_id FROM course WHERE course_status = 'Active'")->fetchAll(),
+                    $pdo->query("
+                        SELECT course_id
+                        FROM course
+                        WHERE course_status = 'Active'
+                    ")->fetchAll(PDO::FETCH_ASSOC),
                     "course_id"
                 );
+            }
+
+            if (!$is_general_education && count($course_ids) === 0) {
+                throw new RuntimeException("Please select at least one course.");
             }
 
             $subject_type = $is_general_education ? "General Education" : "Major";
@@ -504,31 +944,7 @@ try {
             $subject_id = (int) $pdo->lastInsertId();
 
             foreach ($course_ids as $course_id) {
-                $map = $pdo->prepare("
-                    INSERT IGNORE INTO course_subject (
-                        course_id,
-                        subject_id,
-                        year_level,
-                        term_name,
-                        is_required,
-                        course_subject_status
-                    )
-                    VALUES (
-                        :course_id,
-                        :subject_id,
-                        :year_level,
-                        :term_name,
-                        1,
-                        'Active'
-                    )
-                ");
-
-                $map->execute([
-                    "course_id" => (int) $course_id,
-                    "subject_id" => $subject_id,
-                    "year_level" => $year_level,
-                    "term_name" => $term_name
-                ]);
+                upsert_course_subject($pdo, (int) $course_id, $subject_id, $year_level, $term_name);
             }
 
             $pdo->commit();
@@ -540,19 +956,63 @@ try {
             $pdo->beginTransaction();
 
             $subject_id = (int) ($_POST["subject_id"] ?? 0);
+            $department_id = (int) ($_POST["department_id"] ?? 0);
             $subject_code = strtoupper(clean_string($_POST["subject_code"] ?? ""));
+            $subject_title = clean_string($_POST["subject_title"] ?? "");
+            $subject_description = clean_string($_POST["subject_description"] ?? "");
+            $subject_unit = (float) ($_POST["subject_unit"] ?? 3);
+            $year_level = (int) ($_POST["year_level"] ?? 1);
+            $term_name = valid_term_name($_POST["term_name"] ?? "First Semester");
+            $subject_status = valid_status($_POST["subject_status"] ?? "Active", ["Active", "Inactive"], "Active");
             $is_general_education = isset($_POST["is_general_education"]);
             $course_ids = $_POST["course_ids"] ?? [];
-            $year_level = (int) ($_POST["year_level"] ?? 1);
-            $term_name = $_POST["term_name"] ?? "First Semester";
-            $subject_type = $is_general_education ? "General Education" : "Major";
+
+            if ($subject_id <= 0 || $department_id <= 0 || $subject_code === "" || $subject_title === "") {
+                throw new RuntimeException("Please complete all subject fields.");
+            }
+
+            if ($subject_unit <= 0 || $subject_unit > 9) {
+                throw new RuntimeException("Subject units must be from 1 to 9.");
+            }
+
+            if ($year_level < 1 || $year_level > 6) {
+                throw new RuntimeException("Please select a valid year level.");
+            }
+
+            $duplicate = count_rows(
+                $pdo,
+                "
+                SELECT COUNT(*)
+                FROM subject
+                WHERE subject_id <> :subject_id
+                AND subject_code = :subject_code
+                ",
+                [
+                    "subject_id" => $subject_id,
+                    "subject_code" => $subject_code
+                ]
+            );
+
+            if ($duplicate > 0) {
+                throw new RuntimeException("Subject code already exists.");
+            }
 
             if ($is_general_education && count($course_ids) === 0) {
                 $course_ids = array_column(
-                    $pdo->query("SELECT course_id FROM course WHERE course_status = 'Active'")->fetchAll(),
+                    $pdo->query("
+                        SELECT course_id
+                        FROM course
+                        WHERE course_status = 'Active'
+                    ")->fetchAll(PDO::FETCH_ASSOC),
                     "course_id"
                 );
             }
+
+            if (!$is_general_education && count($course_ids) === 0) {
+                throw new RuntimeException("Please select at least one course.");
+            }
+
+            $subject_type = $is_general_education ? "General Education" : "Major";
 
             $statement = $pdo->prepare("
                 UPDATE subject
@@ -569,44 +1029,27 @@ try {
 
             $statement->execute([
                 "subject_id" => $subject_id,
-                "department_id" => (int) $_POST["department_id"],
+                "department_id" => $department_id,
                 "subject_code" => $subject_code,
-                "subject_title" => clean_string($_POST["subject_title"] ?? ""),
-                "subject_description" => clean_string($_POST["subject_description"] ?? ""),
-                "subject_unit" => (float) $_POST["subject_unit"],
+                "subject_title" => $subject_title,
+                "subject_description" => $subject_description,
+                "subject_unit" => $subject_unit,
                 "subject_type" => $subject_type,
-                "subject_status" => $_POST["subject_status"] ?? "Active"
+                "subject_status" => $subject_status
             ]);
 
-            $delete_map = $pdo->prepare("DELETE FROM course_subject WHERE subject_id = :subject_id");
-            $delete_map->execute(["subject_id" => $subject_id]);
+            $deactivate_map = $pdo->prepare("
+                UPDATE course_subject
+                SET course_subject_status = 'Inactive'
+                WHERE subject_id = :subject_id
+            ");
+
+            $deactivate_map->execute([
+                "subject_id" => $subject_id
+            ]);
 
             foreach ($course_ids as $course_id) {
-                $map = $pdo->prepare("
-                    INSERT IGNORE INTO course_subject (
-                        course_id,
-                        subject_id,
-                        year_level,
-                        term_name,
-                        is_required,
-                        course_subject_status
-                    )
-                    VALUES (
-                        :course_id,
-                        :subject_id,
-                        :year_level,
-                        :term_name,
-                        1,
-                        'Active'
-                    )
-                ");
-
-                $map->execute([
-                    "course_id" => (int) $course_id,
-                    "subject_id" => $subject_id,
-                    "year_level" => $year_level,
-                    "term_name" => $term_name
-                ]);
+                upsert_course_subject($pdo, (int) $course_id, $subject_id, $year_level, $term_name);
             }
 
             $pdo->commit();
@@ -617,37 +1060,79 @@ try {
         if ($form_action === "delete_subject") {
             $subject_id = (int) ($_POST["subject_id"] ?? 0);
 
+            if ($subject_id <= 0) {
+                redirect_panel("subjects", "Invalid subject selected.", "error");
+            }
+
             $linked_records = count_rows(
                 $pdo,
-                "SELECT COUNT(*) FROM section_subject_offering WHERE subject_id = :id",
-                ["id" => $subject_id]
+                "
+                SELECT COUNT(*)
+                FROM section_subject_offering
+                WHERE subject_id = :id
+                ",
+                [
+                    "id" => $subject_id
+                ]
             );
 
             if ($linked_records > 0) {
-                $statement = $pdo->prepare("UPDATE subject SET subject_status = 'Inactive' WHERE subject_id = :subject_id");
-                $statement->execute(["subject_id" => $subject_id]);
+                $statement = $pdo->prepare("
+                    UPDATE subject
+                    SET subject_status = 'Inactive'
+                    WHERE subject_id = :subject_id
+                ");
 
-                $map = $pdo->prepare("UPDATE course_subject SET course_subject_status = 'Inactive' WHERE subject_id = :subject_id");
-                $map->execute(["subject_id" => $subject_id]);
+                $statement->execute([
+                    "subject_id" => $subject_id
+                ]);
+
+                $map = $pdo->prepare("
+                    UPDATE course_subject
+                    SET course_subject_status = 'Inactive'
+                    WHERE subject_id = :subject_id
+                ");
+
+                $map->execute([
+                    "subject_id" => $subject_id
+                ]);
 
                 redirect_panel("subjects", "You cannot delete an entity with record inside. This will mark as inactive.", "warning");
             }
 
-            $delete_map = $pdo->prepare("DELETE FROM course_subject WHERE subject_id = :subject_id");
-            $delete_map->execute(["subject_id" => $subject_id]);
+            $delete_map = $pdo->prepare("
+                DELETE FROM course_subject
+                WHERE subject_id = :subject_id
+            ");
 
-            $statement = $pdo->prepare("DELETE FROM subject WHERE subject_id = :subject_id");
-            $statement->execute(["subject_id" => $subject_id]);
+            $delete_map->execute([
+                "subject_id" => $subject_id
+            ]);
+
+            $statement = $pdo->prepare("
+                DELETE FROM subject
+                WHERE subject_id = :subject_id
+            ");
+
+            $statement->execute([
+                "subject_id" => $subject_id
+            ]);
 
             redirect_panel("subjects", "Subject successfully deleted!");
         }
     }
-} catch (PDOException $error) {
+} catch (Throwable $error) {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }
 
-    redirect_panel($active_panel, "Database action failed. Please check duplicate values or connected records.", "error");
+    error_log("Academic Structure Error: " . $error->getMessage());
+
+    $error_message = $error instanceof RuntimeException
+        ? $error->getMessage()
+        : "Database action failed. Please check duplicate values or connected records.";
+
+    redirect_panel($active_panel, $error_message, "error");
 }
 
 $flash_message = $_SESSION["academic_flash_message"] ?? "";
@@ -660,25 +1145,25 @@ $departments_all = $pdo->query("
     SELECT department_id, department_code, department_name, department_status
     FROM department
     ORDER BY department_name
-")->fetchAll();
+")->fetchAll(PDO::FETCH_ASSOC);
 
 $courses_all = $pdo->query("
     SELECT course_id, course_code, course_name, department_id, number_of_year_level, course_status
     FROM course
     ORDER BY course_code
-")->fetchAll();
+")->fetchAll(PDO::FETCH_ASSOC);
 
 $faculty_all = $pdo->query("
     SELECT faculty_id, full_name, department_id, faculty_status
     FROM faculty
     ORDER BY full_name
-")->fetchAll();
+")->fetchAll(PDO::FETCH_ASSOC);
 
 $academic_years_all = $pdo->query("
     SELECT academic_year_id, academic_year_name, academic_year_status
     FROM academic_year
     ORDER BY academic_year_id DESC
-")->fetchAll();
+")->fetchAll(PDO::FETCH_ASSOC);
 
 $modal_type = $_GET["type"] ?? "";
 $modal_action = $_GET["action"] ?? "";
@@ -690,7 +1175,8 @@ $modal_id = isset($_GET["id"]) ? (int) $_GET["id"] : 0;
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Academic Structure</title>
-    <link rel="stylesheet" href="academic-structure.css?v=<?php echo time(); ?>"></head>
+    <link rel="stylesheet" href="academic-structure.css?v=<?php echo time(); ?>">
+</head>
 <body class="academic-structure-page">
     <aside class="sidebar">
         <div class="brand">
@@ -704,7 +1190,7 @@ $modal_id = isset($_GET["id"]) ? (int) $_GET["id"] : 0;
             <a class="nav-link" href="student_management.php"><?php echo icon_svg("students"); ?> Student Management</a>
             <a class="nav-link" href="faculty_management.php"><?php echo icon_svg("faculty"); ?> Faculty Management</a>
             <a class="nav-link active" href="academic_structure.php"><?php echo icon_svg("book"); ?> Academic Structure</a>
-            <a class="nav-link" href="#"><?php echo icon_svg("faculty"); ?> Assignment Management</a>
+            <a class="nav-link" href="assignment_management.php"><?php echo icon_svg("assignment"); ?> Assignment Management</a>
             <a class="nav-link" href="#"><?php echo icon_svg("settings"); ?> Evaluation Setup</a>
             <a class="nav-link" href="#"><?php echo icon_svg("clipboard"); ?> Submission Monitoring</a>
             <a class="nav-link" href="#"><?php echo icon_svg("chart"); ?> Reports</a>
