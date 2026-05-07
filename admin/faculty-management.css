@@ -4,15 +4,24 @@
   padding: 0;
 }
 
+html {
+  font-size: 16px;
+}
+
 body {
   font-family: Arial, Helvetica, sans-serif;
   color: #071226;
   background: #ffffff;
+  overflow-x: hidden;
+}
+
+.faculty-management-page {
+  zoom: 0.70;
 }
 
 svg {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   stroke: currentColor;
   fill: none;
   stroke-width: 2;
@@ -25,6 +34,7 @@ button,
 input,
 select,
 textarea {
+  font-family: Arial, Helvetica, sans-serif;
   transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
 }
 
@@ -62,14 +72,14 @@ textarea:focus-visible {
 }
 
 .brand img {
-  width: 68px;
-  height: 68px;
+  width: 72px;
+  height: 72px;
   object-fit: contain;
   margin-bottom: 14px;
 }
 
 .brand h1 {
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 700;
   margin-bottom: 8px;
   white-space: nowrap;
@@ -77,27 +87,27 @@ textarea:focus-visible {
 }
 
 .brand p {
-  font-size: 13px;
+  font-size: 14px;
   color: #556070;
 }
 
 .nav-menu {
-  padding: 18px 16px;
+  padding: 18px 10px;
   display: grid;
-  gap: 6px;
+  gap: 7px;
 }
 
 .nav-link {
   display: flex;
   align-items: center;
-  gap: 12px;
-  min-height: 48px;
-  padding: 0 16px;
+  gap: 13px;
+  min-height: 52px;
+  padding: 0 18px;
   border-radius: 8px;
   color: #071226;
   text-decoration: none;
-  font-weight: 600;
-  font-size: 15px;
+  font-weight: 700;
+  font-size: 17px;
   white-space: nowrap;
 }
 
@@ -121,19 +131,20 @@ textarea:focus-visible {
 .sidebar-bottom {
   margin-top: auto;
   border-top: 1px solid #e5e7eb;
-  padding: 18px;
+  padding: 18px 10px;
 }
 
 .logout-link {
-  min-height: 48px;
+  min-height: 52px;
   color: #071226;
   text-decoration: none;
   font-weight: 700;
+  font-size: 17px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 13px;
   border-radius: 8px;
-  padding: 0 14px;
+  padding: 0 16px;
 }
 
 .logout-link:hover {
@@ -146,13 +157,15 @@ textarea:focus-visible {
 
 .main-content {
   margin-left: 300px;
+  width: calc(100% - 300px);
   min-height: 100vh;
 }
 
 .content-wrap {
-  max-width: 1460px;
-  margin: 0 auto;
-  padding: 42px 32px;
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  padding: 32px 46px;
 }
 
 .page-title-row {
@@ -163,16 +176,16 @@ textarea:focus-visible {
 }
 
 .page-title-row h1 {
-  font-size: 30px;
+  font-size: 34px;
   margin-bottom: 10px;
   color: #071226;
   font-weight: 700;
-  line-height: 1.2;
+  line-height: 1.15;
 }
 
 .page-title-row p {
   color: #556070;
-  font-size: 16px;
+  font-size: 18px;
 }
 
 /* BUTTONS */
@@ -181,18 +194,18 @@ textarea:focus-visible {
 .secondary-button,
 .dark-button,
 .clear-filter {
-  min-height: 48px;
+  min-height: 54px;
   border-radius: 8px;
-  padding: 0 18px;
+  padding: 0 22px;
   border: none;
   text-decoration: none;
   font-weight: 700;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 11px;
   cursor: pointer;
-  font-size: 15px;
+  font-size: 16px;
   white-space: nowrap;
 }
 
@@ -250,9 +263,9 @@ textarea:focus-visible {
 .filter-panel {
   border: 1px solid #d8dce2;
   border-radius: 8px;
-  padding: 24px;
+  padding: 26px;
   background: #ffffff;
-  margin-bottom: 26px;
+  margin-bottom: 28px;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
@@ -264,7 +277,7 @@ textarea:focus-visible {
 .faculty-filter-form {
   display: grid;
   grid-template-columns: repeat(12, 1fr);
-  gap: 14px;
+  gap: 16px;
   align-items: center;
 }
 
@@ -288,14 +301,14 @@ textarea:focus-visible {
 
 .search-box input {
   width: 100%;
-  height: 52px;
+  height: 58px;
   border-radius: 8px;
   border: 1px solid #d8dce2;
   background: #f9fafb;
   color: #111827;
-  font-size: 15px;
+  font-size: 17px;
   outline: none;
-  padding: 0 16px 0 52px;
+  padding: 0 18px 0 56px;
 }
 
 .search-box:hover svg {
@@ -324,14 +337,14 @@ textarea:focus-visible {
 
 .faculty-filter-form select {
   width: 100%;
-  height: 52px;
+  height: 58px;
   border-radius: 8px;
   border: 1px solid #d8dce2;
   background: #f9fafb;
   color: #111827;
-  font-size: 15px;
+  font-size: 17px;
   outline: none;
-  padding: 0 14px;
+  padding: 0 16px;
   cursor: pointer;
   grid-column: span 3;
 }
@@ -350,11 +363,11 @@ textarea:focus-visible {
 
 .faculty-filter-form .clear-filter {
   grid-column: span 3;
-  height: 52px;
+  height: 58px;
 }
 
 .clear-beside-search {
-  height: 52px;
+  height: 58px;
 }
 
 .filter-summary {
@@ -363,7 +376,7 @@ textarea:focus-visible {
   justify-content: space-between;
   align-items: center;
   color: #64748b;
-  font-size: 14px;
+  font-size: 16px;
   margin-top: 4px;
 }
 
@@ -376,36 +389,46 @@ textarea:focus-visible {
 /* TABLE */
 
 .table-card {
+  width: 100%;
   border: 1px solid #d8dce2;
   border-radius: 8px;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
   background: #ffffff;
   box-shadow: 0 8px 22px rgba(15, 23, 42, 0.03);
 }
 
 .faculty-table {
   width: 100%;
+  min-width: 1650px;
   border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.faculty-table th,
+.faculty-table td {
+  vertical-align: middle;
+  text-align: left;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .faculty-table th {
   background: #f8fafc;
   color: #64748b;
   text-transform: uppercase;
-  font-size: 12px;
-  text-align: left;
-  padding: 16px 20px;
+  font-size: 16px;
+  padding: 17px 18px;
   border-bottom: 1px solid #e5e7eb;
-  white-space: nowrap;
   font-weight: 700;
 }
 
 .faculty-table td {
-  padding: 18px 20px;
+  padding: 20px 18px;
   border-bottom: 1px solid #e5e7eb;
   color: #334155;
-  font-size: 14px;
-  vertical-align: middle;
+  font-size: 18px;
 }
 
 .faculty-table tbody tr {
@@ -420,15 +443,65 @@ textarea:focus-visible {
   border-bottom: 0;
 }
 
+.faculty-table th:nth-child(1),
+.faculty-table td:nth-child(1) {
+  width: 135px;
+}
+
+.faculty-table th:nth-child(2),
+.faculty-table td:nth-child(2) {
+  width: 215px;
+}
+
+.faculty-table th:nth-child(3),
+.faculty-table td:nth-child(3) {
+  width: 315px;
+}
+
+.faculty-table th:nth-child(4),
+.faculty-table td:nth-child(4) {
+  width: 360px;
+}
+
+.faculty-table th:nth-child(5),
+.faculty-table td:nth-child(5) {
+  width: 215px;
+}
+
+.faculty-table th:nth-child(6),
+.faculty-table td:nth-child(6) {
+  width: 175px;
+  text-align: center;
+}
+
+.faculty-table th:nth-child(7),
+.faculty-table td:nth-child(7) {
+  width: 145px;
+  text-align: center;
+}
+
+.faculty-table th:nth-child(8),
+.faculty-table td:nth-child(8) {
+  width: 190px;
+  text-align: center;
+}
+
+.faculty-table td:nth-child(6),
+.faculty-table td:nth-child(7),
+.faculty-table td:nth-child(8) {
+  vertical-align: middle;
+}
+
 .actions-head {
-  width: 180px;
+  width: 190px;
 }
 
 .empty-row {
   text-align: center;
   color: #64748b;
   font-weight: 700;
-  padding: 30px !important;
+  padding: 34px !important;
+  font-size: 17px !important;
 }
 
 /* STATUS */
@@ -436,11 +509,13 @@ textarea:focus-visible {
 .status-badge {
   display: inline-flex;
   align-items: center;
-  min-height: 26px;
-  padding: 0 10px;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0 12px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .status-badge.active {
@@ -461,15 +536,19 @@ textarea:focus-visible {
 /* ACTION ICONS */
 
 .action-icons {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
+  gap: 14px;
+  white-space: nowrap;
+  width: 100%;
+  transform: translateX(-7px);
 }
 
 .action-icons a,
 .action-icons button {
-  width: 34px;
-  height: 34px;
+  width: 38px;
+  height: 38px;
   border-radius: 8px;
   background: transparent;
   border: none;
@@ -478,6 +557,7 @@ textarea:focus-visible {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex: 0 0 auto;
 }
 
 .action-icons .view {
@@ -549,31 +629,31 @@ textarea:focus-visible {
 
 .modal-box {
   width: 100%;
-  max-width: 760px;
+  max-width: 820px;
   background: #ffffff;
   border-radius: 8px;
-  padding: 28px;
+  padding: 31px;
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.32);
 }
 
 .faculty-modal {
-  max-width: 760px;
+  max-width: 820px;
 }
 
 .modal-box h2 {
-  font-size: 24px;
-  margin-bottom: 24px;
+  font-size: 28px;
+  margin-bottom: 26px;
   color: #071226;
   font-weight: 700;
 }
 
 .modal-box label {
   display: block;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   color: #374151;
-  margin-bottom: 8px;
-  margin-top: 16px;
+  margin-bottom: 9px;
+  margin-top: 17px;
 }
 
 .modal-box input,
@@ -584,19 +664,19 @@ textarea:focus-visible {
   border-radius: 8px;
   background: #f9fafb;
   color: #374151;
-  font-size: 16px;
-  padding: 0 16px;
+  font-size: 17px;
+  padding: 0 18px;
   outline: none;
 }
 
 .modal-box input,
 .modal-box select {
-  height: 50px;
+  height: 54px;
 }
 
 .modal-box textarea {
-  min-height: 100px;
-  padding-top: 14px;
+  min-height: 115px;
+  padding-top: 16px;
   resize: vertical;
 }
 
@@ -634,36 +714,36 @@ textarea:focus-visible {
 .two-column {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  gap: 18px;
 }
 
 .three-column {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
+  gap: 18px;
 }
 
 .modal-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin-top: 26px;
+  gap: 18px;
+  margin-top: 28px;
 }
 
 .modal-divider {
   height: 1px;
   background: #e5e7eb;
-  margin-top: 24px;
+  margin-top: 26px;
 }
 
 .readonly-status {
-  height: 50px;
+  height: 54px;
   border: 1px solid #d8dce2;
   border-radius: 8px;
   background: #f9fafb;
   display: flex;
   align-items: center;
-  padding: 0 16px;
+  padding: 0 18px;
 }
 
 /* PASSWORD FIELD */
@@ -673,7 +753,7 @@ textarea:focus-visible {
 }
 
 .password-wrapper input {
-  padding-right: 52px;
+  padding-right: 58px;
 }
 
 .password-toggle {
@@ -681,8 +761,8 @@ textarea:focus-visible {
   top: 50%;
   right: 14px;
   transform: translateY(-50%);
-  width: 34px;
-  height: 34px;
+  width: 38px;
+  height: 38px;
   border: none;
   background: transparent;
   color: #64748b;
@@ -699,8 +779,8 @@ textarea:focus-visible {
 }
 
 .password-toggle svg {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
 }
 
 .eye-closed-icon {
@@ -727,16 +807,16 @@ textarea:focus-visible {
   position: fixed;
   top: 50%;
   left: 50%;
-  min-width: 340px;
-  max-width: 560px;
+  min-width: 380px;
+  max-width: 640px;
   transform: translate(-50%, -50%);
   z-index: 150;
-  padding: 22px 26px;
+  padding: 26px 30px;
   border-radius: 10px;
   background: #ffffff;
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.32);
   text-align: center;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
   opacity: 1;
   transition: opacity 0.4s ease, transform 0.4s ease;
@@ -765,6 +845,10 @@ textarea:focus-visible {
 /* RESPONSIVE */
 
 @media (max-width: 1280px) {
+  .faculty-management-page {
+    zoom: 1;
+  }
+
   .sidebar {
     position: static;
     width: 100%;
@@ -772,6 +856,7 @@ textarea:focus-visible {
 
   .main-content {
     margin-left: 0;
+    width: 100%;
   }
 
   .faculty-filter-form,
@@ -792,7 +877,7 @@ textarea:focus-visible {
   }
 
   .faculty-table {
-    min-width: 1080px;
+    min-width: 1300px;
   }
 }
 
@@ -813,146 +898,10 @@ textarea:focus-visible {
 
   .modal-box {
     margin: 24px 0;
+    padding: 26px;
   }
 
   .modal-actions {
     grid-template-columns: 1fr;
   }
-}
-
-/* Faculty table layout fix */
-
-.table-card {
-  overflow-x: auto;
-}
-
-.faculty-table {
-  width: 100%;
-  min-width: 1450px;
-  table-layout: auto;
-}
-
-.faculty-table th,
-.faculty-table td {
-  white-space: nowrap;
-  vertical-align: middle;
-  text-align: left;
-  line-height: 1.25;
-}
-
-.faculty-table th {
-  padding: 16px 20px;
-}
-
-.faculty-table td {
-  padding: 18px 20px;
-}
-
-.faculty-table th:nth-child(1),
-.faculty-table td:nth-child(1) {
-  width: 120px;
-  min-width: 120px;
-}
-
-.faculty-table th:nth-child(2),
-.faculty-table td:nth-child(2) {
-  width: 210px;
-  min-width: 210px;
-}
-
-.faculty-table th:nth-child(3),
-.faculty-table td:nth-child(3) {
-  width: 290px;
-  min-width: 290px;
-}
-
-.faculty-table th:nth-child(4),
-.faculty-table td:nth-child(4) {
-  width: 320px;
-  min-width: 320px;
-}
-
-.faculty-table th:nth-child(5),
-.faculty-table td:nth-child(5) {
-  width: 180px;
-  min-width: 180px;
-}
-
-.faculty-table th:nth-child(6),
-.faculty-table td:nth-child(6) {
-  width: 160px;
-  min-width: 160px;
-  text-align: center;
-}
-
-.faculty-table th:nth-child(7),
-.faculty-table td:nth-child(7) {
-  width: 120px;
-  min-width: 120px;
-  text-align: center;
-}
-
-.faculty-table th:nth-child(8),
-.faculty-table td:nth-child(8) {
-  width: 180px;
-  min-width: 180px;
-  text-align: center;
-}
-
-.faculty-table td:nth-child(6),
-.faculty-table td:nth-child(7),
-.faculty-table td:nth-child(8) {
-  vertical-align: middle;
-}
-
-.status-badge {
-  white-space: nowrap;
-}
-
-.action-icons {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  white-space: nowrap;
-  width: 100%;
-}
-
-.action-icons a,
-.action-icons button {
-  flex: 0 0 auto;
-}
-
-/* Page scale adjustment for faculty management */
-.faculty-management-page {
-  zoom: 0.7;
-}
-
-/* Move faculty page content closer to the sidebar and use more width */
-
-.main-content {
-  margin-left: 300px;
-  width: calc(100% - 300px);
-}
-
-.content-wrap {
-  max-width: none;
-  width: 100%;
-  margin: 0;
-  padding: 32px 18px 32px 28px;
-}
-
-.filter-panel,
-.table-card {
-  width: 100%;
-}
-
-.table-card {
-  overflow-x: auto;
-}
-
-/* Adjust left and right page spacing */
-.content-wrap {
-  padding-left: 48px;
-  padding-right: 48px;
 }

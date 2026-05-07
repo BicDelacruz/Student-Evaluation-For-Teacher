@@ -4,27 +4,36 @@
     padding: 0;
 }
 
+html {
+    font-size: 16px;
+}
+
 body {
     font-family: Arial, Helvetica, sans-serif;
     color: #071226;
     background: #ffffff;
+    overflow-x: hidden;
+}
+
+.admin-dashboard-page {
+    zoom: 0.70;
 }
 
 svg {
-    width: 20px;
-    height: 20px;
-    stroke: currentColor;
-    fill: none;
-    stroke-width: 2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
+  width: 22px;
+  height: 22px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
-
 a,
 button,
 input,
 select,
 textarea {
+    font-family: Arial, Helvetica, sans-serif;
     transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
 }
 
@@ -40,65 +49,65 @@ textarea:focus-visible {
 /* SIDEBAR */
 
 .sidebar {
-    position: fixed;
-    inset: 0 auto 0 0;
-    width: 300px;
-    border-right: 1px solid #e5e7eb;
-    background: #ffffff;
-    display: flex;
-    flex-direction: column;
-    z-index: 20;
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: 300px;
+  border-right: 1px solid #e5e7eb;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  z-index: 10;
 }
 
 .brand {
-    height: 176px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    border-bottom: 1px solid #e5e7eb;
-    text-align: center;
-    padding: 20px;
+  height: 176px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: center;
+  padding: 20px;
 }
 
 .brand img {
-    width: 68px;
-    height: 68px;
-    object-fit: contain;
-    margin-bottom: 14px;
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  margin-bottom: 14px;
 }
 
 .brand h1 {
-    font-size: 15px;
-    font-weight: 700;
-    margin-bottom: 8px;
-    color: #071226;
-    white-space: nowrap;
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  white-space: nowrap;
+  color: #071226;
 }
 
 .brand p {
-    font-size: 13px;
-    color: #556070;
+  font-size: 14px;
+  color: #556070;
 }
 
 .nav-menu {
-    padding: 18px 16px;
+    padding: 18px 10px;
     display: grid;
-    gap: 6px;
+    gap: 7px;
 }
 
 .nav-link {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    min-height: 48px;
-    padding: 0 16px;
-    border-radius: 8px;
-    color: #071226;
-    text-decoration: none;
-    font-weight: 600;
-    font-size: 15px;
-    white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-height: 52px;
+  padding: 0 18px;
+  border-radius: 8px;
+  color: #071226;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 17px;
+  white-space: nowrap;
 }
 
 .nav-link:hover {
@@ -127,21 +136,22 @@ textarea:focus-visible {
 }
 
 .sidebar-bottom {
-    margin-top: auto;
-    border-top: 1px solid #e5e7eb;
-    padding: 18px;
+  margin-top: auto;
+  border-top: 1px solid #e5e7eb;
+  padding: 18px 10px;
 }
 
 .logout-link {
-    min-height: 48px;
-    color: #071226;
-    text-decoration: none;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    border-radius: 8px;
-    padding: 0 14px;
+  min-height: 52px;
+  color: #071226;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 17px;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  border-radius: 8px;
+  padding: 0 16px;
 }
 
 .logout-link:hover {
@@ -163,20 +173,20 @@ textarea:focus-visible {
     width: 100%;
     max-width: none;
     margin: 0;
-    padding: 34px 48px 38px;
+    padding: 32px 46px;
 }
 
 .page-title-row {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 26px;
+    margin-bottom: 28px;
     gap: 20px;
 }
 
 .page-title-row h1 {
-    font-size: 30px;
-    line-height: 1.2;
+    font-size: 34px;
+    line-height: 1.15;
     margin-bottom: 10px;
     color: #071226;
     font-weight: 700;
@@ -184,7 +194,7 @@ textarea:focus-visible {
 
 .page-title-row p {
     color: #556070;
-    font-size: 16px;
+    font-size: 18px;
 }
 
 /* BUTTONS */
@@ -192,14 +202,15 @@ textarea:focus-visible {
 .refresh-btn {
     border: 1px solid #d8dce2;
     border-radius: 8px;
-    min-height: 46px;
-    padding: 0 18px;
+    min-height: 54px;
+    padding: 0 22px;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 11px;
     text-decoration: none;
     color: #071226;
     font-weight: 700;
+    font-size: 16px;
     background: #ffffff;
     white-space: nowrap;
 }
@@ -221,15 +232,16 @@ textarea:focus-visible {
 }
 
 .manage-btn {
-    min-height: 46px;
+    min-height: 54px;
     border-radius: 8px;
     background: #172033;
     color: #ffffff;
     text-decoration: none;
     font-weight: 700;
+    font-size: 16px;
     display: grid;
     place-items: center;
-    padding: 0 18px;
+    padding: 0 22px;
 }
 
 .manage-btn:hover {
@@ -261,7 +273,7 @@ button:active {
 .stats-grid {
     display: grid;
     gap: 24px;
-    margin-bottom: 26px;
+    margin-bottom: 28px;
 }
 
 .admin-stats {
@@ -294,19 +306,19 @@ button:active {
 .stat-card p {
     color: #556070;
     margin-bottom: 10px;
-    font-size: 15px;
+    font-size: 16px;
 }
 
 .stat-card strong {
     display: block;
-    font-size: 32px;
+    font-size: 34px;
     margin-bottom: 20px;
     line-height: 1.1;
 }
 
 .stat-card small {
     color: #556070;
-    font-size: 14px;
+    font-size: 15px;
 }
 
 .blue-text {
@@ -326,8 +338,8 @@ button:active {
 }
 
 .stat-icon {
-    width: 54px;
-    height: 54px;
+    width: 58px;
+    height: 58px;
     border-radius: 8px;
     display: grid;
     place-items: center;
@@ -360,7 +372,7 @@ button:active {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 24px;
-    margin-bottom: 26px;
+    margin-bottom: 28px;
 }
 
 .panel {
@@ -378,7 +390,7 @@ button:active {
 }
 
 .panel h2 {
-    font-size: 22px;
+    font-size: 24px;
     margin-bottom: 20px;
     color: #071226;
     font-weight: 700;
@@ -408,12 +420,17 @@ button:active {
 }
 
 .status-box strong {
-    font-size: 22px;
+    font-size: 24px;
     line-height: 1.1;
 }
 
 .status-box p {
     margin-top: 6px;
+    font-size: 17px;
+}
+
+.status-box > strong {
+    font-size: 22px;
 }
 
 .status-box.green {
@@ -461,6 +478,7 @@ button:active {
 
 .schedule-box p {
     margin-bottom: 20px;
+    font-size: 17px;
 }
 
 .date-grid {
@@ -472,12 +490,17 @@ button:active {
 .date-grid span {
     display: block;
     margin-bottom: 6px;
+    font-size: 16px;
+}
+
+.date-grid strong {
+    font-size: 17px;
 }
 
 /* QUICK ACTIONS */
 
 .quick-panel {
-    margin-bottom: 26px;
+    margin-bottom: 28px;
 }
 
 .quick-grid {
@@ -524,12 +547,12 @@ button:active {
 
 .quick-grid span {
     font-weight: 700;
-    font-size: 15px;
+    font-size: 16px;
 }
 
 .quick-grid small {
     color: #556070;
-    font-size: 14px;
+    font-size: 15px;
 }
 
 /* SYSTEM INFO */
@@ -540,6 +563,7 @@ button:active {
     color: #1e40af;
     border-radius: 8px;
     padding: 16px 18px;
+    font-size: 16px;
     transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
@@ -583,17 +607,17 @@ button:active {
     background: #f8fafc;
     color: #64748b;
     text-transform: uppercase;
-    font-size: 12px;
-    padding: 16px 20px;
+    font-size: 14px;
+    padding: 17px 18px;
     border-bottom: 1px solid #e5e7eb;
     font-weight: 700;
 }
 
 .data-table td {
-    padding: 18px 20px;
+    padding: 20px 18px;
     border-bottom: 1px solid #e5e7eb;
     color: #334155;
-    font-size: 14px;
+    font-size: 17px;
 }
 
 .data-table tbody tr {
@@ -617,6 +641,7 @@ textarea {
     border-radius: 8px;
     background: #f9fafb;
     color: #071226;
+    font-size: 17px;
 }
 
 input:hover,
@@ -636,15 +661,13 @@ textarea:focus {
     box-shadow: 0 0 0 4px rgba(23, 32, 51, 0.10);
 }
 
-/* PAGE ZOOM */
-
-.admin-dashboard-page {
-    zoom: 0.7;
-}
-
 /* RESPONSIVE */
 
-@media (max-width: 1200px) {
+@media (max-width: 1280px) {
+    .admin-dashboard-page {
+        zoom: 1;
+    }
+
     .sidebar {
         position: static;
         width: 100%;
@@ -676,9 +699,5 @@ textarea:focus {
 
     .data-table {
         min-width: 980px;
-    }
-
-    .admin-dashboard-page {
-        zoom: 1;
     }
 }
