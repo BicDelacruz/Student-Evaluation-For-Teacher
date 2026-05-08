@@ -327,23 +327,25 @@ if ($current_period_id) {
             set2.student_evaluation_task_id,
             set2.task_status,
             set2.submitted_at,
-            set2.teaching_assignment_id,
+            seta.teaching_assignment_id,
             f.full_name AS faculty_name,
             subj.subject_title,
             d.department_name,
             er.average_score
          FROM student_evaluation_task set2
-         JOIN teaching_assignment ta ON ta.teaching_assignment_id = set2.teaching_assignment_id
+         JOIN student_evaluation_task_assignment seta ON seta.student_evaluation_task_id = set2.student_evaluation_task_id
+         JOIN teaching_assignment ta ON ta.teaching_assignment_id = seta.teaching_assignment_id
          JOIN faculty f ON f.faculty_id = ta.faculty_id
          JOIN section_subject_offering sso ON sso.section_subject_offering_id = ta.section_subject_offering_id
          JOIN subject subj ON subj.subject_id = sso.subject_id
          JOIN department d ON d.department_id = subj.department_id
          LEFT JOIN evaluation_response er
                ON er.student_evaluation_task_id = set2.student_evaluation_task_id
+              AND er.teaching_assignment_id = seta.teaching_assignment_id
               AND er.response_status = 'Submitted'
          WHERE set2.student_id = ?
            AND set2.evaluation_period_id = ?
-         ORDER BY set2.student_evaluation_task_id ASC"
+         ORDER BY set2.student_evaluation_task_id ASC, seta.teaching_assignment_id ASC"
     );
     $stmt->bind_param("ii", $student_id, $current_period_id);
     $stmt->execute();

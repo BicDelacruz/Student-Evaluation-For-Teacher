@@ -91,8 +91,10 @@ if (isset($_GET["action"]) && in_array($_GET["action"], ["report_download", "rep
             ON er.teaching_assignment_id = ta.teaching_assignment_id
             AND er.evaluation_period_id = :period_id
             AND er.response_status = 'Submitted'
+        LEFT JOIN student_evaluation_task_assignment seta
+            ON seta.teaching_assignment_id = ta.teaching_assignment_id
         LEFT JOIN student_evaluation_task set2
-            ON set2.teaching_assignment_id = ta.teaching_assignment_id
+            ON set2.student_evaluation_task_id = seta.student_evaluation_task_id
             AND set2.evaluation_period_id = :period_id2
         WHERE ta.faculty_id = :faculty_id
         $rpt_ta_filter
@@ -890,62 +892,31 @@ try {
     if ($period_id) {
         $stmt = $pdo->prepare("
             SELECT
-                er.teaching_assignment_id,
+                fer.faculty_evaluation_result_id,
+                fer.teaching_assignment_id,
+                fer.eligible_student_count,
+                fer.submitted_response_count,
+                fer.pending_response_count,
+                fer.participation_rate,
+                fer.overall_average_score,
+                fer.result_status,
+                fer.released_at,
                 sub.subject_code,
                 sub.subject_title,
                 sec.section_name,
-                c.course_code,
-                COUNT(er.evaluation_response_id) AS submitted_response_count,
-                ROUND(AVG(er.average_score), 2) AS overall_average_score
-            FROM evaluation_response er
-            INNER JOIN teaching_assignment ta ON ta.teaching_assignment_id = er.teaching_assignment_id
+                c.course_code
+            FROM faculty_evaluation_result fer
+            INNER JOIN teaching_assignment ta ON ta.teaching_assignment_id = fer.teaching_assignment_id
             INNER JOIN section_subject_offering sso ON sso.section_subject_offering_id = ta.section_subject_offering_id
             INNER JOIN subject sub ON sub.subject_id = sso.subject_id
             INNER JOIN section sec ON sec.section_id = sso.section_id
             INNER JOIN course c ON c.course_id = sec.course_id
             WHERE ta.faculty_id = :faculty_id
-            AND er.evaluation_period_id = :period_id
-            AND er.response_status = 'Submitted'
-            GROUP BY er.teaching_assignment_id, sub.subject_code, sub.subject_title,
-                     sec.section_name, c.course_code
+            AND fer.evaluation_period_id = :period_id
             ORDER BY sub.subject_code, sec.section_name
         ");
         $stmt->execute(["faculty_id" => $faculty_id, "period_id" => $period_id]);
-        $resp_rows = $stmt->fetchAll();
-
-        $stmt2 = $pdo->prepare("
-            SELECT teaching_assignment_id, COUNT(*) AS task_count
-            FROM student_evaluation_task
-            WHERE evaluation_period_id = :period_id
-            GROUP BY teaching_assignment_id
-        ");
-        $stmt2->execute(["period_id" => $period_id]);
-        $task_counts = [];
-        foreach ($stmt2->fetchAll() as $tr) {
-            $task_counts[(int)$tr["teaching_assignment_id"]] = (int)$tr["task_count"];
-        }
-
-        $all_results = [];
-        foreach ($resp_rows as $r) {
-            $ta_id = (int)$r["teaching_assignment_id"];
-            $submitted = (int)$r["submitted_response_count"];
-            $eligible = $task_counts[$ta_id] ?? $submitted;
-            $rate = $eligible > 0 ? round(($submitted / $eligible) * 100, 1) : 0.0;
-            $all_results[] = [
-                "teaching_assignment_id"  => $ta_id,
-                "subject_code"            => $r["subject_code"],
-                "subject_title"           => $r["subject_title"],
-                "section_name"            => $r["section_name"],
-                "course_code"             => $r["course_code"],
-                "submitted_response_count"=> $submitted,
-                "eligible_student_count"  => $eligible,
-                "pending_response_count"  => max($eligible - $submitted, 0),
-                "participation_rate"      => $rate,
-                "overall_average_score"   => $r["overall_average_score"],
-                "result_status"           => "Submitted",
-                "released_at"             => null,
-            ];
-        }
+        $all_results = $stmt->fetchAll();
 
         $stmt = $pdo->prepare("
             SELECT
@@ -954,38 +925,43 @@ try {
                 sub.subject_code,
                 sub.subject_title,
                 sec.section_name,
-                er.average_score
+                fer.overall_average_score AS average_score
             FROM evaluation_response_comment erc
             INNER JOIN evaluation_response er ON er.evaluation_response_id = erc.evaluation_response_id
             INNER JOIN teaching_assignment ta ON ta.teaching_assignment_id = er.teaching_assignment_id
             INNER JOIN section_subject_offering sso ON sso.section_subject_offering_id = ta.section_subject_offering_id
             INNER JOIN subject sub ON sub.subject_id = sso.subject_id
             INNER JOIN section sec ON sec.section_id = sso.section_id
+            LEFT JOIN faculty_evaluation_result fer
+                ON fer.teaching_assignment_id = ta.teaching_assignment_id
+                AND fer.evaluation_period_id = er.evaluation_period_id
             WHERE ta.faculty_id = :faculty_id
             AND er.evaluation_period_id = :period_id
             AND er.response_status = 'Submitted'
+            AND erc.is_visible_to_faculty = 1
+            AND erc.moderation_status = 'Approved'
             ORDER BY sub.subject_code, sec.section_name, erc.submitted_at ASC
         ");
         $stmt->execute(["faculty_id" => $faculty_id, "period_id" => $period_id]);
         $all_comments_raw = $stmt->fetchAll();
 
-        foreach ($all_comments_raw as $c) {
-            $key = $c["subject_code"] . "||" . $c["section_name"];
+        foreach ($all_comments_raw as $row) {
+            $key = $row["subject_code"] . "||" . $row["section_name"];
             if (!isset($comments_data[$key])) {
                 $comments_data[$key] = [
-                    "subject_code" => $c["subject_code"],
-                    "subject_title" => $c["subject_title"],
-                    "section_name" => $c["section_name"],
+                    "subject_code"  => $row["subject_code"],
+                    "subject_title" => $row["subject_title"],
+                    "section_name"  => $row["section_name"],
                     "average_score" => null,
-                    "comments" => []
+                    "comments"      => []
                 ];
             }
-            if ($c["average_score"] !== null) {
-                $comments_data[$key]["average_score"] = $c["average_score"];
+            if ($row["average_score"] !== null) {
+                $comments_data[$key]["average_score"] = $row["average_score"];
             }
             $comments_data[$key]["comments"][] = [
-                "comment_text" => $c["comment_text"],
-                "submitted_at" => $c["submitted_at"]
+                "comment_text" => $row["comment_text"],
+                "submitted_at" => $row["submitted_at"]
             ];
         }
 
@@ -993,73 +969,71 @@ try {
 
         $stmt = $pdo->prepare("
             SELECT
-                era.evaluation_form_item_id,
-                era.rating_value,
+                fer.faculty_evaluation_result_id,
                 ec.category_name,
-                efc.display_order AS cat_order,
-                efi.display_order AS item_order,
-                ta.teaching_assignment_id,
+                COALESCE(
+                    frcs.average_score,
+                    (SELECT AVG(era2.rating_value)
+                     FROM evaluation_response_answer era2
+                     INNER JOIN evaluation_form_item efi2 ON efi2.evaluation_form_item_id = era2.evaluation_form_item_id
+                     INNER JOIN evaluation_response er2 ON er2.evaluation_response_id = era2.evaluation_response_id
+                     WHERE er2.teaching_assignment_id = fer.teaching_assignment_id
+                       AND efi2.evaluation_form_category_id = efc.evaluation_form_category_id
+                       AND er2.response_status = 'Submitted')
+                ) AS average_score,
+                COALESCE(
+                    frcs.percentage_score,
+                    (SELECT AVG(era2.rating_value) / 5.0 * 100
+                     FROM evaluation_response_answer era2
+                     INNER JOIN evaluation_form_item efi2 ON efi2.evaluation_form_item_id = era2.evaluation_form_item_id
+                     INNER JOIN evaluation_response er2 ON er2.evaluation_response_id = era2.evaluation_response_id
+                     WHERE er2.teaching_assignment_id = fer.teaching_assignment_id
+                       AND efi2.evaluation_form_category_id = efc.evaluation_form_category_id
+                       AND er2.response_status = 'Submitted')
+                ) AS percentage_score,
+                frcs.rating_description,
                 sub.subject_code,
                 sub.subject_title,
-                sec.section_name
-            FROM evaluation_response_answer era
-            INNER JOIN evaluation_response er ON er.evaluation_response_id = era.evaluation_response_id
-            INNER JOIN evaluation_form_item efi ON efi.evaluation_form_item_id = era.evaluation_form_item_id
-            INNER JOIN evaluation_form_category efc ON efc.evaluation_form_category_id = efi.evaluation_form_category_id
-            INNER JOIN evaluation_category ec ON ec.evaluation_category_id = efc.evaluation_category_id
-            INNER JOIN teaching_assignment ta ON ta.teaching_assignment_id = er.teaching_assignment_id
+                sec.section_name,
+                fer.overall_average_score,
+                efc.display_order
+            FROM faculty_evaluation_result fer
+            INNER JOIN teaching_assignment ta ON ta.teaching_assignment_id = fer.teaching_assignment_id
             INNER JOIN section_subject_offering sso ON sso.section_subject_offering_id = ta.section_subject_offering_id
             INNER JOIN subject sub ON sub.subject_id = sso.subject_id
             INNER JOIN section sec ON sec.section_id = sso.section_id
+            INNER JOIN evaluation_form_category efc ON efc.evaluation_form_id = fer.evaluation_form_id
+                AND efc.form_category_status = 'Active'
+            INNER JOIN evaluation_category ec ON ec.evaluation_category_id = efc.evaluation_category_id
+            LEFT JOIN faculty_result_category_score frcs
+                ON frcs.faculty_evaluation_result_id = fer.faculty_evaluation_result_id
+                AND frcs.evaluation_form_category_id = efc.evaluation_form_category_id
             WHERE ta.faculty_id = :faculty_id
-            AND er.evaluation_period_id = :period_id
-            AND er.response_status = 'Submitted'
-            ORDER BY sub.subject_code, sec.section_name, efc.display_order, efi.display_order
+            AND fer.evaluation_period_id = :period_id
+            AND fer.result_status = 'Released'
+            ORDER BY sub.subject_code, sec.section_name, efc.display_order
         ");
         $stmt->execute(["faculty_id" => $faculty_id, "period_id" => $period_id]);
         $criteria_raw = $stmt->fetchAll();
 
-        $cat_sums = [];
-        $cat_counts = [];
         foreach ($criteria_raw as $row) {
             $key = $row["subject_code"] . "||" . $row["section_name"];
-            $cat = $row["category_name"];
             if (!isset($criteria_data[$key])) {
                 $criteria_data[$key] = [
-                    "subject_code" => $row["subject_code"],
+                    "subject_code"  => $row["subject_code"],
                     "subject_title" => $row["subject_title"],
-                    "section_name" => $row["section_name"],
-                    "overall_avg" => null,
-                    "categories" => []
+                    "section_name"  => $row["section_name"],
+                    "overall_avg"   => $row["overall_average_score"],
+                    "categories"    => []
                 ];
-                $cat_sums[$key] = [];
-                $cat_counts[$key] = [];
             }
-            if (!isset($cat_sums[$key][$cat])) {
-                $cat_sums[$key][$cat] = 0.0;
-                $cat_counts[$key][$cat] = 0;
-            }
-            $cat_sums[$key][$cat] += (float) $row["rating_value"];
-            $cat_counts[$key][$cat]++;
+            $criteria_data[$key]["categories"][] = [
+                "category_name"    => $row["category_name"],
+                "average_score"    => $row["average_score"],
+                "percentage_score" => $row["percentage_score"],
+                "rating_description" => $row["rating_description"]
+            ];
         }
-        foreach ($criteria_data as $key => &$cd) {
-            $total_sum = 0.0;
-            $total_cnt = 0;
-            foreach ($cat_sums[$key] as $cat => $sum) {
-                $cnt = $cat_counts[$key][$cat];
-                $avg = $cnt > 0 ? round($sum / $cnt, 2) : 0.0;
-                $pct = round(($avg / 5) * 100, 1);
-                $cd["categories"][] = [
-                    "category_name" => $cat,
-                    "average_score" => $avg,
-                    "percentage_score" => $pct
-                ];
-                $total_sum += $avg;
-                $total_cnt++;
-            }
-            $cd["overall_avg"] = $total_cnt > 0 ? round($total_sum / $total_cnt, 2) : null;
-        }
-        unset($cd);
     }
 } catch (Throwable $error) {
     $assigned_subjects = [];
@@ -1079,14 +1053,18 @@ $participation_sum = 0.0;
 $participation_count = 0;
 
 foreach ($all_results as $r) {
-    $released_count++;
-    if ($r["overall_average_score"] !== null) {
-        $average_sum += (float) $r["overall_average_score"];
-        $average_count++;
-    }
-    if ((int) $r["eligible_student_count"] > 0) {
-        $participation_sum += (float) $r["participation_rate"];
-        $participation_count++;
+    if ($r["result_status"] === "Released") {
+        $released_count++;
+        if ($r["overall_average_score"] !== null) {
+            $average_sum += (float) $r["overall_average_score"];
+            $average_count++;
+        }
+        if ((int) $r["eligible_student_count"] > 0) {
+            $participation_sum += (float) $r["participation_rate"];
+            $participation_count++;
+        }
+    } else {
+        $unreleased_count++;
     }
 }
 
