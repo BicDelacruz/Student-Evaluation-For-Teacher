@@ -324,30 +324,43 @@ $assigned_teachers = [];
 if ($current_period_id) {
     $stmt = $db->prepare(
         "SELECT
-            set2.student_evaluation_task_id,
-            set2.task_status,
-            set2.submitted_at,
-            seta.teaching_assignment_id,
+            ta.teaching_assignment_id,
             f.full_name AS faculty_name,
             subj.subject_title,
+            subj.subject_code,
             d.department_name,
+            set2.student_evaluation_task_id,
+            CASE
+                WHEN er.evaluation_response_id IS NOT NULL
+                     AND er.response_status = 'Submitted'
+                THEN 'Submitted'
+                ELSE 'Pending'
+            END AS task_status,
+            er.submitted_at,
             er.average_score
-         FROM student_evaluation_task set2
-         JOIN student_evaluation_task_assignment seta ON seta.student_evaluation_task_id = set2.student_evaluation_task_id
-         JOIN teaching_assignment ta ON ta.teaching_assignment_id = seta.teaching_assignment_id
-         JOIN faculty f ON f.faculty_id = ta.faculty_id
-         JOIN section_subject_offering sso ON sso.section_subject_offering_id = ta.section_subject_offering_id
-         JOIN subject subj ON subj.subject_id = sso.subject_id
-         JOIN department d ON d.department_id = subj.department_id
+         FROM student s
+         INNER JOIN evaluation_period ep
+             ON ep.evaluation_period_id = ?
+         INNER JOIN section_subject_offering sso
+             ON sso.section_id = s.current_section_id
+            AND sso.term_id   = ep.term_id
+         INNER JOIN teaching_assignment ta
+             ON ta.section_subject_offering_id = sso.section_subject_offering_id
+            AND ta.term_id = ep.term_id
+         INNER JOIN faculty f    ON f.faculty_id    = ta.faculty_id
+         INNER JOIN subject subj ON subj.subject_id = sso.subject_id
+         LEFT JOIN department d  ON d.department_id = subj.department_id
+         LEFT JOIN student_evaluation_task set2
+             ON set2.student_id           = s.student_id
+            AND set2.evaluation_period_id = ep.evaluation_period_id
          LEFT JOIN evaluation_response er
-               ON er.student_evaluation_task_id = set2.student_evaluation_task_id
-              AND er.teaching_assignment_id = seta.teaching_assignment_id
-              AND er.response_status = 'Submitted'
-         WHERE set2.student_id = ?
-           AND set2.evaluation_period_id = ?
-         ORDER BY set2.student_evaluation_task_id ASC, seta.teaching_assignment_id ASC"
+             ON er.student_id             = s.student_id
+            AND er.teaching_assignment_id = ta.teaching_assignment_id
+            AND er.evaluation_period_id   = ep.evaluation_period_id
+         WHERE s.student_id = ? AND sso.offering_status = 'Active'
+         ORDER BY subj.subject_code ASC"
     );
-    $stmt->bind_param("ii", $student_id, $current_period_id);
+    $stmt->bind_param("ii", $current_period_id, $student_id);
     $stmt->execute();
     $result = $stmt->get_result();
     while ($row = $result->fetch_assoc()) {
@@ -508,7 +521,6 @@ function svg_icon(string $name, string $color = "currentColor"): string
     <title>Student Dashboard - Student Evaluation for Teacher</title>
     <link rel="stylesheet" href="student-dashboard.css">
     <style>
-
         .tab-panel {
             display: none;
         }
@@ -2500,11 +2512,11 @@ function svg_icon(string $name, string $color = "currentColor"): string
                                     <thead>
                                         <tr>
                                             <th>Statement</th>
-                                            <th title="Double-click to rate all" style="cursor:pointer;">1</th>
-                                            <th title="Double-click to rate all" style="cursor:pointer;">2</th>
-                                            <th title="Double-click to rate all" style="cursor:pointer;">3</th>
-                                            <th title="Double-click to rate all" style="cursor:pointer;">4</th>
-                                            <th title="Double-click to rate all" style="cursor:pointer;">5</th>
+                                            <th title="Click to rate all" style="cursor:pointer;user-select:none;-webkit-user-select:none;">1</th>
+                                            <th title="Click to rate all" style="cursor:pointer;user-select:none;-webkit-user-select:none;">2</th>
+                                            <th title="Click to rate all" style="cursor:pointer;user-select:none;-webkit-user-select:none;">3</th>
+                                            <th title="Click to rate all" style="cursor:pointer;user-select:none;-webkit-user-select:none;">4</th>
+                                            <th title="Click to rate all" style="cursor:pointer;user-select:none;-webkit-user-select:none;">5</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -3216,7 +3228,7 @@ function svg_icon(string $name, string $color = "currentColor"): string
                     updateProgress();
                     checkProceedReady();
                 });
-                table.addEventListener("dblclick", function (e) {
+                table.addEventListener("click", function (e) {
                     const th = e.target.closest("thead th");
                     if (!th) return;
                     const allThs = Array.from(table.querySelectorAll("thead th"));

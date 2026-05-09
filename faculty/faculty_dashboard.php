@@ -27,9 +27,9 @@ try {
         "root",
         "",
         [
-            PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_EMULATE_PREPARES   => true,
+            PDO::ATTR_EMULATE_PREPARES => true,
         ]
     );
 } catch (PDOException $e) {
@@ -72,43 +72,48 @@ if (isset($_GET["action"]) && in_array($_GET["action"], ["report_download", "rep
     $rpt_school = $rpt_school_stmt->fetch();
     $rpt_school_name = $rpt_school ? $rpt_school["school_name"] : "";
     $rpt_ta_filter = $rpt_filter_ta ? "AND ta.teaching_assignment_id = :ta_id" : "";
-    $rpt_results_stmt = $pdo->prepare("
-        SELECT
-            ta.teaching_assignment_id,
-            COUNT(DISTINCT er.evaluation_response_id) AS submitted_response_count,
-            COUNT(DISTINCT set2.student_evaluation_task_id) AS eligible_student_count,
-            ROUND(AVG(er.average_score), 2) AS overall_average_score,
-            sub.subject_code, sub.subject_title, sec.section_name, c.course_code, t.term_name,
-            'Submitted' AS result_status,
-            NULL AS released_at
-        FROM teaching_assignment ta
-        INNER JOIN section_subject_offering sso ON sso.section_subject_offering_id = ta.section_subject_offering_id
-        INNER JOIN subject sub ON sub.subject_id = sso.subject_id
-        INNER JOIN section sec ON sec.section_id = sso.section_id
-        INNER JOIN course c ON c.course_id = sec.course_id
-        INNER JOIN term t ON t.term_id = ta.term_id
-        LEFT JOIN evaluation_response er
-            ON er.teaching_assignment_id = ta.teaching_assignment_id
-            AND er.evaluation_period_id = :period_id
-            AND er.response_status = 'Submitted'
-        LEFT JOIN student_evaluation_task_assignment seta
-            ON seta.teaching_assignment_id = ta.teaching_assignment_id
-        LEFT JOIN student_evaluation_task set2
-            ON set2.student_evaluation_task_id = seta.student_evaluation_task_id
-            AND set2.evaluation_period_id = :period_id2
-        WHERE ta.faculty_id = :faculty_id
-        $rpt_ta_filter
-        GROUP BY ta.teaching_assignment_id, sub.subject_code, sub.subject_title,
-                 sec.section_name, c.course_code, t.term_name
-        ORDER BY sub.subject_code, sec.section_name
-    ");
-    $rpt_bind = ["faculty_id" => $rpt_faculty_id, "period_id" => $rpt_period_id, "period_id2" => $rpt_period_id];
-    if ($rpt_filter_ta)
-        $rpt_bind["ta_id"] = $rpt_filter_ta;
-    $rpt_results_stmt->execute($rpt_bind);
-    $rpt_results_raw = $rpt_results_stmt->fetchAll();
+    $query = "
+    SELECT 
+        ta.teaching_assignment_id,
+        sub.subject_code, 
+        sub.subject_title, 
+        sec.section_name, 
+        c.course_code, 
+        t.term_name,
+        COUNT(DISTINCT er.evaluation_response_id) AS submitted_response_count,
+        (SELECT COUNT(s.student_id) 
+         FROM student s 
+         WHERE s.current_section_id = sso.section_id) AS eligible_student_count,
+        ROUND(AVG(er.average_score), 2) AS overall_average_score,
+        'Submitted' AS result_status
+    FROM teaching_assignment ta
+    INNER JOIN section_subject_offering sso ON sso.section_subject_offering_id = ta.section_subject_offering_id
+    INNER JOIN subject sub ON sub.subject_id = sso.subject_id
+    INNER JOIN section sec ON sec.section_id = sso.section_id
+    INNER JOIN course c ON c.course_id = sec.course_id
+    INNER JOIN term t ON t.term_id = ta.term_id
+    INNER JOIN evaluation_period ep ON ep.evaluation_period_id = :period_id_filter
+    LEFT JOIN evaluation_response er ON er.teaching_assignment_id = ta.teaching_assignment_id 
+                                    AND er.evaluation_period_id = ep.evaluation_period_id
+    WHERE ta.faculty_id = :faculty_id
+      AND ta.term_id = ep.term_id -- This ensures faculty only sees classes for the active term
+    $rpt_ta_filter 
+    GROUP BY ta.teaching_assignment_id, sub.subject_code, sub.subject_title, 
+             sec.section_name, c.course_code, t.term_name, sso.section_id
+    ORDER BY sub.subject_code, sec.section_name";
+
+    $rpt_results_stmt = $pdo->prepare($query);
+
+    
+    $params = ['period_id_filter' => $rpt_period_id, 'faculty_id' => $rpt_faculty_id];
+    if ($rpt_filter_ta) {
+        $params['ta_id'] = $rpt_filter_ta;
+    }
+    $rpt_results_stmt->execute($params);
+
+    $report_results = $rpt_results_stmt->fetchAll();
     $rpt_results = [];
-    foreach ($rpt_results_raw as $rr) {
+    foreach ($report_results as $rr) {
         $rr["pending_response_count"] = max((int) $rr["eligible_student_count"] - (int) $rr["submitted_response_count"], 0);
         $rr["participation_rate"] = $rr["eligible_student_count"] > 0
             ? round(($rr["submitted_response_count"] / $rr["eligible_student_count"]) * 100, 1)
@@ -622,8 +627,9 @@ if (isset($_GET["action"]) && in_array($_GET["action"], ["report_download", "rep
             ?>
             <div class="rpt-subject-block">
                 <div class="rpt-subject-header"><?php echo e($r["subject_code"]); ?> &ndash;
-                    <?php echo e($r["section_name"]); ?>        <?php echo $badge; ?> <span
-                        class="rpt-subject-sub"><?php echo e($r["subject_title"]); ?></span></div>
+                    <?php echo e($r["section_name"]); ?>         <?php echo $badge; ?> <span
+                        class="rpt-subject-sub"><?php echo e($r["subject_title"]); ?></span>
+                </div>
                 <div class="rpt-subject-body">
                     <div class="rpt-stats-row">
                         <div class="rpt-stat">
@@ -647,7 +653,8 @@ if (isset($_GET["action"]) && in_array($_GET["action"], ["report_download", "rep
                         <?php if ($avg !== null): ?>
                             <div class="rpt-stat">
                                 <div class="rpt-stat-val" style="color:<?php echo rpt_score_color($avg); ?>;">
-                                    <?php echo number_format($avg, 2); ?></div>
+                                    <?php echo number_format($avg, 2); ?>
+                                </div>
                                 <div class="rpt-stat-lbl">Avg Score / 5.00<br><em><?php echo rpt_score_label($avg); ?></em></div>
                             </div><?php endif; ?>
                     </div>
@@ -758,16 +765,19 @@ if (isset($_GET["action"]) && in_array($_GET["action"], ["report_download", "rep
                         <div class="rpt-score-big"
                             style="color:<?php echo $rpt_avg_count > 0 ? rpt_score_color($rpt_overall_avg_val) : '#172033'; ?>;">
                             <?php echo $rpt_overall_avg_fmt; ?><span style="font-size:14pt;font-weight:normal;color:#888;"> /
-                                5.00</span></div>
+                                5.00</span>
+                        </div>
                         <?php if ($rpt_avg_count > 0): ?>
                             <div style="font-size:11pt;color:#555;margin-top:4px;">
-                                <?php echo rpt_score_label($rpt_overall_avg_val); ?></div><?php endif; ?>
+                                <?php echo rpt_score_label($rpt_overall_avg_val); ?>
+                            </div><?php endif; ?>
                     </div>
                     <div style="text-align:right;">
                         <div style="font-size:10pt;color:#555;margin-bottom:4px;">Overall Participation Rate</div>
                         <div style="font-size:22pt;font-weight:bold;color:#2563eb;"><?php echo $rpt_overall_rate; ?>%</div>
                         <div style="font-size:10pt;color:#555;"><?php echo $rpt_total_submitted; ?> /
-                            <?php echo $rpt_total_eligible; ?> students</div>
+                            <?php echo $rpt_total_eligible; ?> students
+                        </div>
                     </div>
                 </div>
             </div>
@@ -775,7 +785,7 @@ if (isset($_GET["action"]) && in_array($_GET["action"], ["report_download", "rep
         <div class="rpt-footer">This report is system-generated and contains confidential evaluation data. All student
             information is anonymous.
             Generated on <?php echo e($rpt_date_generated); ?><?php if ($rpt_school_name): ?> &bull;
-                <?php echo e($rpt_school_name); ?>    <?php endif; ?>
+                <?php echo e($rpt_school_name); ?>     <?php endif; ?>
         </div>
     </body>
 
@@ -824,7 +834,11 @@ $all_results = [];
 $comments_data = [];
 $participation_data = [];
 $criteria_data = [];
+$faculty_id = null;
+$period_id = 0;
+$active_period_term_id = 0;
 
+// Try block 1: Fetch faculty profile and period (critical data)
 try {
     $stmt = $pdo->prepare("
         SELECT f.faculty_id, f.faculty_number, f.full_name, d.department_name, d.department_code
@@ -853,70 +867,116 @@ try {
     $current_period = $stmt->fetch();
 
     $period_id = $current_period ? (int) $current_period["evaluation_period_id"] : 0;
+    $active_period_term_id = $current_period ? (int) $current_period["term_id"] : 0;
+} catch (Throwable $error) {
+    error_log("faculty_dashboard critical error: " . $error->getMessage() . " in " . $error->getFile() . ":" . $error->getLine());
+}
 
-    $stmt = $pdo->prepare("
-        SELECT
-            ta.teaching_assignment_id,
-            sub.subject_id,
-            sub.subject_code,
-            sub.subject_title,
-            sec.section_id,
-            sec.section_name,
-            sec.year_level,
-            c.course_code,
-            t.term_name,
-            t.term_id,
-            COUNT(DISTINCT sse.student_id) AS student_count
-        FROM teaching_assignment ta
-        INNER JOIN section_subject_offering sso ON sso.section_subject_offering_id = ta.section_subject_offering_id
-        INNER JOIN subject sub ON sub.subject_id = sso.subject_id
-        INNER JOIN section sec ON sec.section_id = sso.section_id
-        INNER JOIN course c ON c.course_id = sec.course_id
-        INNER JOIN term t ON t.term_id = ta.term_id
-        LEFT JOIN student_section_enrollment sse
-            ON sse.section_id = sec.section_id
-            AND sse.term_id = ta.term_id
-            AND sse.enrollment_status = 'Active'
-        WHERE ta.faculty_id = :faculty_id
-        AND ta.assignment_status = 'Active'
-        GROUP BY
-            ta.teaching_assignment_id,
-            sub.subject_id, sub.subject_code, sub.subject_title,
-            sec.section_id, sec.section_name, sec.year_level,
-            c.course_code, t.term_name, t.term_id
-        ORDER BY sub.subject_code, sec.section_name
-    ");
-    $stmt->execute(["faculty_id" => $faculty_id]);
-    $assigned_subjects = $stmt->fetchAll();
-
-    if ($period_id) {
+// Try block 2: Fetch assigned subjects (independent of results data)
+if ($faculty_id && $active_period_term_id) {
+    try {
         $stmt = $pdo->prepare("
             SELECT
-                fer.faculty_evaluation_result_id,
-                fer.teaching_assignment_id,
-                fer.eligible_student_count,
-                fer.submitted_response_count,
-                fer.pending_response_count,
-                fer.participation_rate,
-                fer.overall_average_score,
-                fer.result_status,
-                fer.released_at,
+                ta.teaching_assignment_id,
+                sub.subject_id,
                 sub.subject_code,
                 sub.subject_title,
+                sec.section_id,
                 sec.section_name,
-                c.course_code
-            FROM faculty_evaluation_result fer
-            INNER JOIN teaching_assignment ta ON ta.teaching_assignment_id = fer.teaching_assignment_id
+                sec.year_level,
+                c.course_code,
+                t.term_name,
+                t.term_id,
+                COUNT(DISTINCT sse.student_id) AS student_count
+            FROM teaching_assignment ta
             INNER JOIN section_subject_offering sso ON sso.section_subject_offering_id = ta.section_subject_offering_id
             INNER JOIN subject sub ON sub.subject_id = sso.subject_id
             INNER JOIN section sec ON sec.section_id = sso.section_id
             INNER JOIN course c ON c.course_id = sec.course_id
+            INNER JOIN term t ON t.term_id = ta.term_id
+            LEFT JOIN student_section_enrollment sse
+                ON sse.section_id = sec.section_id
+                AND sse.term_id = ta.term_id
+                AND sse.enrollment_status = 'Active'
             WHERE ta.faculty_id = :faculty_id
-            AND fer.evaluation_period_id = :period_id
+              AND ta.assignment_status = 'Active'
+              AND ta.term_id = :term_id
+            GROUP BY
+                ta.teaching_assignment_id,
+                sub.subject_id, sub.subject_code, sub.subject_title,
+                sec.section_id, sec.section_name, sec.year_level,
+                c.course_code, t.term_name, t.term_id
             ORDER BY sub.subject_code, sec.section_name
         ");
-        $stmt->execute(["faculty_id" => $faculty_id, "period_id" => $period_id]);
-        $all_results = $stmt->fetchAll();
+        $stmt->execute(["faculty_id" => $faculty_id, "term_id" => $active_period_term_id]);
+        $assigned_subjects = $stmt->fetchAll();
+    } catch (Throwable $error) {
+        error_log("faculty_dashboard assigned_subjects error: " . $error->getMessage() . " in " . $error->getFile() . ":" . $error->getLine());
+    }
+}
+
+// Try block 3: Fetch results and other data
+if ($faculty_id && $period_id && $active_period_term_id) {
+    try {
+        // Build $all_results directly from evaluation_response so data shows even before
+        // sp_compute_faculty_result has been run (faculty_evaluation_result may be empty).
+        $stmt = $pdo->prepare("
+            SELECT
+                ta.teaching_assignment_id,
+                sub.subject_code,
+                sub.subject_title,
+                sec.section_name,
+                c.course_code,
+                -- Dynamic eligible count via LEFT JOIN instead of correlated subquery
+                COUNT(DISTINCT s_elig.student_id) AS eligible_student_count,
+                COUNT(DISTINCT CASE WHEN er.response_status = 'Submitted' THEN er.evaluation_response_id END) AS submitted_response_count,
+                ROUND(AVG(CASE WHEN er.response_status = 'Submitted' THEN er.average_score END), 2) AS overall_average_score,
+                COALESCE(fer.result_status, 'Pending') AS result_status,
+                fer.released_at,
+                fer.faculty_evaluation_result_id
+            FROM teaching_assignment ta
+            INNER JOIN section_subject_offering sso
+                ON sso.section_subject_offering_id = ta.section_subject_offering_id
+            INNER JOIN subject sub ON sub.subject_id = sso.subject_id
+            INNER JOIN section sec ON sec.section_id = sso.section_id
+            INNER JOIN course c ON c.course_id = sec.course_id
+            -- Join to count eligible students in this section
+            LEFT JOIN student s_elig
+                ON s_elig.current_section_id = sso.section_id
+               AND s_elig.student_status     = 'Active'
+            LEFT JOIN evaluation_response er
+                ON er.teaching_assignment_id = ta.teaching_assignment_id
+               AND er.evaluation_period_id   = :period_id
+            LEFT JOIN faculty_evaluation_result fer
+                ON fer.teaching_assignment_id = ta.teaching_assignment_id
+               AND fer.evaluation_period_id   = :period_id
+            WHERE ta.faculty_id = :faculty_id
+              AND ta.term_id    = :term_id
+            GROUP BY
+                ta.teaching_assignment_id,
+                sub.subject_code, sub.subject_title,
+                sec.section_name, c.course_code,
+                fer.result_status, fer.released_at, fer.faculty_evaluation_result_id
+            ORDER BY sub.subject_code, sec.section_name
+        ");
+        $stmt->execute([
+            "faculty_id" => $faculty_id,
+            "period_id"  => $period_id,
+            "term_id"    => $active_period_term_id,
+        ]);
+        $all_results_raw = $stmt->fetchAll();
+
+        // Compute pending count and participation rate per row
+        $all_results = [];
+        foreach ($all_results_raw as $row) {
+            $eligible   = (int) ($row["eligible_student_count"] ?? 0);
+            $submitted  = (int) ($row["submitted_response_count"] ?? 0);
+            $pending    = max($eligible - $submitted, 0);
+            $part_rate  = $eligible > 0 ? round(($submitted / $eligible) * 100, 2) : 0.0;
+            $row["pending_response_count"] = $pending;
+            $row["participation_rate"]     = $part_rate;
+            $all_results[] = $row;
+        }
 
         $stmt = $pdo->prepare("
             SELECT
@@ -927,33 +987,33 @@ try {
                 sec.section_name,
                 fer.overall_average_score AS average_score
             FROM evaluation_response_comment erc
-            INNER JOIN evaluation_response er ON er.evaluation_response_id = erc.evaluation_response_id
-            INNER JOIN teaching_assignment ta ON ta.teaching_assignment_id = er.teaching_assignment_id
+            JOIN evaluation_response er ON er.evaluation_response_id = erc.evaluation_response_id
+            JOIN teaching_assignment ta ON ta.teaching_assignment_id = er.teaching_assignment_id
             INNER JOIN section_subject_offering sso ON sso.section_subject_offering_id = ta.section_subject_offering_id
             INNER JOIN subject sub ON sub.subject_id = sso.subject_id
             INNER JOIN section sec ON sec.section_id = sso.section_id
             LEFT JOIN faculty_evaluation_result fer
                 ON fer.teaching_assignment_id = ta.teaching_assignment_id
                 AND fer.evaluation_period_id = er.evaluation_period_id
-            WHERE ta.faculty_id = :faculty_id
-            AND er.evaluation_period_id = :period_id
-            AND er.response_status = 'Submitted'
-            AND erc.is_visible_to_faculty = 1
-            AND erc.moderation_status = 'Approved'
+            WHERE ta.faculty_id = :fid 
+              AND er.evaluation_period_id = :pid
+              AND er.response_status = 'Submitted'
+              AND erc.is_visible_to_faculty = 1
+              AND erc.moderation_status = 'Approved'
             ORDER BY sub.subject_code, sec.section_name, erc.submitted_at ASC
         ");
-        $stmt->execute(["faculty_id" => $faculty_id, "period_id" => $period_id]);
+        $stmt->execute(['fid' => $faculty_id, 'pid' => $period_id]);
         $all_comments_raw = $stmt->fetchAll();
 
         foreach ($all_comments_raw as $row) {
             $key = $row["subject_code"] . "||" . $row["section_name"];
             if (!isset($comments_data[$key])) {
                 $comments_data[$key] = [
-                    "subject_code"  => $row["subject_code"],
+                    "subject_code" => $row["subject_code"],
                     "subject_title" => $row["subject_title"],
-                    "section_name"  => $row["section_name"],
+                    "section_name" => $row["section_name"],
                     "average_score" => null,
-                    "comments"      => []
+                    "comments" => []
                 ];
             }
             if ($row["average_score"] !== null) {
@@ -1008,68 +1068,120 @@ try {
             LEFT JOIN faculty_result_category_score frcs
                 ON frcs.faculty_evaluation_result_id = fer.faculty_evaluation_result_id
                 AND frcs.evaluation_form_category_id = efc.evaluation_form_category_id
-            WHERE ta.faculty_id = :faculty_id
-            AND fer.evaluation_period_id = :period_id
+            WHERE ta.faculty_id = :fid
+            AND fer.evaluation_period_id = :pid
             AND fer.result_status = 'Released'
             ORDER BY sub.subject_code, sec.section_name, efc.display_order
         ");
-        $stmt->execute(["faculty_id" => $faculty_id, "period_id" => $period_id]);
+        $stmt->execute(['fid' => $faculty_id, 'pid' => $period_id]);
         $criteria_raw = $stmt->fetchAll();
 
         foreach ($criteria_raw as $row) {
             $key = $row["subject_code"] . "||" . $row["section_name"];
             if (!isset($criteria_data[$key])) {
                 $criteria_data[$key] = [
-                    "subject_code"  => $row["subject_code"],
+                    "subject_code" => $row["subject_code"],
                     "subject_title" => $row["subject_title"],
-                    "section_name"  => $row["section_name"],
-                    "overall_avg"   => $row["overall_average_score"],
-                    "categories"    => []
+                    "section_name" => $row["section_name"],
+                    "overall_avg" => $row["overall_average_score"],
+                    "categories" => []
                 ];
             }
             $criteria_data[$key]["categories"][] = [
-                "category_name"    => $row["category_name"],
-                "average_score"    => $row["average_score"],
+                "category_name" => $row["category_name"],
+                "average_score" => $row["average_score"],
                 "percentage_score" => $row["percentage_score"],
                 "rating_description" => $row["rating_description"]
             ];
         }
-    }
-} catch (Throwable $error) {
-    $assigned_subjects = [];
-    $all_results = [];
-    $comments_data = [];
-    $participation_data = [];
-    $criteria_data = [];
-    error_log("faculty_dashboard error: " . $error->getMessage() . " in " . $error->getFile() . ":" . $error->getLine());
-}
-
-$assigned_count = count($assigned_subjects);
-$released_count = 0;
-$unreleased_count = 0;
-$average_sum = 0.0;
-$average_count = 0;
-$participation_sum = 0.0;
-$participation_count = 0;
-
-foreach ($all_results as $r) {
-    if ($r["result_status"] === "Released") {
-        $released_count++;
-        if ($r["overall_average_score"] !== null) {
-            $average_sum += (float) $r["overall_average_score"];
-            $average_count++;
-        }
-        if ((int) $r["eligible_student_count"] > 0) {
-            $participation_sum += (float) $r["participation_rate"];
-            $participation_count++;
-        }
-    } else {
-        $unreleased_count++;
+    } catch (Throwable $error) {
+        // If results queries fail, keep assigned_subjects intact but clear results
+        $all_results        = [];
+        $comments_data      = [];
+        $participation_data = [];
+        $criteria_data      = [];
+        error_log("faculty_dashboard results error: " . $error->getMessage() . " in " . $error->getFile() . ":" . $error->getLine());
     }
 }
 
-$overall_average = $average_count > 0 ? number_format($average_sum / $average_count, 2) : "0.00";
-$participation_rate = $participation_count > 0 ? number_format($participation_sum / $participation_count, 1) : "0.0";
+// Dashboard summary stats — guarded so they work even if the try-catch above failed
+$assigned_subjects_count = 0;
+$released_results_count  = 0;
+$total_eligible          = 0;
+$total_responses         = 0;
+$overall_average_score   = 0.0;
+
+if (!empty($faculty_id) && !empty($period_id) && !empty($active_period_term_id)) {
+    // 1. Total Assigned Subjects for the active period's term
+    $stmt = $pdo->prepare("
+        SELECT COUNT(*)
+        FROM teaching_assignment
+        WHERE faculty_id = :fid
+          AND term_id    = :tid
+          AND assignment_status = 'Active'
+    ");
+    $stmt->execute(['fid' => $faculty_id, 'tid' => $active_period_term_id]);
+    $assigned_subjects_count = (int) $stmt->fetchColumn();
+
+    // 2. Subjects with at least one submitted response in this period
+    $stmt = $pdo->prepare("
+        SELECT COUNT(DISTINCT er.teaching_assignment_id)
+        FROM evaluation_response er
+        INNER JOIN teaching_assignment ta ON ta.teaching_assignment_id = er.teaching_assignment_id
+        WHERE er.evaluation_period_id = :pid
+          AND er.response_status      = 'Submitted'
+          AND ta.faculty_id           = :fid
+          AND ta.term_id              = :tid
+    ");
+    $stmt->execute(['pid' => $period_id, 'fid' => $faculty_id, 'tid' => $active_period_term_id]);
+    $released_results_count = (int) $stmt->fetchColumn();
+
+    // 3. Overall submitted responses & average score for this faculty / period
+    $stmt = $pdo->prepare("
+        SELECT
+            COUNT(er.evaluation_response_id) AS total_responses,
+            AVG(er.average_score)            AS avg_score
+        FROM evaluation_response er
+        INNER JOIN teaching_assignment ta ON ta.teaching_assignment_id = er.teaching_assignment_id
+        WHERE er.evaluation_period_id = :pid
+          AND ta.faculty_id           = :fid
+          AND ta.term_id              = :tid
+          AND er.response_status      = 'Submitted'
+    ");
+    $stmt->execute(['pid' => $period_id, 'fid' => $faculty_id, 'tid' => $active_period_term_id]);
+    $overall_stats       = $stmt->fetch();
+    $total_responses     = (int)   ($overall_stats['total_responses'] ?? 0);
+    $overall_average_score = (float) ($overall_stats['avg_score'] ?? 0.0);
+    if ($overall_average_score) {
+        $overall_average_score = round($overall_average_score, 2);
+    }
+
+    // 4. Total Eligible Students — count distinct students whose current_section_id
+    //    matches any section the faculty teaches this term (dynamic join, no assignment table)
+    $stmt = $pdo->prepare("
+        SELECT COUNT(DISTINCT s.student_id)
+        FROM student s
+        INNER JOIN section_subject_offering sso ON sso.section_id = s.current_section_id
+        INNER JOIN teaching_assignment ta
+            ON ta.section_subject_offering_id = sso.section_subject_offering_id
+        WHERE ta.faculty_id  = :fid
+          AND ta.term_id     = :tid
+          AND ta.assignment_status = 'Active'
+          AND s.student_status     = 'Active'
+    ");
+    $stmt->execute(['fid' => $faculty_id, 'tid' => $active_period_term_id]);
+    $total_eligible = (int) $stmt->fetchColumn();
+}
+
+$overall_participation_rate = $total_eligible > 0
+    ? round(($total_responses / $total_eligible) * 100, 1)
+    : 0;
+
+$assigned_count = $assigned_subjects_count;
+$released_count = $released_results_count;
+$unreleased_count = max($assigned_subjects_count - $released_results_count, 0);
+$overall_average = number_format($overall_average_score, 2);
+$participation_rate = number_format($overall_participation_rate, 1);
 
 $term_label = $current_period
     ? $current_period["term_name"] . " · " . $current_period["academic_year_name"]
@@ -2415,7 +2527,8 @@ function participation_color(float $rate): string
                             sort($years);
                             foreach ($years as $yr):
                                 ?>
-                                <option value="<?php echo e((string) $yr); ?>"><?php echo e((string) $yr); ?>nd Year</option>
+                                <option value="<?php echo e((string) $yr); ?>"><?php echo e((string) $yr); ?>nd Year
+                                </option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -2448,7 +2561,8 @@ function participation_color(float $rate): string
                                             <p><?php echo (int) $sec["student_count"]; ?> students &nbsp;·&nbsp;
                                                 <?php echo svg_icon("calendar", "#9ca3af"); ?>
                                                 <?php echo e($sec["term_name"]); ?>,
-                                                <?php echo e($current_period["academic_year_name"] ?? ""); ?></p>
+                                                <?php echo e($current_period["academic_year_name"] ?? ""); ?>
+                                            </p>
                                         </div>
                                     </div>
                                 <?php endforeach; ?>
@@ -2620,7 +2734,8 @@ function participation_color(float $rate): string
                                 $parts = explode("||", $key);
                                 ?>
                                 <option value="<?php echo e($key); ?>"><?php echo e($parts[0]); ?> –
-                                    <?php echo e($parts[1]); ?></option>
+                                    <?php echo e($parts[1]); ?>
+                                </option>
                             <?php endforeach; ?>
                             <?php if (empty($criteria_data)): ?>
                                 <option disabled>No released results available</option>
