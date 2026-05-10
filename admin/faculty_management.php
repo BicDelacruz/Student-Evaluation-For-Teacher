@@ -114,7 +114,7 @@ function validate_faculty_input($data, $is_update)
     }
 
     if ($data["department_id"] <= 0) {
-        $errors[] = "Department is required.";
+        $errors[] = "College is required.";
     }
 
     if ($data["academic_year_id"] <= 0) {
@@ -836,7 +836,7 @@ $has_filters = $faculty_search !== ""
             <a class="nav-link active" href="faculty_management.php"><?php echo icon_svg("faculty"); ?> Faculty Management</a>
             <a class="nav-link" href="academic_structure.php"><?php echo icon_svg("book"); ?> Academic Structure</a>
             <a class="nav-link" href="assignment_management.php"><?php echo icon_svg("assignment"); ?> Assignment Management</a>
-            <a class="nav-link" href="#"><?php echo icon_svg("settings"); ?> Evaluation Setup</a>
+            <a class="nav-link" href="evaluation_setup.php"><?php echo icon_svg("settings"); ?> Evaluation Setup</a>
             <a class="nav-link" href="#"><?php echo icon_svg("clipboard"); ?> Submission Monitoring</a>
             <a class="nav-link" href="#"><?php echo icon_svg("reports"); ?> Reports</a>
             <a class="nav-link" href="#"><?php echo icon_svg("announcement"); ?> Announcements</a>
@@ -871,7 +871,7 @@ $has_filters = $faculty_search !== ""
                                 type="text"
                                 name="q"
                                 value="<?php echo e($faculty_search); ?>"
-                                placeholder="Search by ID, name, email, or department..."
+                                placeholder="Search by ID, name, email, or college..."
                             >
                         </div>
 
@@ -880,7 +880,7 @@ $has_filters = $faculty_search !== ""
 
                     <div class="filter-grid">
                         <select name="department_id">
-                            <option value="0">All Departments</option>
+                            <option value="0">All Colleges</option>
                             <?php foreach ($departments_all as $department): ?>
                                 <option value="<?php echo (int) $department["department_id"]; ?>" <?php echo $filter_department_id === (int) $department["department_id"] ? "selected" : ""; ?>>
                                     <?php echo e($department["department_name"]); ?>
@@ -939,7 +939,7 @@ $has_filters = $faculty_search !== ""
                             <th>Faculty ID</th>
                             <th>Name</th>
                             <th>Email</th>
-                            <th>Department</th>
+                            <th>College</th>
                             <th>Position</th>
                             <th>Subjects Assigned</th>
                             <th>Status</th>
@@ -1031,7 +1031,7 @@ $has_filters = $faculty_search !== ""
                         </div>
 
                         <div>
-                            <label>Middle Name</label>
+                            <label>Middle Initial</label>
                             <input type="text" name="middle_name" id="modal_middle_name" placeholder="e.g., R.">
                         </div>
 
@@ -1042,9 +1042,9 @@ $has_filters = $faculty_search !== ""
                     </div>
 
                     <div>
-                        <label>Department</label>
+                        <label>College</label>
                         <select name="department_id" required>
-                            <option value="">Select Department</option>
+                            <option value="">Select College</option>
                             <?php foreach ($departments_all as $department): ?>
                                 <option value="<?php echo (int) $department["department_id"]; ?>">
                                     <?php echo e($department["department_name"]); ?>
@@ -1143,7 +1143,7 @@ $has_filters = $faculty_search !== ""
                     </div>
 
                     <div>
-                        <label>Middle Name</label>
+                        <label>Middle Initial</label>
                         <input type="text" value="<?php echo e($selected_faculty["middle_name"]); ?>" readonly>
                     </div>
 
@@ -1153,7 +1153,7 @@ $has_filters = $faculty_search !== ""
                     </div>
                 </div>
 
-                <label>Department</label>
+                <label>College</label>
                 <input type="text" value="<?php echo e($selected_faculty["department_name"]); ?>" readonly>
 
                 <div class="three-column">
@@ -1228,7 +1228,7 @@ $has_filters = $faculty_search !== ""
                         </div>
 
                         <div>
-                            <label>Middle Name</label>
+                            <label>Middle Initial</label>
                             <input type="text" name="middle_name" id="modal_middle_name" value="<?php echo e($selected_faculty["middle_name"]); ?>">
                         </div>
 
@@ -1238,7 +1238,7 @@ $has_filters = $faculty_search !== ""
                         </div>
                     </div>
 
-                    <label>Department</label>
+                    <label>College</label>
                     <select name="department_id" required>
                         <?php foreach ($departments_all as $department): ?>
                             <option

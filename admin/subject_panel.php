@@ -137,10 +137,10 @@ if ($modal_type === "subject" && $modal_id > 0) {
 ?>
 
 <div class="panel-top">
-    <h2>Subjects (<?php echo $subject_count; ?>)</h2>
+    <h2>Courses (<?php echo $subject_count; ?>)</h2>
 
     <a class="primary-button" href="academic_structure.php?panel=subjects&type=subject&action=add">
-        <?php echo icon_svg("plus"); ?> Add Subject
+        <?php echo icon_svg("plus"); ?> Add Course
     </a>
 </div>
 
@@ -153,12 +153,12 @@ if ($modal_type === "subject" && $modal_id > 0) {
             type="text"
             name="q"
             value="<?php echo e($subject_search); ?>"
-            placeholder="Search by subject code or title..."
+            placeholder="Search by course code or title..."
         >
     </div>
 
     <select name="department_id">
-        <option value="0">All Departments</option>
+        <option value="0">All Colleges</option>
 
         <?php foreach ($departments_all as $department): ?>
             <option
@@ -171,7 +171,7 @@ if ($modal_type === "subject" && $modal_id > 0) {
     </select>
 
     <select name="course_id">
-        <option value="0">All Courses</option>
+        <option value="0">All Programs</option>
 
         <?php foreach ($courses_all as $course): ?>
             <option
@@ -198,7 +198,7 @@ if ($modal_type === "subject" && $modal_id > 0) {
 
 <div class="record-list">
     <?php if (count($subjects) === 0): ?>
-        <div class="empty-card">No subjects found matching your search criteria.</div>
+        <div class="empty-card">No courses found matching your search criteria.</div>
     <?php endif; ?>
 
     <?php foreach ($subjects as $subject): ?>
@@ -226,8 +226,8 @@ if ($modal_type === "subject" && $modal_id > 0) {
                 <small><?php echo e($subject["subject_description"]); ?></small>
 
                 <div class="meta-row">
-                    <span>Department: <?php echo e($subject["department_name"]); ?></span>
-                    <span>Course: <?php echo e($subject["course_codes"] ?? "No course mapping"); ?></span>
+                    <span>College: <?php echo e($subject["department_name"]); ?></span>
+                    <span>Program: <?php echo e($subject["course_codes"] ?? "No program mapping"); ?></span>
                     <span>Year Level: <?php echo e(subject_year_level_text($subject["mapped_year_level"])); ?></span>
                 </div>
             </div>
@@ -249,7 +249,7 @@ if ($modal_type === "subject" && $modal_id > 0) {
                     <?php echo icon_svg("edit"); ?>
                 </a>
 
-                <form method="POST" action="academic_structure.php?panel=subjects" onsubmit="return confirm('Delete this subject record?');">
+                <form method="POST" action="academic_structure.php?panel=subjects" onsubmit="return confirm('Delete this course record?');">
                     <input type="hidden" name="form_action" value="delete_subject">
                     <input type="hidden" name="subject_id" value="<?php echo (int) $subject["subject_id"]; ?>">
 
@@ -265,7 +265,7 @@ if ($modal_type === "subject" && $modal_id > 0) {
 <?php if ($modal_type === "subject" && $modal_action === "add"): ?>
     <div class="modal-overlay">
         <div class="modal-box medium tall">
-            <h2>Add New Subject</h2>
+            <h2>Add New Course</h2>
 
             <form method="POST" action="academic_structure.php?panel=subjects">
                 <input type="hidden" name="form_action" value="add_subject">
@@ -273,7 +273,7 @@ if ($modal_type === "subject" && $modal_id > 0) {
                 <div class="modal-scroll">
                     <div class="two-column">
                         <div>
-                            <label>Subject Code</label>
+                            <label>Course Code</label>
                             <input type="text" name="subject_code" placeholder="e.g., IT 221" required>
                         </div>
 
@@ -283,20 +283,20 @@ if ($modal_type === "subject" && $modal_id > 0) {
                         </div>
                     </div>
 
-                    <label>Subject Title</label>
+                    <label>Course Title</label>
                     <input type="text" name="subject_title" placeholder="e.g., Human Computer Interaction" required>
 
                     <label>Description</label>
-                    <textarea name="subject_description" placeholder="Brief description of the subject"></textarea>
+                    <textarea name="subject_description" placeholder="Brief description of the course"></textarea>
 
                     <label class="checkbox-label">
                         <input type="checkbox" name="is_general_education" value="1">
-                        General Education applies to all courses
+                        General Education applies to all programs
                     </label>
 
-                    <label>Department</label>
+                    <label>College</label>
                     <select name="department_id" required>
-                        <option value="">Select Department</option>
+                        <option value="">Select College</option>
 
                         <?php foreach ($departments_all as $department): ?>
                             <option value="<?php echo (int) $department["department_id"]; ?>">
@@ -305,7 +305,7 @@ if ($modal_type === "subject" && $modal_id > 0) {
                         <?php endforeach; ?>
                     </select>
 
-                    <label>Course or Courses</label>
+                    <label>Program or Programs</label>
                     <div class="checkbox-scroll">
                         <?php foreach ($courses_all as $course): ?>
                             <label>
@@ -334,7 +334,7 @@ if ($modal_type === "subject" && $modal_id > 0) {
 
                 <div class="modal-actions">
                     <a href="academic_structure.php?panel=subjects" class="secondary-button">Cancel</a>
-                    <button type="submit" class="dark-button">Add Subject</button>
+                    <button type="submit" class="dark-button">Add Course</button>
                 </div>
             </form>
         </div>
@@ -344,11 +344,11 @@ if ($modal_type === "subject" && $modal_id > 0) {
 <?php if ($modal_type === "subject" && $modal_action === "view" && $selected_subject): ?>
     <div class="modal-overlay">
         <div class="modal-box medium">
-            <h2>Subject Details</h2>
+            <h2>Course Details</h2>
 
             <div class="two-column">
                 <div>
-                    <label>Subject Code</label>
+                    <label>Course Code</label>
                     <input type="text" value="<?php echo e($selected_subject["subject_code"]); ?>" readonly>
                 </div>
 
@@ -358,19 +358,19 @@ if ($modal_type === "subject" && $modal_id > 0) {
                 </div>
             </div>
 
-            <label>Subject Title</label>
+            <label>Course Title</label>
             <input type="text" value="<?php echo e($selected_subject["subject_title"]); ?>" readonly>
 
             <label>Description</label>
             <input type="text" value="<?php echo e($selected_subject["subject_description"]); ?>" readonly>
 
-            <label>Department</label>
+            <label>College</label>
             <input type="text" value="<?php echo e($selected_subject["department_name"]); ?>" readonly>
 
             <div class="two-column">
                 <div>
-                    <label>Course or Courses</label>
-                    <input type="text" value="<?php echo e($selected_subject["course_codes"] ?? "No course mapping"); ?>" readonly>
+                    <label>Program or Programs</label>
+                    <input type="text" value="<?php echo e($selected_subject["course_codes"] ?? "No program mapping"); ?>" readonly>
                 </div>
 
                 <div>
@@ -401,7 +401,7 @@ if ($modal_type === "subject" && $modal_id > 0) {
 <?php if ($modal_type === "subject" && $modal_action === "edit" && $selected_subject): ?>
     <div class="modal-overlay">
         <div class="modal-box medium tall">
-            <h2>Edit Subject</h2>
+            <h2>Edit Course</h2>
 
             <form method="POST" action="academic_structure.php?panel=subjects">
                 <input type="hidden" name="form_action" value="update_subject">
@@ -410,7 +410,7 @@ if ($modal_type === "subject" && $modal_id > 0) {
                 <div class="modal-scroll">
                     <div class="two-column">
                         <div>
-                            <label>Subject Code</label>
+                            <label>Course Code</label>
                             <input type="text" name="subject_code" value="<?php echo e($selected_subject["subject_code"]); ?>" required>
                         </div>
 
@@ -428,7 +428,7 @@ if ($modal_type === "subject" && $modal_id > 0) {
                         </div>
                     </div>
 
-                    <label>Subject Title</label>
+                    <label>Course Title</label>
                     <input type="text" name="subject_title" value="<?php echo e($selected_subject["subject_title"]); ?>" required>
 
                     <label>Description</label>
@@ -441,10 +441,10 @@ if ($modal_type === "subject" && $modal_id > 0) {
                             value="1"
                             <?php echo $selected_subject["subject_type"] === "General Education" ? "checked" : ""; ?>
                         >
-                        General Education applies to all courses
+                        General Education applies to all programs
                     </label>
 
-                    <label>Department</label>
+                    <label>College</label>
                     <select name="department_id" required>
                         <?php foreach ($departments_all as $department): ?>
                             <option
@@ -456,7 +456,7 @@ if ($modal_type === "subject" && $modal_id > 0) {
                         <?php endforeach; ?>
                     </select>
 
-                    <label>Course or Courses</label>
+                    <label>Program or Programs</label>
                     <div class="checkbox-scroll">
                         <?php foreach ($courses_all as $course): ?>
                             <label>
@@ -509,7 +509,7 @@ if ($modal_type === "subject" && $modal_id > 0) {
 
                 <div class="modal-actions">
                     <a href="academic_structure.php?panel=subjects" class="secondary-button">Cancel</a>
-                    <button type="submit" class="dark-button">Update Subject</button>
+                    <button type="submit" class="dark-button">Update Course</button>
                 </div>
             </form>
         </div>

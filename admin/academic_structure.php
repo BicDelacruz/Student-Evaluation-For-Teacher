@@ -303,7 +303,7 @@ try {
             $department_head_faculty_id = ($_POST["department_head_faculty_id"] ?? "") !== "" ? (int) $_POST["department_head_faculty_id"] : null;
 
             if ($department_code === "" || $department_name === "") {
-                redirect_panel("departments", "Department code and name are required.", "error");
+                redirect_panel("departments", "College code and name are required.", "error");
             }
 
             $duplicate = count_rows(
@@ -321,7 +321,7 @@ try {
             );
 
             if ($duplicate > 0) {
-                redirect_panel("departments", "Department code or name already exists.", "error");
+                redirect_panel("departments", "College code or name already exists.", "error");
             }
 
             $statement = $pdo->prepare("
@@ -345,7 +345,7 @@ try {
                 "department_head_faculty_id" => $department_head_faculty_id
             ]);
 
-            redirect_panel("departments", "Department {$department_code} successfully added!");
+            redirect_panel("departments", "College {$department_code} successfully added!");
         }
 
         if ($form_action === "update_department") {
@@ -356,7 +356,7 @@ try {
             $department_status = valid_status($_POST["department_status"] ?? "Active", ["Active", "Inactive"], "Active");
 
             if ($department_id <= 0 || $department_code === "" || $department_name === "") {
-                redirect_panel("departments", "Please complete all department fields.", "error");
+                redirect_panel("departments", "Please complete all college fields.", "error");
             }
 
             $duplicate = count_rows(
@@ -378,7 +378,7 @@ try {
             );
 
             if ($duplicate > 0) {
-                redirect_panel("departments", "Department code or name already exists.", "error");
+                redirect_panel("departments", "College code or name already exists.", "error");
             }
 
             $statement = $pdo->prepare("
@@ -399,14 +399,14 @@ try {
                 "department_status" => $department_status
             ]);
 
-            redirect_panel("departments", "Department {$department_code} successfully updated!");
+            redirect_panel("departments", "College {$department_code} successfully updated!");
         }
 
         if ($form_action === "delete_department") {
             $department_id = (int) ($_POST["department_id"] ?? 0);
 
             if ($department_id <= 0) {
-                redirect_panel("departments", "Invalid department selected.", "error");
+                redirect_panel("departments", "Invalid college selected.", "error");
             }
 
             $linked_records =
@@ -437,7 +437,7 @@ try {
                 "department_id" => $department_id
             ]);
 
-            redirect_panel("departments", "Department successfully deleted!");
+            redirect_panel("departments", "College successfully deleted!");
         }
 
         if ($form_action === "add_course") {
@@ -449,7 +449,7 @@ try {
             $course_status = valid_status($_POST["course_status"] ?? "Active", ["Active", "Inactive"], "Active");
 
             if ($department_id <= 0 || $course_code === "" || $course_name === "") {
-                redirect_panel("courses", "Department, course code, and course name are required.", "error");
+                redirect_panel("courses", "College, program code, and program name are required.", "error");
             }
 
             if ($number_of_year_level < 1 || $number_of_year_level > 6) {
@@ -471,7 +471,7 @@ try {
             );
 
             if ($duplicate > 0) {
-                redirect_panel("courses", "Course code or name already exists.", "error");
+                redirect_panel("courses", "Program code or name already exists.", "error");
             }
 
             $statement = $pdo->prepare("
@@ -502,7 +502,7 @@ try {
                 "course_status" => $course_status
             ]);
 
-            redirect_panel("courses", "Course {$course_code} successfully added!");
+            redirect_panel("courses", "Program {$course_code} successfully added!");
         }
 
         if ($form_action === "update_course") {
@@ -515,7 +515,7 @@ try {
             $course_status = valid_status($_POST["course_status"] ?? "Active", ["Active", "Inactive"], "Active");
 
             if ($course_id <= 0 || $department_id <= 0 || $course_code === "" || $course_name === "") {
-                redirect_panel("courses", "Please complete all course fields.", "error");
+                redirect_panel("courses", "Please complete all program fields.", "error");
             }
 
             if ($number_of_year_level < 1 || $number_of_year_level > 6) {
@@ -541,7 +541,7 @@ try {
             );
 
             if ($duplicate > 0) {
-                redirect_panel("courses", "Course code or name already exists.", "error");
+                redirect_panel("courses", "Program code or name already exists.", "error");
             }
 
             $statement = $pdo->prepare("
@@ -566,14 +566,14 @@ try {
                 "course_status" => $course_status
             ]);
 
-            redirect_panel("courses", "Course {$course_code} successfully updated!");
+            redirect_panel("courses", "Program {$course_code} successfully updated!");
         }
 
         if ($form_action === "delete_course") {
             $course_id = (int) ($_POST["course_id"] ?? 0);
 
             if ($course_id <= 0) {
-                redirect_panel("courses", "Invalid course selected.", "error");
+                redirect_panel("courses", "Invalid program selected.", "error");
             }
 
             $linked_records =
@@ -604,7 +604,7 @@ try {
                 "course_id" => $course_id
             ]);
 
-            redirect_panel("courses", "Course successfully deleted!");
+            redirect_panel("courses", "Program successfully deleted!");
         }
 
         if ($form_action === "add_sections") {
@@ -615,7 +615,7 @@ try {
             $maximum_student_count = (int) ($_POST["maximum_student_count"] ?? 50);
 
             if ($course_id <= 0) {
-                redirect_panel("sections", "Please select a course.", "error");
+                redirect_panel("sections", "Please select a program.", "error");
             }
 
             if ($year_level < 1 || $year_level > 6) {
@@ -719,7 +719,7 @@ try {
             $pdo->commit();
 
             if ($created_count === 0) {
-                redirect_panel("sections", "No new section was added because the section already exists for the selected course, year level, and semester.", "error");
+                redirect_panel("sections", "No new section was added because the section already exists for the selected program, year level, and semester.", "error");
             }
 
             $message = $created_count === 1
@@ -786,7 +786,7 @@ try {
             );
 
             if ($duplicate > 0) {
-                redirect_panel("sections", "This section already exists for the selected course, year level, and semester.", "error");
+                redirect_panel("sections", "This section already exists for the selected program, year level, and semester.", "error");
             }
 
             $statement = $pdo->prepare("
@@ -867,11 +867,11 @@ try {
             $course_ids = $_POST["course_ids"] ?? [];
 
             if ($department_id <= 0 || $subject_code === "" || $subject_title === "") {
-                throw new RuntimeException("Department, subject code, and subject title are required.");
+                throw new RuntimeException("College, course code, and course title are required.");
             }
 
             if ($subject_unit <= 0 || $subject_unit > 9) {
-                throw new RuntimeException("Subject units must be from 1 to 9.");
+                throw new RuntimeException("Course units must be from 1 to 9.");
             }
 
             if ($year_level < 1 || $year_level > 6) {
@@ -891,7 +891,7 @@ try {
             );
 
             if ($duplicate > 0) {
-                throw new RuntimeException("Subject code already exists.");
+                throw new RuntimeException("Course code already exists.");
             }
 
             if ($is_general_education && count($course_ids) === 0) {
@@ -906,7 +906,7 @@ try {
             }
 
             if (!$is_general_education && count($course_ids) === 0) {
-                throw new RuntimeException("Please select at least one course.");
+                throw new RuntimeException("Please select at least one program.");
             }
 
             $subject_type = $is_general_education ? "General Education" : "Major";
@@ -949,7 +949,7 @@ try {
 
             $pdo->commit();
 
-            redirect_panel("subjects", "Subject {$subject_code} successfully added!");
+            redirect_panel("subjects", "Course {$subject_code} successfully added!");
         }
 
         if ($form_action === "update_subject") {
@@ -968,11 +968,11 @@ try {
             $course_ids = $_POST["course_ids"] ?? [];
 
             if ($subject_id <= 0 || $department_id <= 0 || $subject_code === "" || $subject_title === "") {
-                throw new RuntimeException("Please complete all subject fields.");
+                throw new RuntimeException("Please complete all course fields.");
             }
 
             if ($subject_unit <= 0 || $subject_unit > 9) {
-                throw new RuntimeException("Subject units must be from 1 to 9.");
+                throw new RuntimeException("Course units must be from 1 to 9.");
             }
 
             if ($year_level < 1 || $year_level > 6) {
@@ -994,7 +994,7 @@ try {
             );
 
             if ($duplicate > 0) {
-                throw new RuntimeException("Subject code already exists.");
+                throw new RuntimeException("Course code already exists.");
             }
 
             if ($is_general_education && count($course_ids) === 0) {
@@ -1009,7 +1009,7 @@ try {
             }
 
             if (!$is_general_education && count($course_ids) === 0) {
-                throw new RuntimeException("Please select at least one course.");
+                throw new RuntimeException("Please select at least one program.");
             }
 
             $subject_type = $is_general_education ? "General Education" : "Major";
@@ -1054,14 +1054,14 @@ try {
 
             $pdo->commit();
 
-            redirect_panel("subjects", "Subject {$subject_code} successfully updated!");
+            redirect_panel("subjects", "Course {$subject_code} successfully updated!");
         }
 
         if ($form_action === "delete_subject") {
             $subject_id = (int) ($_POST["subject_id"] ?? 0);
 
             if ($subject_id <= 0) {
-                redirect_panel("subjects", "Invalid subject selected.", "error");
+                redirect_panel("subjects", "Invalid course selected.", "error");
             }
 
             $linked_records = count_rows(
@@ -1118,7 +1118,7 @@ try {
                 "subject_id" => $subject_id
             ]);
 
-            redirect_panel("subjects", "Subject successfully deleted!");
+            redirect_panel("subjects", "Course successfully deleted!");
         }
     }
 } catch (Throwable $error) {
@@ -1191,7 +1191,7 @@ $modal_id = isset($_GET["id"]) ? (int) $_GET["id"] : 0;
             <a class="nav-link" href="faculty_management.php"><?php echo icon_svg("faculty"); ?> Faculty Management</a>
             <a class="nav-link active" href="academic_structure.php"><?php echo icon_svg("book"); ?> Academic Structure</a>
             <a class="nav-link" href="assignment_management.php"><?php echo icon_svg("assignment"); ?> Assignment Management</a>
-            <a class="nav-link" href="#"><?php echo icon_svg("settings"); ?> Evaluation Setup</a>
+            <a class="nav-link" href="evaluation_setup.php"><?php echo icon_svg("settings"); ?> Evaluation Setup</a>
             <a class="nav-link" href="#"><?php echo icon_svg("clipboard"); ?> Submission Monitoring</a>
             <a class="nav-link" href="#"><?php echo icon_svg("chart"); ?> Reports</a>
             <a class="nav-link" href="#"><?php echo icon_svg("megaphone"); ?> Announcements</a>
@@ -1208,7 +1208,7 @@ $modal_id = isset($_GET["id"]) ? (int) $_GET["id"] : 0;
         <section class="content-wrap">
             <div class="page-header">
                 <h1>Academic Structure</h1>
-                <p>Manage departments, courses, sections, and subjects</p>
+                <p>Manage colleges, programs, sections, and courses</p>
             </div>
 
             <?php if ($flash_message !== ""): ?>
@@ -1219,11 +1219,11 @@ $modal_id = isset($_GET["id"]) ? (int) $_GET["id"] : 0;
 
             <div class="tab-bar">
                 <a href="academic_structure.php?panel=departments" class="<?php echo $active_panel === "departments" ? "active" : ""; ?>">
-                    <?php echo icon_svg("building"); ?> Departments
+                    <?php echo icon_svg("building"); ?> Colleges
                 </a>
 
                 <a href="academic_structure.php?panel=courses" class="<?php echo $active_panel === "courses" ? "active" : ""; ?>">
-                    <?php echo icon_svg("cap"); ?> Courses
+                    <?php echo icon_svg("cap"); ?> Programs
                 </a>
 
                 <a href="academic_structure.php?panel=sections" class="<?php echo $active_panel === "sections" ? "active" : ""; ?>">
@@ -1231,7 +1231,7 @@ $modal_id = isset($_GET["id"]) ? (int) $_GET["id"] : 0;
                 </a>
 
                 <a href="academic_structure.php?panel=subjects" class="<?php echo $active_panel === "subjects" ? "active" : ""; ?>">
-                    <?php echo icon_svg("book"); ?> Subjects
+                    <?php echo icon_svg("book"); ?> Courses
                 </a>
             </div>
 

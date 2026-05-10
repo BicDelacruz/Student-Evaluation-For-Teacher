@@ -56,10 +56,10 @@ if ($modal_type === "department" && $modal_id > 0) {
 ?>
 
 <div class="panel-top">
-    <h2>Departments (<?php echo $department_count; ?>)</h2>
+    <h2>Colleges (<?php echo $department_count; ?>)</h2>
 
     <a class="primary-button" href="academic_structure.php?panel=departments&type=department&action=add">
-        <?php echo icon_svg("plus"); ?> Add Department
+        <?php echo icon_svg("plus"); ?> Add College
     </a>
 </div>
 
@@ -68,7 +68,7 @@ if ($modal_type === "department" && $modal_id > 0) {
 
     <div class="search-box">
         <?php echo icon_svg("search"); ?>
-        <input type="text" name="q" value="<?php echo e($department_search); ?>" placeholder="Search by department code, name, or head...">
+        <input type="text" name="q" value="<?php echo e($department_search); ?>" placeholder="Search by college code, name, or head...">
     </div>
 
     <a href="academic_structure.php?panel=departments" class="clear-filter">Clear</a>
@@ -78,9 +78,9 @@ if ($modal_type === "department" && $modal_id > 0) {
     <table class="data-table">
         <thead>
             <tr>
-                <th>Department Code</th>
-                <th>Department Name</th>
-                <th>Head</th>
+                <th>College Code</th>
+                <th>College Name</th>
+                <th>College Head</th>
                 <th>Status</th>
                 <th class="actions-column">Actions</th>
             </tr>
@@ -88,7 +88,7 @@ if ($modal_type === "department" && $modal_id > 0) {
         <tbody>
             <?php if (count($departments) === 0): ?>
                 <tr>
-                    <td colspan="5" class="empty-message">No departments found matching your search criteria.</td>
+                    <td colspan="5" class="empty-message">No colleges found matching your search criteria.</td>
                 </tr>
             <?php endif; ?>
 
@@ -96,7 +96,7 @@ if ($modal_type === "department" && $modal_id > 0) {
                 <tr>
                     <td><strong><?php echo e($department["department_code"]); ?></strong></td>
                     <td><?php echo e($department["department_name"]); ?></td>
-                    <td><?php echo e($department["department_head_name"] ?? "No assigned head"); ?></td>
+                    <td><?php echo e($department["department_head_name"] ?? "No assigned college head"); ?></td>
                     <td>
                         <span class="status-badge <?php echo strtolower((string) $department["department_status"]); ?>">
                             <?php echo e($department["department_status"]); ?>
@@ -112,7 +112,7 @@ if ($modal_type === "department" && $modal_id > 0) {
                                 <?php echo icon_svg("edit"); ?>
                             </a>
 
-                            <form method="POST" action="academic_structure.php?panel=departments" onsubmit="return confirm('Delete this department record?');">
+                            <form method="POST" action="academic_structure.php?panel=departments" onsubmit="return confirm('Delete this college record?');">
                                 <input type="hidden" name="form_action" value="delete_department">
                                 <input type="hidden" name="department_id" value="<?php echo (int) $department["department_id"]; ?>">
                                 <button class="delete" type="submit" title="Delete">
@@ -130,20 +130,20 @@ if ($modal_type === "department" && $modal_id > 0) {
 <?php if ($modal_type === "department" && $modal_action === "add"): ?>
     <div class="modal-overlay">
         <div class="modal-box small">
-            <h2>Add New Department</h2>
+            <h2>Add New College</h2>
 
             <form method="POST" action="academic_structure.php?panel=departments">
                 <input type="hidden" name="form_action" value="add_department">
 
-                <label>Department Code</label>
+                <label>College Code</label>
                 <input type="text" name="department_code" placeholder="e.g., CCS" required>
 
-                <label>Department Name</label>
+                <label>College Name</label>
                 <input type="text" name="department_name" placeholder="e.g., College of Computer Studies" required>
 
-                <label>Department Head</label>
+                <label>College Head</label>
                 <select name="department_head_faculty_id">
-                    <option value="">No assigned head</option>
+                    <option value="">No assigned college head</option>
                     <?php foreach ($faculty_all as $faculty): ?>
                         <option value="<?php echo (int) $faculty["faculty_id"]; ?>">
                             <?php echo e($faculty["full_name"]); ?>
@@ -153,7 +153,7 @@ if ($modal_type === "department" && $modal_id > 0) {
 
                 <div class="modal-actions">
                     <a href="academic_structure.php?panel=departments" class="secondary-button">Cancel</a>
-                    <button type="submit" class="dark-button">Add Department</button>
+                    <button type="submit" class="dark-button">Add College</button>
                 </div>
             </form>
         </div>
@@ -163,16 +163,16 @@ if ($modal_type === "department" && $modal_id > 0) {
 <?php if ($modal_type === "department" && $modal_action === "view" && $selected_department): ?>
     <div class="modal-overlay">
         <div class="modal-box small">
-            <h2>Department Details</h2>
+            <h2>College Details</h2>
 
-            <label>Department Code</label>
+            <label>College Code</label>
             <input type="text" value="<?php echo e($selected_department["department_code"]); ?>" readonly>
 
-            <label>Department Name</label>
+            <label>College Name</label>
             <input type="text" value="<?php echo e($selected_department["department_name"]); ?>" readonly>
 
-            <label>Department Head</label>
-            <input type="text" value="<?php echo e($selected_department["department_head_name"] ?? "No assigned head"); ?>" readonly>
+            <label>College Head</label>
+            <input type="text" value="<?php echo e($selected_department["department_head_name"] ?? "No assigned college head"); ?>" readonly>
 
             <div class="modal-divider"></div>
 
@@ -187,21 +187,21 @@ if ($modal_type === "department" && $modal_id > 0) {
 <?php if ($modal_type === "department" && $modal_action === "edit" && $selected_department): ?>
     <div class="modal-overlay">
         <div class="modal-box small">
-            <h2>Edit Department</h2>
+            <h2>Edit College</h2>
 
             <form method="POST" action="academic_structure.php?panel=departments">
                 <input type="hidden" name="form_action" value="update_department">
                 <input type="hidden" name="department_id" value="<?php echo (int) $selected_department["department_id"]; ?>">
 
-                <label>Department Code</label>
+                <label>College Code</label>
                 <input type="text" name="department_code" value="<?php echo e($selected_department["department_code"]); ?>" required>
 
-                <label>Department Name</label>
+                <label>College Name</label>
                 <input type="text" name="department_name" value="<?php echo e($selected_department["department_name"]); ?>" required>
 
-                <label>Department Head</label>
+                <label>College Head</label>
                 <select name="department_head_faculty_id">
-                    <option value="">No assigned head</option>
+                    <option value="">No assigned college head</option>
                     <?php foreach ($faculty_all as $faculty): ?>
                         <option value="<?php echo (int) $faculty["faculty_id"]; ?>" <?php echo (int) $selected_department["department_head_faculty_id"] === (int) $faculty["faculty_id"] ? "selected" : ""; ?>>
                             <?php echo e($faculty["full_name"]); ?>
@@ -211,7 +211,7 @@ if ($modal_type === "department" && $modal_id > 0) {
 
                 <div class="modal-actions">
                     <a href="academic_structure.php?panel=departments" class="secondary-button">Cancel</a>
-                    <button type="submit" class="dark-button">Update Department</button>
+                    <button type="submit" class="dark-button">Update College</button>
                 </div>
             </form>
         </div>

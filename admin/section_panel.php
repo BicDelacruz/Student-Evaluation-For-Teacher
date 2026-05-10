@@ -135,11 +135,11 @@ if ($modal_type === "section" && $modal_id > 0) {
 
     <div class="search-box">
         <?php echo icon_svg("search"); ?>
-        <input type="text" name="q" value="<?php echo e($section_search); ?>" placeholder="Search by section name, course, or year level...">
+        <input type="text" name="q" value="<?php echo e($section_search); ?>" placeholder="Search by section name, program, or year level...">
     </div>
 
     <select name="department_id">
-        <option value="0">All Departments</option>
+        <option value="0">All Colleges</option>
         <?php foreach ($departments_all as $department): ?>
             <option value="<?php echo (int) $department["department_id"]; ?>" <?php echo $filter_department_id === (int) $department["department_id"] ? "selected" : ""; ?>>
                 <?php echo e($department["department_name"]); ?>
@@ -148,7 +148,7 @@ if ($modal_type === "section" && $modal_id > 0) {
     </select>
 
     <select name="course_id">
-        <option value="0">All Courses</option>
+        <option value="0">All Programs</option>
         <?php foreach ($courses_all as $course): ?>
             <option value="<?php echo (int) $course["course_id"]; ?>" <?php echo $filter_course_id === (int) $course["course_id"] ? "selected" : ""; ?>>
                 <?php echo e($course["course_code"] . " - " . $course["course_name"]); ?>
@@ -193,8 +193,8 @@ if ($modal_type === "section" && $modal_id > 0) {
 
             <h3><?php echo e($section["section_name"]); ?></h3>
             <p><strong>Students:</strong> <?php echo (int) $section["student_count"]; ?></p>
-            <p><strong>Department:</strong> <?php echo e($section["department_name"]); ?></p>
-            <p><strong>Course:</strong> <?php echo e($section["course_code"] . " - " . $section["course_name"]); ?></p>
+            <p><strong>College:</strong> <?php echo e($section["department_name"]); ?></p>
+            <p><strong>Program:</strong> <?php echo e($section["course_code"] . " - " . $section["course_name"]); ?></p>
             <p><strong>Year Level:</strong> <?php echo year_level_label((int) $section["year_level"]); ?></p>
             <p><strong>Academic Year:</strong> <?php echo e($section["academic_year_name"]); ?></p>
             <p><strong>Semester:</strong> <?php echo e($section["term_name"]); ?></p>
@@ -243,9 +243,9 @@ if ($modal_type === "section" && $modal_id > 0) {
 
                     <div class="modal-divider"></div>
 
-                    <label>Course</label>
+                    <label>Program</label>
                     <select name="course_id" id="add_section_course_id" required>
-                        <option value="" data-course-code="">Select Course</option>
+                        <option value="" data-course-code="">Select Program</option>
                         <?php foreach ($courses_all as $course): ?>
                             <option
                                 value="<?php echo (int) $course["course_id"]; ?>"
@@ -309,12 +309,12 @@ if ($modal_type === "section" && $modal_id > 0) {
             <label>Section Name</label>
             <input type="text" value="<?php echo e($selected_section["section_name"]); ?>" readonly>
 
-            <label>Department</label>
+            <label>College</label>
             <input type="text" value="<?php echo e($selected_section["department_name"]); ?>" readonly>
 
             <div class="two-column section-course-row">
                 <div>
-                    <label>Course</label>
+                    <label>Program</label>
                     <input
                         type="text"
                         value="<?php echo e($selected_section["course_code"] . " - " . $selected_section["course_name"]); ?>"
@@ -377,7 +377,7 @@ if ($modal_type === "section" && $modal_id > 0) {
                     >
                     <small class="section-inline-error" hidden></small>
 
-                    <label>Course</label>
+                    <label>Program</label>
                     <select name="course_id" id="edit_section_course_id" required>
                         <?php foreach ($courses_all as $course): ?>
                             <option
@@ -621,7 +621,7 @@ if ($modal_type === "section" && $modal_id > 0) {
                 const compactSectionName = compactText(sectionName);
 
                 if (courseCode === "") {
-                    const message = "Section " + sectionNumber + " needs a selected course first.";
+                    const message = "Section " + sectionNumber + " needs a selected program first.";
                     setInputError(input, message);
                     messages.push(message);
                     return;
@@ -637,7 +637,7 @@ if ($modal_type === "section" && $modal_id > 0) {
                 if (!isValidSectionName(sectionName, courseCode, yearLevel)) {
                     const message =
                         "Section " + sectionNumber +
-                        " must match the selected course and year level. Use this format: " +
+                        " must match the selected program and year level. Use this format: " +
                         expectedExample + ".";
 
                     setInputError(input, message);

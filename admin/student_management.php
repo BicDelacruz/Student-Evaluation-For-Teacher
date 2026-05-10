@@ -153,11 +153,11 @@ function validate_student_input($data, $is_update)
     }
 
     if ($data["department_id"] <= 0) {
-        $errors[] = "Department is required.";
+        $errors[] = "College is required.";
     }
 
     if ($data["course_id"] <= 0) {
-        $errors[] = "Course is required.";
+        $errors[] = "Program is required.";
     }
 
     if ($data["year_level"] < 1 || $data["year_level"] > 6) {
@@ -375,7 +375,7 @@ try {
                     $errors[] = "Selected section was not found.";
                 } else {
                     if ((int) $section["course_id"] !== $data["course_id"]) {
-                        $errors[] = "Selected section does not belong to the selected course.";
+                        $errors[] = "Selected section does not belong to the selected program.";
                     }
 
                     if ((int) $section["year_level"] !== $data["year_level"]) {
@@ -383,7 +383,7 @@ try {
                     }
 
                     if ((int) $section["department_id"] !== $data["department_id"]) {
-                        $errors[] = "Selected course does not belong to the selected department.";
+                        $errors[] = "Selected course does not belong to the selected college.";
                     }
                 }
             }
@@ -975,7 +975,7 @@ $has_filters = $student_search !== ""
             <a class="nav-link" href="faculty_management.php"><?php echo icon_svg("faculty"); ?> Faculty Management</a>
             <a class="nav-link" href="academic_structure.php"><?php echo icon_svg("book"); ?> Academic Structure</a>
             <a class="nav-link" href="assignment_management.php"><?php echo icon_svg("assignment"); ?> Assignment Management</a>
-            <a class="nav-link" href="#"><?php echo icon_svg("settings"); ?> Evaluation Setup</a>
+            <a class="nav-link" href="evaluation_setup.php"><?php echo icon_svg("settings"); ?> Evaluation Setup</a>
             <a class="nav-link" href="#"><?php echo icon_svg("clipboard"); ?> Submission Monitoring</a>
             <a class="nav-link" href="#"><?php echo icon_svg("reports"); ?> Reports</a>
             <a class="nav-link" href="#"><?php echo icon_svg("announcement"); ?> Announcements</a>
@@ -1016,7 +1016,7 @@ $has_filters = $student_search !== ""
                     <a class="clear-filter clear-beside-search" href="student_management.php">Clear</a>
 
                     <select name="department_id" id="filter_department_id">
-                        <option value="0">All Departments</option>
+                        <option value="0">All Colleges</option>
                         <?php foreach ($departments_all as $department): ?>
                             <option value="<?php echo (int) $department["department_id"]; ?>" <?php echo $filter_department_id === (int) $department["department_id"] ? "selected" : ""; ?>>
                                 <?php echo e($department["department_name"]); ?>
@@ -1025,7 +1025,7 @@ $has_filters = $student_search !== ""
                     </select>
 
                     <select name="course_id" id="filter_course_id">
-                        <option value="0">All Courses</option>
+                        <option value="0">All Programs</option>
                         <?php foreach ($courses_all as $course): ?>
                             <option
                                 value="<?php echo (int) $course["course_id"]; ?>"
@@ -1094,7 +1094,7 @@ $has_filters = $student_search !== ""
                             <th>Student ID</th>
                             <th>Name</th>
                             <th>Email</th>
-                            <th>Course</th>
+                            <th>Program</th>
                             <th>Year Level</th>
                             <th>Academic Year</th>
                             <th>Section</th>
@@ -1188,7 +1188,7 @@ $has_filters = $student_search !== ""
                         </div>
 
                         <div>
-                            <label>Middle Name</label>
+                            <label>Middle Initial</label>
                             <input type="text" name="middle_name" id="modal_middle_name" placeholder="e.g., D.">
                         </div>
 
@@ -1198,9 +1198,9 @@ $has_filters = $student_search !== ""
                         </div>
                     </div>
 
-                    <label>Department</label>
+                    <label>College</label>
                     <select name="department_id" id="modal_department_id" required>
-                        <option value="">Select Department</option>
+                        <option value="">Select College</option>
                         <?php foreach ($departments_all as $department): ?>
                             <option value="<?php echo (int) $department["department_id"]; ?>">
                                 <?php echo e($department["department_name"]); ?>
@@ -1210,9 +1210,9 @@ $has_filters = $student_search !== ""
 
                     <div class="three-column">
                         <div>
-                            <label>Course</label>
+                            <label>Program</label>
                             <select name="course_id" id="modal_course_id" required>
-                                <option value="">Select Course</option>
+                                <option value="">Select Program</option>
                                 <?php foreach ($courses_all as $course): ?>
                                     <option
                                         value="<?php echo (int) $course["course_id"]; ?>"
@@ -1238,7 +1238,7 @@ $has_filters = $student_search !== ""
                         <div>
                             <label>Section</label>
                             <select name="current_section_id" id="modal_section_id" required>
-                                <option value="">Select course and year</option>
+                                <option value="">Select program and year</option>
                                 <?php foreach ($sections_all as $section): ?>
                                     <option
                                         value="<?php echo (int) $section["section_id"]; ?>"
@@ -1310,7 +1310,7 @@ $has_filters = $student_search !== ""
                     </div>
 
                     <div>
-                        <label>Middle Name</label>
+                        <label>Middle Initial</label>
                         <input type="text" value="<?php echo e($selected_student["middle_name"]); ?>" readonly>
                     </div>
 
@@ -1320,12 +1320,12 @@ $has_filters = $student_search !== ""
                     </div>
                 </div>
 
-                <label>Department</label>
+                <label>College</label>
                 <input type="text" value="<?php echo e($selected_student["department_name"]); ?>" readonly>
 
                 <div class="three-column">
                     <div>
-                        <label>Course</label>
+                        <label>Program</label>
                         <input type="text" value="<?php echo e($selected_student["course_code"]); ?>" readonly>
                     </div>
 
@@ -1397,7 +1397,7 @@ $has_filters = $student_search !== ""
                         </div>
 
                         <div>
-                            <label>Middle Name</label>
+                            <label>Middle Initial</label>
                             <input type="text" name="middle_name" id="modal_middle_name" value="<?php echo e($selected_student["middle_name"]); ?>">
                         </div>
 
@@ -1407,7 +1407,7 @@ $has_filters = $student_search !== ""
                         </div>
                     </div>
 
-                    <label>Department</label>
+                    <label>College</label>
                     <select name="department_id" id="modal_department_id" required>
                         <?php foreach ($departments_all as $department): ?>
                             <option
@@ -1421,7 +1421,7 @@ $has_filters = $student_search !== ""
 
                     <div class="three-column">
                         <div>
-                            <label>Course</label>
+                            <label>Program</label>
                             <select name="course_id" id="modal_course_id" required>
                                 <?php foreach ($courses_all as $course): ?>
                                     <option

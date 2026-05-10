@@ -110,7 +110,7 @@ function format_subject_list($subject_list)
     $items = array_filter(array_map("trim", explode("||", (string)$subject_list)));
 
     if (empty($items)) {
-        return '<span class="muted-text">No active subjects listed</span>';
+        return '<span class="muted-text">No active courses listed</span>';
     }
 
     $html = '<ol class="subjects-taken-list">';
@@ -281,7 +281,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $subject_ids = array_map("intval", post_array("assign_subject_ids"));
 
             if ($department_id <= 0) {
-                flash_redirect("error", "Please select a department first.", "faculty");
+                flash_redirect("error", "Please select a college first.", "faculty");
             }
 
             if ($faculty_id <= 0) {
@@ -297,11 +297,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             }
 
             if (empty($course_ids)) {
-                flash_redirect("error", "Please select at least one course.", "faculty");
+                flash_redirect("error", "Please select at least one program.", "faculty");
             }
 
             if (empty($subject_ids)) {
-                flash_redirect("error", "Please select at least one subject.", "faculty");
+                flash_redirect("error", "Please select at least one course.", "faculty");
             }
 
             $term_id = get_term_id($pdo, $academic_year_id, $semester);
@@ -338,7 +338,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             );
 
             if (empty($sections)) {
-                flash_redirect("error", "No active sections found for the selected course, year level, and semester.", "faculty");
+                flash_redirect("error", "No active sections found for the selected program, year level, and semester.", "faculty");
             }
 
             $pdo->beginTransaction();
@@ -354,7 +354,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
             flash_redirect(
                 "success",
-                "Faculty " . $faculty["faculty_number"] . " " . $faculty["full_name"] . " successfully assigned to selected subject records.",
+                "Faculty " . $faculty["faculty_number"] . " " . $faculty["full_name"] . " successfully assigned to selected course records.",
                 "faculty"
             );
         }
@@ -533,11 +533,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $subject_ids = array_map("intval", post_array("enroll_subject_ids"));
 
             if ($department_id <= 0) {
-                flash_redirect("error", "Please select a department.", "section");
+                flash_redirect("error", "Please select a college.", "section");
             }
 
             if ($course_id <= 0) {
-                flash_redirect("error", "Please select a course.", "section");
+                flash_redirect("error", "Please select a program.", "section");
             }
 
             if ($academic_year_id <= 0 || $semester === "") {
@@ -553,7 +553,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             }
 
             if (empty($subject_ids)) {
-                flash_redirect("error", "Please select at least one subject.", "section");
+                flash_redirect("error", "Please select at least one course.", "section");
             }
 
             $term_id = get_term_id($pdo, $academic_year_id, $semester);
@@ -572,7 +572,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
             $pdo->commit();
 
-            flash_redirect("success", "Selected section records successfully enrolled to the chosen subjects.", "section");
+            flash_redirect("success", "Selected section records successfully enrolled to the chosen courses.", "section");
         }
 
         if ($action === "edit_enrollment") {
@@ -585,7 +585,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             }
 
             if (empty($subject_ids)) {
-                flash_redirect("error", "Please select at least one subject.", "section");
+                flash_redirect("error", "Please select at least one course.", "section");
             }
 
             $pdo->beginTransaction();
@@ -993,13 +993,13 @@ $js_section_enrollments = json_encode($section_enrollments);
         <div class="page-header">
             <div>
                 <h1>Assignment Management</h1>
-                <p>Assign faculty to subjects and enroll sections</p>
+                <p>Assign faculty to courses and enroll sections</p>
             </div>
         </div>
 
         <div class="tab-card">
-            <button type="button" class="tab-button <?php echo $active_tab === 'faculty' ? 'active' : ''; ?>" data-tab-button="faculty">Faculty to Subject</button>
-            <button type="button" class="tab-button <?php echo $active_tab === 'section' ? 'active' : ''; ?>" data-tab-button="section">Section to Subject</button>
+            <button type="button" class="tab-button <?php echo $active_tab === 'faculty' ? 'active' : ''; ?>" data-tab-button="faculty">Faculty to Course</button>
+            <button type="button" class="tab-button <?php echo $active_tab === 'section' ? 'active' : ''; ?>" data-tab-button="section">Section to Course</button>
         </div>
 
         <section class="panel <?php echo $active_tab === 'faculty' ? 'active' : ''; ?>" id="facultyPanel">
@@ -1014,21 +1014,21 @@ $js_section_enrollments = json_encode($section_enrollments);
                 <div class="filter-row search-clear-row">
                     <div class="search-box">
                         <?php echo icon_svg("search"); ?>
-                        <input type="text" id="facultySearch" placeholder="Search by faculty name, subject, course, or section...">
+                        <input type="text" id="facultySearch" placeholder="Search by faculty name, course, program, or section...">
                     </div>
                     <button type="button" class="clear-button" onclick="clearFacultyFilters()">Clear</button>
                 </div>
 
                 <div class="filter-grid faculty-filter-grid">
                     <select id="facultyDepartmentFilter">
-                        <option value="">All Departments</option>
+                        <option value="">All Colleges</option>
                         <?php foreach ($departments as $department): ?>
                             <option value="<?php echo h($department["department_id"]); ?>"><?php echo h($department["department_name"]); ?></option>
                         <?php endforeach; ?>
                     </select>
 
                     <select id="facultyCourseFilter">
-                        <option value="">All Courses</option>
+                        <option value="">All Programs</option>
                         <?php foreach ($courses as $course): ?>
                             <option value="<?php echo h($course["course_id"]); ?>"><?php echo h($course["course_code"]); ?></option>
                         <?php endforeach; ?>
@@ -1056,7 +1056,7 @@ $js_section_enrollments = json_encode($section_enrollments);
                     </select>
 
                     <select id="facultySubjectFilter">
-                        <option value="">All Subjects</option>
+                        <option value="">All Courses</option>
                         <?php foreach ($subjects as $subject): ?>
                             <option value="<?php echo h($subject["subject_id"]); ?>"><?php echo h($subject["subject_code"]); ?> - <?php echo h($subject["subject_title"]); ?></option>
                         <?php endforeach; ?>
@@ -1081,8 +1081,8 @@ $js_section_enrollments = json_encode($section_enrollments);
                     <thead>
                     <tr>
                         <th>Faculty</th>
-                        <th>Subject</th>
-                        <th>Course</th>
+                        <th>Program</th>
+                        <th>Program</th>
                         <th>Section</th>
                         <th>Year Level</th>
                         <th>Semester</th>
@@ -1172,21 +1172,21 @@ $js_section_enrollments = json_encode($section_enrollments);
                 <div class="filter-row search-clear-row">
                     <div class="search-box">
                         <?php echo icon_svg("search"); ?>
-                        <input type="text" id="sectionSearch" placeholder="Search by section, course, or subject...">
+                        <input type="text" id="sectionSearch" placeholder="Search by section, program, or course...">
                     </div>
                     <button type="button" class="clear-button" onclick="clearSectionFilters()">Clear</button>
                 </div>
 
                 <div class="filter-grid section-filter-grid">
                     <select id="sectionDepartmentFilter">
-                        <option value="">All Departments</option>
+                        <option value="">All Colleges</option>
                         <?php foreach ($departments as $department): ?>
                             <option value="<?php echo h($department["department_id"]); ?>"><?php echo h($department["department_name"]); ?></option>
                         <?php endforeach; ?>
                     </select>
 
                     <select id="sectionCourseFilter">
-                        <option value="">All Courses</option>
+                        <option value="">All Programs</option>
                         <?php foreach ($courses as $course): ?>
                             <option value="<?php echo h($course["course_id"]); ?>"><?php echo h($course["course_code"]); ?></option>
                         <?php endforeach; ?>
@@ -1230,9 +1230,9 @@ $js_section_enrollments = json_encode($section_enrollments);
                 <table class="data-table" id="sectionEnrollmentTable">
                     <thead>
                     <tr>
-                        <th>Course</th>
+                        <th>Program</th>
                         <th>Section</th>
-                        <th>Subjects Taken by the Section</th>
+                        <th>Courses Taken by the Section</th>
                         <th>Year Level</th>
                         <th>Semester</th>
                         <th>Academic Year</th>
@@ -1318,7 +1318,7 @@ $js_section_enrollments = json_encode($section_enrollments);
 <div class="modal-overlay" id="assignFacultyModal">
     <div class="modal-card large-modal">
         <div class="modal-header">
-            <h3>Assign Faculty to Subject</h3>
+            <h3>Assign Faculty to Course</h3>
             <button type="button" class="modal-close" onclick="closeModal('assignFacultyModal')"><?php echo icon_svg("x"); ?></button>
         </div>
 
@@ -1326,9 +1326,9 @@ $js_section_enrollments = json_encode($section_enrollments);
             <input type="hidden" name="form_action" value="assign_faculty">
 
             <div class="modal-body">
-                <label>Department</label>
+                <label>College</label>
                 <select name="assign_department_id" id="assignDepartment" required>
-                    <option value="">Select Department</option>
+                    <option value="">Select College</option>
                     <?php foreach ($departments as $department): ?>
                         <option value="<?php echo h($department["department_id"]); ?>"><?php echo h($department["department_name"]); ?> (<?php echo h($department["department_code"]); ?>)</option>
                     <?php endforeach; ?>
@@ -1336,7 +1336,7 @@ $js_section_enrollments = json_encode($section_enrollments);
 
                 <label>Faculty Member</label>
                 <select name="assign_faculty_id" id="assignFaculty" required>
-                    <option value="">Select department first</option>
+                    <option value="">Select college first</option>
                 </select>
 
                 <label>Academic Year</label>
@@ -1371,20 +1371,20 @@ $js_section_enrollments = json_encode($section_enrollments);
 
                 <label class="checkbox-inline">
                     <input type="checkbox" id="assignGeneralOnly">
-                    General Education subjects
+                    General Education courses
                 </label>
 
-                <label>Course(s)</label>
+                <label>Program(s)</label>
                 <div class="checkbox-list tall-list" id="assignCourseList">
-                    <p class="muted-box">Select department first</p>
+                    <p class="muted-box">Select college first</p>
                 </div>
-                <small id="assignCourseCount">0 course(s) selected</small>
+                <small id="assignCourseCount">0 program(s) selected</small>
 
-                <label>Subject(s)</label>
+                <label>Course(s)</label>
                 <div class="checkbox-list tall-list" id="assignSubjectList">
-                    <p class="muted-box">Select course, year level, and semester to see subjects</p>
+                    <p class="muted-box">Select program, year level, and semester to see courses</p>
                 </div>
-                <small id="assignSubjectCount">0 subject(s) selected</small>
+                <small id="assignSubjectCount">0 course(s) selected</small>
             </div>
 
             <div class="modal-footer">
@@ -1409,13 +1409,13 @@ $js_section_enrollments = json_encode($section_enrollments);
             <input type="hidden" name="edit_assignment_term_id" id="editAssignmentTermId">
 
             <div class="modal-body">
-                <label>Department</label>
+                <label>College</label>
                 <select id="editAssignmentDepartment" disabled></select>
 
                 <label>Faculty Member</label>
                 <select name="edit_assignment_faculty_id" id="editAssignmentFaculty" required></select>
 
-                <label>Subject</label>
+                <label>Program</label>
                 <select name="edit_assignment_subject_id" id="editAssignmentSubject" required></select>
 
                 <div class="two-col">
@@ -1457,7 +1457,7 @@ $js_section_enrollments = json_encode($section_enrollments);
 <div class="modal-overlay" id="enrollSectionModal">
     <div class="modal-card large-modal">
         <div class="modal-header">
-            <h3>Enroll Section to Subjects</h3>
+            <h3>Enroll Section to Courses</h3>
             <button type="button" class="modal-close" onclick="closeModal('enrollSectionModal')"><?php echo icon_svg("x"); ?></button>
         </div>
 
@@ -1465,17 +1465,17 @@ $js_section_enrollments = json_encode($section_enrollments);
             <input type="hidden" name="form_action" value="enroll_section">
 
             <div class="modal-body">
-                <label>Department</label>
+                <label>College</label>
                 <select name="enroll_department_id" id="enrollDepartment" required>
-                    <option value="">Select Department</option>
+                    <option value="">Select College</option>
                     <?php foreach ($departments as $department): ?>
                         <option value="<?php echo h($department["department_id"]); ?>"><?php echo h($department["department_name"]); ?> (<?php echo h($department["department_code"]); ?>)</option>
                     <?php endforeach; ?>
                 </select>
 
-                <label>Course</label>
+                <label>Program</label>
                 <select name="enroll_course_id" id="enrollCourse" required>
-                    <option value="">Select department first</option>
+                    <option value="">Select college first</option>
                 </select>
 
                 <label>Academic Year</label>
@@ -1510,22 +1510,22 @@ $js_section_enrollments = json_encode($section_enrollments);
 
                 <label>Section(s)</label>
                 <div class="checkbox-list tall-list" id="enrollSectionList">
-                    <p class="muted-box">Select course and year level to see sections</p>
+                    <p class="muted-box">Select program and year level to see sections</p>
                 </div>
                 <small id="enrollSectionCount">0 section(s) selected</small>
 
-                <label>Subject Type</label>
+                <label>Course Type</label>
                 <select id="enrollSubjectType">
-                    <option value="Program">Program Subjects Only</option>
-                    <option value="General Education">General Education Subjects Only</option>
-                    <option value="Both">Program and General Education Subjects</option>
+                    <option value="Program">Program Courses Only</option>
+                    <option value="General Education">General Education Courses Only</option>
+                    <option value="Both">Program and General Education Courses</option>
                 </select>
 
-                <label>Subject(s)</label>
+                <label>Course(s)</label>
                 <div class="checkbox-list tall-list" id="enrollSubjectList">
-                    <p class="muted-box">Select course, year level, and semester to see subjects</p>
+                    <p class="muted-box">Select program, year level, and semester to see courses</p>
                 </div>
-                <small id="enrollSubjectCount">0 subject(s) selected</small>
+                <small id="enrollSubjectCount">0 course(s) selected</small>
             </div>
 
             <div class="modal-footer">
@@ -1549,10 +1549,10 @@ $js_section_enrollments = json_encode($section_enrollments);
             <input type="hidden" name="edit_enrollment_term_id" id="editEnrollmentTermId">
 
             <div class="modal-body">
-                <label>Department</label>
+                <label>College</label>
                 <input type="text" id="editEnrollmentDepartment" readonly>
 
-                <label>Course</label>
+                <label>Program</label>
                 <input type="text" id="editEnrollmentCourse" readonly>
 
                 <div class="two-col">
@@ -1570,16 +1570,16 @@ $js_section_enrollments = json_encode($section_enrollments);
                 <label>Section</label>
                 <input type="text" id="editEnrollmentSection" readonly>
 
-                <label>Subject Type</label>
+                <label>Course Type</label>
                 <select id="editEnrollmentSubjectType">
-                    <option value="Program">Program Subjects Only</option>
-                    <option value="General Education">General Education Subjects Only</option>
-                    <option value="Both">Program and General Education Subjects</option>
+                    <option value="Program">Program Courses Only</option>
+                    <option value="General Education">General Education Courses Only</option>
+                    <option value="Both">Program and General Education Courses</option>
                 </select>
 
-                <label>Subject(s)</label>
+                <label>Course(s)</label>
                 <div class="checkbox-list tall-list" id="editEnrollmentSubjectList"></div>
-                <small id="editEnrollmentSubjectCount">0 subject(s) selected</small>
+                <small id="editEnrollmentSubjectCount">0 course(s) selected</small>
             </div>
 
             <div class="modal-footer">
@@ -1827,22 +1827,22 @@ function updateAssignSubjectList() {
         "assign_subject_ids[]",
         "subject_id",
         s => `${s.subject_code} - ${s.subject_title}`,
-        s => `${s.subject_type || "Program"} subject`
+        s => `${s.subject_type || "Program"} course`
     );
 
     qsa('#assignSubjectList input[type="checkbox"]').forEach(input => {
-        input.addEventListener("change", () => updateCheckedCount("#assignSubjectList", "#assignSubjectCount", "subject"));
+        input.addEventListener("change", () => updateCheckedCount("#assignSubjectList", "#assignSubjectCount", "course"));
     });
 
-    updateCheckedCount("#assignCourseList", "#assignCourseCount", "course");
-    updateCheckedCount("#assignSubjectList", "#assignSubjectCount", "subject");
+    updateCheckedCount("#assignCourseList", "#assignCourseCount", "program");
+    updateCheckedCount("#assignSubjectList", "#assignSubjectCount", "course");
 }
 
 function updateEnrollCourseList() {
     const departmentId = qs("#enrollDepartment").value;
     const courseRows = DATA.courses.filter(c => String(c.department_id) === String(departmentId));
 
-    setOptions(qs("#enrollCourse"), courseRows, "course_id", c => `${c.course_code} - ${c.course_name}`, "Select Course");
+    setOptions(qs("#enrollCourse"), courseRows, "course_id", c => `${c.course_code} - ${c.course_name}`, "Select Program");
     updateEnrollLists();
 }
 
@@ -1878,7 +1878,7 @@ function updateEnrollLists() {
         "enroll_subject_ids[]",
         "subject_id",
         s => `${s.subject_code} - ${s.subject_title}`,
-        s => `${s.subject_type || "Program"} subject`
+        s => `${s.subject_type || "Program"} course`
     );
 
     qsa('#enrollSectionList input[type="checkbox"]').forEach(input => {
@@ -1886,11 +1886,11 @@ function updateEnrollLists() {
     });
 
     qsa('#enrollSubjectList input[type="checkbox"]').forEach(input => {
-        input.addEventListener("change", () => updateCheckedCount("#enrollSubjectList", "#enrollSubjectCount", "subject"));
+        input.addEventListener("change", () => updateCheckedCount("#enrollSubjectList", "#enrollSubjectCount", "course"));
     });
 
     updateCheckedCount("#enrollSectionList", "#enrollSectionCount", "section");
-    updateCheckedCount("#enrollSubjectList", "#enrollSubjectCount", "subject");
+    updateCheckedCount("#enrollSubjectList", "#enrollSubjectCount", "course");
 }
 
 function updateCheckedCount(listSelector, textSelector, label) {
@@ -2075,17 +2075,17 @@ function viewAssignment(id) {
             </div>
 
             <div class="detail-field full">
-                <label>Department</label>
+                <label>College</label>
                 <div class="readonly-box">${escapeHtml(row.faculty_department_name)} (${escapeHtml(row.faculty_department_code)})</div>
             </div>
 
             <div class="detail-field full">
-                <label>Subject</label>
+                <label>Program</label>
                 <div class="readonly-box">${escapeHtml(row.subject_code)} - ${escapeHtml(row.subject_title)}</div>
             </div>
 
             <div class="detail-field">
-                <label>Course</label>
+                <label>Program</label>
                 <div class="readonly-box">${escapeHtml(row.course_code)}</div>
             </div>
 
@@ -2131,7 +2131,7 @@ function editAssignment(id) {
     qs("#editAssignmentYearLevel").value = yearLabel(row.year_level);
     qs("#editAssignmentSemester").value = shortSemester(row.term_name);
 
-    setOptions(qs("#editAssignmentDepartment"), DATA.departments, "department_id", d => `${d.department_name} (${d.department_code})`, "Select Department");
+    setOptions(qs("#editAssignmentDepartment"), DATA.departments, "department_id", d => `${d.department_name} (${d.department_code})`, "Select College");
     qs("#editAssignmentDepartment").value = row.course_department_id;
 
     const facultyRows = DATA.faculties.filter(f => String(f.department_id) === String(row.course_department_id));
@@ -2139,7 +2139,7 @@ function editAssignment(id) {
     qs("#editAssignmentFaculty").value = row.faculty_id;
 
     const subjectRows = getCourseSubjects([row.course_id], row.year_level, row.term_name, "Both");
-    setOptions(qs("#editAssignmentSubject"), subjectRows, "subject_id", s => `${s.subject_code} - ${s.subject_title}`, "Select Subject");
+    setOptions(qs("#editAssignmentSubject"), subjectRows, "subject_id", s => `${s.subject_code} - ${s.subject_title}`, "Select Course");
     qs("#editAssignmentSubject").value = row.subject_id;
 
     openModal("editAssignmentModal");
@@ -2167,12 +2167,12 @@ function viewEnrollment(sectionId, termId) {
     qs("#enrollmentDetailsBody").innerHTML = `
         <div class="details-form-grid">
             <div class="detail-field full">
-                <label>Department</label>
+                <label>College</label>
                 <div class="readonly-box">${escapeHtml(row.department_name)} (${escapeHtml(row.department_code)})</div>
             </div>
 
             <div class="detail-field full">
-                <label>Course</label>
+                <label>Program</label>
                 <div class="readonly-box">${escapeHtml(row.course_code)} - ${escapeHtml(row.course_name)}</div>
             </div>
 
@@ -2197,10 +2197,10 @@ function viewEnrollment(sectionId, termId) {
             </div>
 
             <div class="detail-field full">
-                <label>Subjects Taken by the Section</label>
+                <label>Courses Taken by the Section</label>
                 <div class="readonly-box subject-box">
                     <ul class="organized-subject-list">
-                        ${detailItems || "<li><strong>No active subjects found.</strong></li>"}
+                        ${detailItems || "<li><strong>No active courses found.</strong></li>"}
                     </ul>
                 </div>
             </div>
@@ -2241,15 +2241,15 @@ function editEnrollment(sectionId, termId) {
             "edit_enrollment_subject_ids[]",
             "subject_id",
             s => `${s.subject_code} - ${s.subject_title}`,
-            s => `${s.subject_type || "Program"} subject`,
+            s => `${s.subject_type || "Program"} course`,
             currentSubjectIds
         );
 
         qsa('#editEnrollmentSubjectList input[type="checkbox"]').forEach(input => {
-            input.addEventListener("change", () => updateCheckedCount("#editEnrollmentSubjectList", "#editEnrollmentSubjectCount", "subject"));
+            input.addEventListener("change", () => updateCheckedCount("#editEnrollmentSubjectList", "#editEnrollmentSubjectCount", "course"));
         });
 
-        updateCheckedCount("#editEnrollmentSubjectList", "#editEnrollmentSubjectCount", "subject");
+        updateCheckedCount("#editEnrollmentSubjectList", "#editEnrollmentSubjectCount", "course");
     }
 
     qs("#editEnrollmentSubjectType").onchange = renderEditSubjects;
