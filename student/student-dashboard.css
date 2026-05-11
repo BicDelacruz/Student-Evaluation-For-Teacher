@@ -1577,3 +1577,23 @@ body .view-rating-text {
     }
 }
 
+/* ── Button hover transitions ── */
+.toggle-pw:hover {
+    background: #f1f5f9;
+}
+
+.eval-filter-btn:hover,
+.history-filter-btn:hover {
+    background: #f1f5f9;
+    color: var(--primary);
+}
+
+.btn-view-history:hover {
+    filter: brightness(1.12);
+    transform: translateY(-1px);
+}
+
+.list-row[data-action],
+.history-record-row {
+    cursor: pointer;
+}

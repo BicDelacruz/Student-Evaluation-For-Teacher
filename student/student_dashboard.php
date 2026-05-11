@@ -1001,7 +1001,6 @@ if ($current_period_id) {
             f.full_name AS faculty_name,
             subj.subject_title,
             subj.subject_code,
-            CONCAT_WS(' - ', NULLIF(TRIM(subj.subject_code), ''), subj.subject_title) AS subject_display_name,
             COALESCE(d.department_name, '') AS department_name,
             CASE
                 WHEN er.response_status = 'Submitted' THEN 'Submitted'
@@ -3117,7 +3116,7 @@ function svg_icon(string $name, string $color = "currentColor"): string
                             <div class="list-row">
                                 <div>
                                     <h3><?php echo e($teacher["faculty_name"]); ?></h3>
-                                    <p><?php echo e($teacher["subject_display_name"] ?? $teacher["subject_title"]); ?></p>
+                                    <p><?php echo e($teacher["subject_title"]); ?></p>
                                     <small><?php echo e($teacher["department_name"] ?? ""); ?></small>
                                 </div>
                                 <?php
@@ -3272,7 +3271,7 @@ function svg_icon(string $name, string $color = "currentColor"): string
                                 <div class="eval-card-top">
                                     <div>
                                         <h3><?php echo e($teacher["faculty_name"]); ?></h3>
-                                        <p><?php echo e($teacher["subject_display_name"] ?? $teacher["subject_title"]); ?></p>
+                                        <p><?php echo e($teacher["subject_title"]); ?></p>
                                         <small><?php echo e($teacher["department_name"] ?? ""); ?></small>
                                     </div>
                                     <?php if ($teacher["task_status"] === "Submitted"): ?>
@@ -3295,7 +3294,7 @@ function svg_icon(string $name, string $color = "currentColor"): string
                                     <button class="btn-view-eval" data-action="view-eval"
                                         data-task-id="<?php echo $teacher["student_evaluation_task_id"]; ?>"
                                         data-name="<?php echo e($teacher["faculty_name"]); ?>"
-                                        data-subject="<?php echo e($teacher["subject_display_name"] ?? $teacher["subject_title"]); ?>"
+                                        data-subject="<?php echo e($teacher["subject_title"]); ?>"
                                         data-dept="<?php echo e($teacher["department_name"] ?? ""); ?>"
                                         data-submitted="<?php echo e($teacher["submitted_at"] ?? ""); ?>"
                                         data-avg="<?php echo e($teacher["average_score"] ?? ""); ?>">
@@ -3305,7 +3304,7 @@ function svg_icon(string $name, string $color = "currentColor"): string
                                     <button class="btn-start-eval" data-action="start-eval"
                                         data-task-id="<?php echo $teacher["student_evaluation_task_id"]; ?>"
                                         data-name="<?php echo e($teacher["faculty_name"]); ?>"
-                                        data-subject="<?php echo e($teacher["subject_display_name"] ?? $teacher["subject_title"]); ?>"
+                                        data-subject="<?php echo e($teacher["subject_title"]); ?>"
                                         data-dept="<?php echo e($teacher["department_name"] ?? ""); ?>"
                                         data-ta-id="<?php echo $teacher["teaching_assignment_id"]; ?>">
                                         <?php echo $teacher["task_status"] === "Draft" ? svg_icon("save", "#fff") : svg_icon("arrow-right", "#fff"); ?>
@@ -3631,26 +3630,21 @@ function svg_icon(string $name, string $color = "currentColor"): string
                             $submitted_time_fmt = $dt->format("h:i A");
                         }
                         ?>
-                        <div class="history-record-row"
-                            data-task-id="<?php echo (int) $teacher["student_evaluation_task_id"]; ?>"
-                            data-status="<?php echo strtolower(e($teacher["task_status"])); ?>"
+                        <div class="history-record-row" data-task-id="<?php echo $teacher["student_evaluation_task_id"]; ?>" data-status="<?php echo strtolower(e($teacher["task_status"])); ?>"
                             data-name="<?php echo strtolower(e($teacher["faculty_name"])); ?>"
-                            data-subject="<?php echo strtolower(e($teacher["subject_display_name"] ?? $teacher["subject_title"])); ?>"
-                            <?php if ($is_done): ?>
-                                data-action="view-eval"
+                            data-subject="<?php echo strtolower(e($teacher["subject_title"])); ?>" <?php if ($is_done): ?>
+                                data-action="view-eval" data-task-id="<?php echo $teacher["student_evaluation_task_id"]; ?>"
                                 data-name-display="<?php echo e($teacher["faculty_name"]); ?>"
-                                data-subject-display="<?php echo e($teacher["subject_display_name"] ?? $teacher["subject_title"]); ?>"
+                                data-subject-display="<?php echo e($teacher["subject_title"]); ?>"
                                 data-dept-display="<?php echo e($teacher["department_name"] ?? ""); ?>"
                                 data-submitted="<?php echo e($teacher["submitted_at"] ?? ""); ?>"
-                                data-avg="<?php echo e($teacher["average_score"] ?? ""); ?>"
-                                style="cursor:pointer;"
-                            <?php endif; ?>>
+                                data-avg="<?php echo e($teacher["average_score"] ?? ""); ?>" style="cursor:pointer;" <?php endif; ?>>
                             <div>
                                 <h3>
                                     <?php echo e($teacher["faculty_name"]); ?>
                                     <?php if ($is_done): ?>         <?php echo svg_icon("eye", "#2563eb"); ?>     <?php endif; ?>
                                 </h3>
-                                <p><?php echo e($teacher["subject_display_name"] ?? $teacher["subject_title"]); ?></p>
+                                <p><?php echo e($teacher["subject_title"]); ?></p>
                                 <small><?php echo e($teacher["department_name"] ?? ""); ?></small>
                                 <?php if ($is_done && $submitted_fmt): ?>
                                     <small style="margin-top:4px;">
@@ -4465,7 +4459,7 @@ function svg_icon(string $name, string $color = "currentColor"): string
                     nextBtn.onclick = function () {
                         currentEvalTaskId = nextTeacher.student_evaluation_task_id;
                         currentEvalName = nextTeacher.faculty_name;
-                        currentEvalSubject = nextTeacher.subject_display_name || nextTeacher.subject_title;
+                        currentEvalSubject = nextTeacher.subject_title;
                         currentEvalDept = nextTeacher.department_name;
                         currentEvalTaId = nextTeacher.teaching_assignment_id;
                         openEvalForm();
@@ -4567,6 +4561,8 @@ function svg_icon(string $name, string $color = "currentColor"): string
 
                 setDateAndScore(submittedAt, avgScore);
                 document.getElementById("view-ratings-body").innerHTML = "<p style='padding:20px;color:#64748b;'>Loading saved ratings...</p>";
+                const commentsEl = document.getElementById("view-comments-text");
+                if (commentsEl) commentsEl.textContent = "Loading…";
                 showEvalView("eval-view-readonly");
                 switchTab("tab-eval");
 
@@ -4575,6 +4571,12 @@ function svg_icon(string $name, string $color = "currentColor"): string
                         if (data.success) {
                             setDateAndScore(data.submitted_at || submittedAt, data.average_score || avgScore);
                             renderRatings(data.answers || {});
+                            const commentsEl = document.getElementById("view-comments-text");
+                            if (commentsEl) {
+                                commentsEl.textContent = (data.comment && data.comment.trim() !== "")
+                                    ? data.comment
+                                    : "No comments submitted.";
+                            }
                         } else {
                             renderRatings({});
                         }
