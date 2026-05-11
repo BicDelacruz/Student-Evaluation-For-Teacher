@@ -130,7 +130,7 @@ if (isset($_GET["action"]) && in_array($_GET["action"], ["report_download", "rep
         if (!empty($ta_ids_for_report)) {
             $s = $pdo->prepare("
                 SELECT
-                    era.teaching_assignment_id AS ta_id,
+                    er.teaching_assignment_id AS ta_id,
                     ec.category_name,
                     ROUND(AVG(era.rating_value), 2) AS average_score,
                     ROUND((AVG(era.rating_value) / 5) * 100, 1) AS percentage_score,
@@ -143,8 +143,8 @@ if (isset($_GET["action"]) && in_array($_GET["action"], ["report_download", "rep
                 WHERE er.teaching_assignment_id IN ($ta_in_ph)
                 AND er.evaluation_period_id = ?
                 AND er.response_status = 'Submitted'
-                GROUP BY era.teaching_assignment_id, ec.category_name, efc.display_order
-                ORDER BY era.teaching_assignment_id, efc.display_order
+                GROUP BY er.teaching_assignment_id, ec.category_name, efc.display_order
+                ORDER BY er.teaching_assignment_id, efc.display_order
             ");
             $s->execute(array_merge($ta_ids_for_report, [$rpt_period_id]));
             foreach ($s->fetchAll() as $row) {

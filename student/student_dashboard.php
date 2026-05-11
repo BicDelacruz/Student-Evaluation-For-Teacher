@@ -8,6 +8,7 @@ $database_name = "student_evaluation_for_teacher_db";
 $database_username = "root";
 $database_password = "";
 
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 $db = new mysqli($database_host, $database_username, $database_password, $database_name);
 if ($db->connect_error) {
     die("Database connection failed: " . $db->connect_error);
@@ -145,7 +146,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"])) {
                      (student_evaluation_task_id, student_id, teaching_assignment_id, evaluation_period_id, evaluation_form_id, response_status, average_score, total_score, submitted_at, created_at, updated_at)
                      VALUES (?, ?, ?, ?, ?, 'Submitted', ?, ?, ?, ?, ?)"
                 );
-                $ins_resp->bind_param("iiiiiddsss", $post_task_id, $post_student_id, $post_ta_id, $post_period_id, $post_form_id, $avg_score, $total_score, $now_ts, $now_ts, $now_ts);
+                $ins_resp->bind_param("iiiiidisss", $post_task_id, $post_student_id, $post_ta_id, $post_period_id, $post_form_id, $avg_score, $total_score, $now_ts, $now_ts, $now_ts);
                 $ins_resp->execute();
                 $response_id = (int) $db->insert_id;
                 $ins_resp->close();
@@ -201,7 +202,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"])) {
             echo json_encode(["success" => true, "submitted_at" => $now_ts, "average_score" => $avg_score]);
         } catch (Throwable $e) {
             $db->rollback();
-            echo json_encode(["success" => false, "message" => "Transaction failed: " . $e->getMessage()]);
+            error_log("submit_evaluation error: " . $e->getMessage());
+            echo json_encode(["success" => false, "message" => "Submission failed: " . $e->getMessage()]);
         }
         exit;
     }
@@ -324,43 +326,31 @@ $assigned_teachers = [];
 if ($current_period_id) {
     $stmt = $db->prepare(
         "SELECT
-            ta.teaching_assignment_id,
-            f.full_name AS faculty_name,
+            set2.student_evaluation_task_id,
+            set2.teaching_assignment_id,
+            set2.task_status,
+            f.full_name    AS faculty_name,
             subj.subject_title,
             subj.subject_code,
             d.department_name,
-            set2.student_evaluation_task_id,
-            CASE
-                WHEN er.evaluation_response_id IS NOT NULL
-                     AND er.response_status = 'Submitted'
-                THEN 'Submitted'
-                ELSE 'Pending'
-            END AS task_status,
             er.submitted_at,
             er.average_score
-         FROM student s
-         INNER JOIN evaluation_period ep
-             ON ep.evaluation_period_id = ?
-         INNER JOIN section_subject_offering sso
-             ON sso.section_id = s.current_section_id
-            AND sso.term_id   = ep.term_id
+         FROM student_evaluation_task set2
          INNER JOIN teaching_assignment ta
-             ON ta.section_subject_offering_id = sso.section_subject_offering_id
-            AND ta.term_id = ep.term_id
+             ON ta.teaching_assignment_id = set2.teaching_assignment_id
+         INNER JOIN section_subject_offering sso
+             ON sso.section_subject_offering_id = ta.section_subject_offering_id
          INNER JOIN faculty f    ON f.faculty_id    = ta.faculty_id
          INNER JOIN subject subj ON subj.subject_id = sso.subject_id
          LEFT JOIN department d  ON d.department_id = subj.department_id
-         LEFT JOIN student_evaluation_task set2
-             ON set2.student_id           = s.student_id
-            AND set2.evaluation_period_id = ep.evaluation_period_id
          LEFT JOIN evaluation_response er
-             ON er.student_id             = s.student_id
-            AND er.teaching_assignment_id = ta.teaching_assignment_id
-            AND er.evaluation_period_id   = ep.evaluation_period_id
-         WHERE s.student_id = ? AND sso.offering_status = 'Active'
+             ON er.student_evaluation_task_id = set2.student_evaluation_task_id
+            AND er.response_status = 'Submitted'
+         WHERE set2.student_id           = ?
+           AND set2.evaluation_period_id = ?
          ORDER BY subj.subject_code ASC"
     );
-    $stmt->bind_param("ii", $current_period_id, $student_id);
+    $stmt->bind_param("ii", $student_id, $current_period_id);
     $stmt->execute();
     $result = $stmt->get_result();
     while ($row = $result->fetch_assoc()) {
