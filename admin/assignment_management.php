@@ -2271,5 +2271,272 @@ updateEnrollCourseList();
 filterFacultyAssignments();
 filterSectionEnrollments();
 </script>
+
+<?php
+$logout_role_label = $_SESSION["role_name"] ?? "System Administrator";
+?>
+
+<style>
+.admin_logout_overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.48);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+    padding: 24px;
+}
+
+.admin_logout_overlay.show {
+    display: flex;
+}
+
+.admin_logout_modal {
+    width: 100%;
+    max-width: 610px;
+    background: #ffffff;
+    border-radius: 10px;
+    padding: 36px 34px 32px;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.32);
+    text-align: center;
+    font-family: Arial, Helvetica, sans-serif;
+    animation: admin_logout_pop 0.18s ease;
+}
+
+@keyframes admin_logout_pop {
+    from {
+        opacity: 0;
+        transform: scale(0.96) translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.admin_logout_icon {
+    width: 92px;
+    height: 92px;
+    border-radius: 999px;
+    background: #fee2e2;
+    color: #dc2626;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 22px;
+}
+
+.admin_logout_icon svg {
+    width: 48px;
+    height: 48px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.admin_logout_modal h2 {
+    font-size: 32px;
+    line-height: 1.2;
+    color: #172033;
+    font-weight: 700;
+    margin-bottom: 20px;
+}
+
+.admin_logout_modal p {
+    font-size: 19px;
+    line-height: 1.55;
+    color: #4b5563;
+    max-width: 500px;
+    margin: 0 auto 28px;
+}
+
+.admin_logout_modal p strong {
+    color: #374151;
+    font-weight: 700;
+}
+
+.admin_logout_divider {
+    height: 1px;
+    background: #e5e7eb;
+    margin: 0 0 28px;
+}
+
+.admin_logout_actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 22px;
+}
+
+.admin_logout_cancel,
+.admin_logout_confirm {
+    min-height: 56px;
+    border-radius: 8px;
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: Arial, Helvetica, sans-serif;
+    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.admin_logout_cancel {
+    background: #ffffff;
+    color: #172033;
+    border: 1px solid #d8dce2;
+}
+
+.admin_logout_cancel:hover {
+    background: #f8fafc;
+    border-color: #bfc7d4;
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+    transform: translateY(-1px);
+}
+
+.admin_logout_confirm {
+    background: #dc2626;
+    color: #ffffff;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 11px;
+}
+
+.admin_logout_confirm:hover {
+    background: #b91c1c;
+    box-shadow: 0 10px 22px rgba(220, 38, 38, 0.24);
+    transform: translateY(-1px);
+}
+
+.admin_logout_confirm svg {
+    width: 24px;
+    height: 24px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.admin_logout_cancel:active,
+.admin_logout_confirm:active {
+    transform: scale(0.98);
+}
+
+body.admin_logout_locked {
+    overflow: hidden;
+}
+
+@media (max-width: 640px) {
+    .admin_logout_modal {
+        padding: 30px 24px 26px;
+    }
+
+    .admin_logout_modal h2 {
+        font-size: 26px;
+    }
+
+    .admin_logout_modal p {
+        font-size: 16px;
+    }
+
+    .admin_logout_actions {
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+}
+</style>
+
+<div class="admin_logout_overlay" id="adminLogoutOverlay" aria-hidden="true">
+    <div class="admin_logout_modal" role="dialog" aria-modal="true" aria-labelledby="adminLogoutTitle">
+        <div class="admin_logout_icon">
+            <svg viewBox="0 0 24 24">
+                <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+        </div>
+
+        <h2 id="adminLogoutTitle">Log Out Confirmation</h2>
+
+        <p>
+            Are you sure you want to log out of the
+            <strong><?php echo htmlspecialchars($logout_role_label); ?></strong>
+            account? You will need to sign in again to continue managing the
+            <strong>Student Evaluation for Teacher System.</strong>
+        </p>
+
+        <div class="admin_logout_divider"></div>
+
+        <div class="admin_logout_actions">
+            <button type="button" class="admin_logout_cancel" id="adminLogoutCancel">Cancel</button>
+
+            <button type="button" class="admin_logout_confirm" id="adminLogoutConfirm">
+                <svg viewBox="0 0 24 24">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                    <polyline points="16 17 21 12 16 7"></polyline>
+                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+                Log Out
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    const overlay = document.getElementById("adminLogoutOverlay");
+    const cancelBtn = document.getElementById("adminLogoutCancel");
+    const confirmBtn = document.getElementById("adminLogoutConfirm");
+
+    let logoutUrl = "../login/login_page.php";
+
+    function openAdminLogoutModal(url) {
+        logoutUrl = url || logoutUrl;
+        overlay.classList.add("show");
+        overlay.setAttribute("aria-hidden", "false");
+        document.body.classList.add("admin_logout_locked");
+    }
+
+    function closeAdminLogoutModal() {
+        overlay.classList.remove("show");
+        overlay.setAttribute("aria-hidden", "true");
+        document.body.classList.remove("admin_logout_locked");
+    }
+
+    document.querySelectorAll(".logout-link, a[href*='logout'], a[href*='login_page.php']").forEach(function (link) {
+        const text = (link.textContent || "").trim().toLowerCase();
+
+        if (link.classList.contains("logout-link") || text.includes("logout") || text.includes("log out")) {
+            link.addEventListener("click", function (event) {
+                event.preventDefault();
+                openAdminLogoutModal(link.getAttribute("href"));
+            });
+        }
+    });
+
+    cancelBtn.addEventListener("click", closeAdminLogoutModal);
+
+    overlay.addEventListener("click", function (event) {
+        if (event.target === overlay) {
+            closeAdminLogoutModal();
+        }
+    });
+
+    document.addEventListener("keydown", function (event) {
+        if (event.key === "Escape" && overlay.classList.contains("show")) {
+            closeAdminLogoutModal();
+        }
+    });
+
+    confirmBtn.addEventListener("click", function () {
+        window.location.href = logoutUrl;
+    });
+})();
+</script>
+
 </body>
 </html>

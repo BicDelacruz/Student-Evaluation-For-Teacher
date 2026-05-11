@@ -8,30 +8,143 @@ require_once dirname(__DIR__) . "/database_connector.php";
 $error_message = "";
 $university_id = "";
 
-/*
 function redirectToDashboard(string $role_name): void
 {
-    $role_name = strtolower($role_name);
+    $role_name = strtolower(trim($role_name));
 
     if ($role_name === "student") {
-        header("Location: student_dashboard.php");
+        header("Location: ../student/student_dashboard.php");
         exit;
     }
 
     if ($role_name === "faculty") {
-        header("Location: faculty_dashboard.php");
+        header("Location: ../faculty/faculty_dashboard.php");
         exit;
     }
 
     if ($role_name === "admin") {
-        header("Location: admin_dashboard.php");
+        header("Location: ../admin/admin_dashboard.php");
         exit;
     }
 
     header("Location: login_page.php");
     exit;
 }
-*/
+
+function clearAuthenticationSession(): void
+{
+    unset(
+        $_SESSION["login_user_id"],
+        $_SESSION["login_profile_id"],
+        $_SESSION["login_role"],
+        $_SESSION["login_university_id"],
+        $_SESSION["authenticated_user_id"],
+        $_SESSION["authenticated_profile_id"],
+        $_SESSION["authenticated_role"],
+        $_SESSION["two_factor_pending"]
+    );
+}
+
+function fetchStudentScopeProfile(PDO $pdo, int $student_id): ?array
+{
+    if ($student_id <= 0) {
+        return null;
+    }
+
+    $student_query = "
+        SELECT
+            s.student_id,
+            COALESCE(sec.course_id, s.course_id) AS active_course_id,
+            COALESCE(sec.year_level, s.current_year_level) AS active_year_level,
+            COALESCE(sec.section_id, s.current_section_id) AS active_section_id,
+            COALESCE(active_course.department_id, base_course.department_id) AS active_department_id
+        FROM student s
+        INNER JOIN course base_course
+            ON base_course.course_id = s.course_id
+        LEFT JOIN student_section_enrollment sse
+            ON sse.student_id = s.student_id
+            AND sse.enrollment_status = 'Active'
+        LEFT JOIN section sec
+            ON sec.section_id = COALESCE(sse.section_id, s.current_section_id)
+            AND sec.section_status = 'Active'
+        LEFT JOIN course active_course
+            ON active_course.course_id = COALESCE(sec.course_id, s.course_id)
+        WHERE s.student_id = :student_id
+        ORDER BY sse.student_section_enrollment_id DESC
+        LIMIT 1
+    ";
+
+    $student_statement = $pdo->prepare($student_query);
+    $student_statement->execute(["student_id" => $student_id]);
+    $student = $student_statement->fetch(PDO::FETCH_ASSOC);
+
+    return $student ?: null;
+}
+
+function studentHasMatchingScope(PDO $pdo, array $student, string $status_group): bool
+{
+    $department_id = (int) ($student["active_department_id"] ?? 0);
+    $course_id = (int) ($student["active_course_id"] ?? 0);
+    $year_level = (int) ($student["active_year_level"] ?? 0);
+    $section_id = (int) ($student["active_section_id"] ?? 0);
+
+    if ($status_group === "open") {
+        $status_condition = "eps.scope_status = 'Active' AND ep.period_status IN ('Open', 'Ongoing')";
+    } else {
+        $status_condition = "(
+            eps.scope_status IN ('Completed', 'Closed', 'Archived')
+            OR ep.period_status IN ('Closed', 'Archived')
+        )";
+    }
+
+    $scope_query = "
+        SELECT 1
+        FROM evaluation_period_scope eps
+        INNER JOIN evaluation_period ep
+            ON ep.evaluation_period_id = eps.evaluation_period_id
+        WHERE $status_condition
+            AND (
+                eps.scope_type = 'All'
+                OR (eps.scope_type = 'Department' AND eps.department_id = :department_id)
+                OR (eps.scope_type = 'Course' AND eps.course_id = :course_id)
+                OR (eps.scope_type = 'Year Level' AND eps.year_level = :year_level)
+                OR (eps.scope_type = 'Section' AND eps.section_id = :section_id)
+            )
+        ORDER BY
+            COALESCE(eps.closed_at, eps.opened_at, ep.updated_at) DESC,
+            eps.evaluation_period_scope_id DESC
+        LIMIT 1
+    ";
+
+    $scope_statement = $pdo->prepare($scope_query);
+    $scope_statement->execute([
+        "department_id" => $department_id,
+        "course_id" => $course_id,
+        "year_level" => $year_level,
+        "section_id" => $section_id
+    ]);
+
+    return (bool) $scope_statement->fetchColumn();
+}
+
+function getStudentEvaluationAccessStatus(PDO $pdo, int $student_id): string
+{
+    $student = fetchStudentScopeProfile($pdo, $student_id);
+
+    if (!$student) {
+        return "not_yet_open";
+    }
+
+    if (studentHasMatchingScope($pdo, $student, "open")) {
+        return "open";
+    }
+
+    if (studentHasMatchingScope($pdo, $student, "closed")) {
+        return "closed";
+    }
+
+    return "not_yet_open";
+}
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $university_id = trim($_POST["university_id"] ?? "");
@@ -108,6 +221,24 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 } elseif ($profile_status !== "Active") {
                     $error_message = "Your profile is not active.";
                 } else {
+                    if ($role_name === "Student") {
+                        $evaluation_access_status = getStudentEvaluationAccessStatus($pdo, (int) $profile_id);
+
+                        if ($evaluation_access_status === "closed") {
+                            clearAuthenticationSession();
+                            $_SESSION["evaluation_closed_message"] = "The student evaluation is officially closed. The evaluation period for your section has already ended. If you believe this is an error or you still need assistance, please contact the admin or your college office for further guidance.";
+                            header("Location: evaluation_closed.php");
+                            exit;
+                        }
+
+                        if ($evaluation_access_status !== "open") {
+                            clearAuthenticationSession();
+                            $_SESSION["evaluation_access_message"] = "You cannot log in yet to the student evaluation. Please wait for the announcement on when the admin will open the student evaluation for your section.";
+                            header("Location: evaluation_not_yet_open.php");
+                            exit;
+                        }
+                    }
+
                     session_regenerate_id(true);
 
                     $_SESSION["login_user_id"] = (int) $account["user_id"];
@@ -191,7 +322,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             />
 
             <button type="button" class="password-toggle" id="passwordToggle" aria-label="Show password">
-                <!-- Eye Open Icon (hidden by default) -->
                 <span class="eye-open-icon" style="display: none;">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"></path>
@@ -199,7 +329,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     </svg>
                 </span>
 
-                <!-- Eye Closed Icon (visible by default) -->
                 <span class="eye-closed-icon" style="display: flex;">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M3 3L21 21"></path>
@@ -208,7 +337,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         <path d="M9.88 9.88C9.34 10.42 9 11.17 9 12C9 13.66 10.34 15 12 15C12.83 15 13.58 14.66 14.12 14.12"></path>
                     </svg>
                 </span>
-                </button>
+            </button>
           </div>
         </div>
 
@@ -231,22 +360,20 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     const clearLoginForm = document.getElementById("clearLoginForm");
 
     passwordToggle.addEventListener("click", function () {
-    const eyeOpen = document.querySelector(".eye-open-icon");
-    const eyeClosed = document.querySelector(".eye-closed-icon");
+      const eyeOpen = document.querySelector(".eye-open-icon");
+      const eyeClosed = document.querySelector(".eye-closed-icon");
 
-    if (passwordInput.type === "password") {
-        // Show password and open eye icon
+      if (passwordInput.type === "password") {
         passwordInput.type = "text";
         eyeOpen.style.display = "flex";
         eyeClosed.style.display = "none";
         passwordToggle.setAttribute("aria-label", "Hide password");
-    } else {
-        // Hide password and slashed eye icon
+      } else {
         passwordInput.type = "password";
         eyeOpen.style.display = "none";
         eyeClosed.style.display = "flex";
         passwordToggle.setAttribute("aria-label", "Show password");
-    }
+      }
     });
 
     clearLoginForm.addEventListener("click", function () {

@@ -1,0 +1,300 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --closed-page-zoom: 0.80;
+  --navy: #172033;
+  --navy-dark: #0f172a;
+  --text: #071226;
+  --muted-border: #d8dce2;
+  --danger: #dc2626;
+  --danger-soft: #fff1f2;
+  --danger-border: #fecaca;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  min-height: 100vh;
+  font-family: Arial, Helvetica, sans-serif;
+  background: radial-gradient(circle at center, rgba(35, 53, 74, 0.94) 0%, rgba(20, 32, 51, 1) 58%, rgba(10, 20, 36, 1) 100%);
+  color: var(--text);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+.evaluation-closed-body {
+  min-height: 100vh;
+}
+
+.evaluation-closed-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+}
+
+.evaluation-closed-card {
+  width: 100%;
+  max-width: 720px;
+  background: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  border-radius: 9px;
+  padding: 48px 56px 46px;
+  text-align: center;
+  box-shadow: 0 30px 88px rgba(0, 0, 0, 0.34);
+  transform: scale(var(--closed-page-zoom));
+  transform-origin: center center;
+}
+
+.evaluation-closed-card {
+  zoom: 0.75;
+}
+
+.school-logo {
+  display: block;
+  width: 106px;
+  height: 106px;
+  object-fit: contain;
+  margin: 0 auto 24px;
+}
+
+.evaluation-closed-card h1 {
+  font-size: 30px;
+  line-height: 1.28;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 28px;
+}
+
+.brand-divider {
+  position: relative;
+  height: 18px;
+  margin: 0 0 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.brand-divider::before,
+.brand-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--muted-border);
+}
+
+.brand-divider span {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: var(--muted-border);
+  margin: 0 14px;
+  display: inline-flex;
+}
+
+.closed-icon {
+  width: 142px;
+  height: 142px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%);
+  color: var(--danger);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 30px;
+  position: relative;
+}
+
+.closed-icon::before,
+.closed-icon::after {
+  content: "";
+  position: absolute;
+  background: #f87171;
+  border-radius: 999px;
+  opacity: 0.9;
+}
+
+.closed-icon::before {
+  width: 5px;
+  height: 20px;
+  top: 28px;
+  left: 30px;
+  transform: rotate(-16deg);
+}
+
+.closed-icon::after {
+  width: 5px;
+  height: 14px;
+  top: 28px;
+  left: 47px;
+  transform: rotate(4deg);
+}
+
+.closed-icon svg {
+  width: 94px;
+  height: 94px;
+  filter: drop-shadow(0 8px 16px rgba(220, 38, 38, 0.2));
+}
+
+.closed-icon .pin {
+  fill: #ef4444;
+}
+
+.closed-icon .hanger {
+  fill: none;
+  stroke: #172033;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.closed-icon .sign {
+  fill: #ef4444;
+}
+
+.closed-icon .minus {
+  fill: none;
+  stroke: #ffffff;
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+
+.evaluation-closed-card h2 {
+  font-size: 35px;
+  line-height: 1.22;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 24px;
+}
+
+.closed-message {
+  width: 100%;
+  border: 1px solid var(--danger-border);
+  background: linear-gradient(180deg, #fff1f2 0%, #fff7f7 100%);
+  color: #0f172a;
+  border-radius: 9px;
+  padding: 25px 32px;
+  font-size: 24px;
+  line-height: 1.45;
+  font-weight: 500;
+  margin-bottom: 34px;
+}
+
+.back-login-button {
+  width: 100%;
+  min-height: 72px;
+  border-radius: 9px;
+  background: var(--navy);
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 24px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  box-shadow: 0 10px 22px rgba(23, 32, 51, 0.2);
+  transition: transform 0.16s ease, background 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease;
+}
+
+.back-login-button:hover {
+  background: var(--navy-dark);
+  box-shadow: 0 14px 30px rgba(23, 32, 51, 0.3);
+  transform: translateY(-2px);
+}
+
+.back-login-button:active {
+  transform: scale(0.99);
+}
+
+.back-login-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.28), 0 14px 30px rgba(23, 32, 51, 0.3);
+}
+
+.back-login-button svg {
+  width: 31px;
+  height: 31px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+@media (max-height: 790px) and (min-width: 621px) {
+  :root {
+    --closed-page-zoom: 0.78;
+  }
+}
+
+@media (max-width: 620px) {
+  :root {
+    --closed-page-zoom: 1;
+  }
+
+  .evaluation-closed-page {
+    padding: 18px;
+  }
+
+  .evaluation-closed-card {
+    max-width: 100%;
+    padding: 34px 24px 30px;
+  }
+
+  .school-logo {
+    width: 88px;
+    height: 88px;
+    margin-bottom: 20px;
+  }
+
+  .evaluation-closed-card h1 {
+    font-size: 23px;
+    margin-bottom: 22px;
+  }
+
+  .brand-divider {
+    margin-bottom: 30px;
+  }
+
+  .closed-icon {
+    width: 116px;
+    height: 116px;
+    margin-bottom: 24px;
+  }
+
+  .closed-icon svg {
+    width: 78px;
+    height: 78px;
+  }
+
+  .evaluation-closed-card h2 {
+    font-size: 28px;
+    margin-bottom: 20px;
+  }
+
+  .closed-message {
+    padding: 20px 18px;
+    font-size: 18px;
+    line-height: 1.55;
+    margin-bottom: 28px;
+  }
+
+  .back-login-button {
+    min-height: 60px;
+    font-size: 18px;
+  }
+
+  .back-login-button svg {
+    width: 24px;
+    height: 24px;
+  }
+}

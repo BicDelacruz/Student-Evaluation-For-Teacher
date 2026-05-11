@@ -1,0 +1,287 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  min-height: 100vh;
+  font-family: Arial, Helvetica, sans-serif;
+  background: radial-gradient(circle at center, rgba(35, 53, 74, 0.92) 0%, rgba(20, 32, 51, 1) 58%, rgba(10, 20, 36, 1) 100%);
+  color: #0f172a;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+.evaluation-not-open-page {
+  zoom: 0.75;
+}
+
+.evaluation-closed-body {
+  min-height: 100vh;
+}
+
+.evaluation-closed-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+}
+
+.evaluation-closed-card {
+  width: 100%;
+  max-width: 660px;
+  background: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  border-radius: 9px;
+  padding: 46px 54px 44px;
+  text-align: center;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.34);
+  transform: scale(1);
+  transform-origin: center center;
+}
+
+.evaluation-closed-card {
+  zoom: 0.75;
+}
+
+.school-logo {
+  display: block;
+  width: 104px;
+  height: 104px;
+  object-fit: contain;
+  margin: 0 auto 24px;
+}
+
+.evaluation-closed-card h1 {
+  font-size: 28px;
+  line-height: 1.3;
+  font-weight: 700;
+  color: #061226;
+  margin-bottom: 28px;
+}
+
+.brand-divider {
+  position: relative;
+  height: 18px;
+  margin: 0 0 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.brand-divider::before,
+.brand-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #d8dce2;
+}
+
+.brand-divider span {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: #d8dce2;
+  margin: 0 14px;
+  display: inline-flex;
+}
+
+.warning-icon {
+  width: 138px;
+  height: 138px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+  color: #f59e0b;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 28px;
+  position: relative;
+}
+
+.warning-icon::before,
+.warning-icon::after {
+  content: "";
+  position: absolute;
+  background: #fbbf24;
+  border-radius: 999px;
+  opacity: 0.85;
+}
+
+.warning-icon::before {
+  width: 6px;
+  height: 22px;
+  top: 28px;
+  left: 26px;
+  transform: rotate(-36deg);
+}
+
+.warning-icon::after {
+  width: 6px;
+  height: 15px;
+  top: 22px;
+  left: 48px;
+  transform: rotate(-7deg);
+}
+
+.warning-icon svg {
+  width: 92px;
+  height: 92px;
+  stroke: #ffffff;
+  fill: #f59e0b;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 8px 14px rgba(245, 158, 11, 0.22));
+}
+
+.evaluation-closed-card h2 {
+  font-size: 31px;
+  line-height: 1.25;
+  font-weight: 700;
+  color: #061226;
+  margin-bottom: 24px;
+}
+
+.notice-message {
+  width: 100%;
+  border: 1px solid #fed7aa;
+  background: linear-gradient(180deg, #fffbeb 0%, #fff7ed 100%);
+  color: #0f172a;
+  border-radius: 9px;
+  padding: 24px 28px;
+  font-size: 22px;
+  line-height: 1.48;
+  font-weight: 500;
+  margin-bottom: 32px;
+}
+
+.back-login-button {
+  width: 100%;
+  min-height: 68px;
+  border-radius: 9px;
+  background: #172033;
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 22px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  box-shadow: 0 10px 22px rgba(23, 32, 51, 0.18);
+  transition: transform 0.16s ease, background 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease;
+}
+
+.back-login-button:hover {
+  background: #0f172a;
+  box-shadow: 0 14px 28px rgba(23, 32, 51, 0.28);
+  transform: translateY(-2px);
+}
+
+.back-login-button:active {
+  transform: scale(0.99);
+}
+
+.back-login-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.26), 0 14px 28px rgba(23, 32, 51, 0.28);
+}
+
+.back-login-button svg {
+  width: 29px;
+  height: 29px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+@media (max-height: 780px) and (min-width: 621px) {
+  .evaluation-closed-card {
+    transform: scale(0.9);
+  }
+}
+
+@media (max-width: 620px) {
+  .evaluation-closed-page {
+    padding: 18px;
+  }
+
+  .evaluation-closed-card {
+    max-width: 100%;
+    padding: 34px 24px 30px;
+  }
+
+  .school-logo {
+    width: 88px;
+    height: 88px;
+    margin-bottom: 20px;
+  }
+
+  .evaluation-closed-card h1 {
+    font-size: 23px;
+    margin-bottom: 22px;
+  }
+
+  .brand-divider {
+    margin-bottom: 30px;
+  }
+
+  .warning-icon {
+    width: 116px;
+    height: 116px;
+    margin-bottom: 24px;
+  }
+
+  .warning-icon svg {
+    width: 78px;
+    height: 78px;
+  }
+
+  .evaluation-closed-card h2 {
+    font-size: 26px;
+    margin-bottom: 20px;
+  }
+
+  .notice-message {
+    padding: 20px 18px;
+    font-size: 18px;
+    line-height: 1.55;
+    margin-bottom: 28px;
+  }
+
+  .back-login-button {
+    min-height: 58px;
+    font-size: 18px;
+  }
+
+  .back-login-button svg {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+@media (max-width: 380px) {
+  .evaluation-closed-card {
+    padding: 30px 18px 26px;
+  }
+
+  .notice-message {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 620px) {
+  .evaluation-closed-card {
+    zoom: 1;
+  }
+}
