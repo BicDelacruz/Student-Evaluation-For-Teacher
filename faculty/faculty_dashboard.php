@@ -1284,21 +1284,10 @@ function participation_color(float $rate): string
         }
 
         .content-wrap {
-            max-width: 1100px;
-            margin: 0 auto;
-            padding: 28px 32px;
-        }
-
-        @media (min-width: 1400px) {
-            .content-wrap {
-                max-width: 1240px;
-            }
-        }
-
-        @media (min-width: 1700px) {
-            .content-wrap {
-                max-width: 1380px;
-            }
+            max-width: none;
+            width: 100%;
+            margin: 0;
+            padding: 32px 46px;
         }
 
         html,
@@ -1356,7 +1345,7 @@ function participation_color(float $rate): string
         }
 
         .result-row h3 {
-            font-size: 15px;
+            font-size: 18px;
             margin-bottom: 5px;
             display: flex;
             align-items: center;
@@ -1365,13 +1354,13 @@ function participation_color(float $rate): string
         }
 
         .result-row p {
-            font-size: 13px;
+            font-size: 15px;
             color: #556070;
             margin-bottom: 3px;
         }
 
         .result-row small {
-            font-size: 12px;
+            font-size: 14px;
             color: #64748b;
             display: flex;
             align-items: center;
@@ -1405,13 +1394,13 @@ function participation_color(float $rate): string
         }
 
         .score-right strong {
-            font-size: 20px;
+            font-size: 26px;
             font-weight: 800;
             display: block;
         }
 
         .score-right small {
-            font-size: 12px;
+            font-size: 14px;
             color: #64748b;
         }
 
@@ -1439,18 +1428,18 @@ function participation_color(float $rate): string
             border: none;
             background: transparent;
             padding: 10px 8px;
-            font-size: 14px;
+            font-size: 16px;
             width: 100%;
             outline: none;
         }
 
         .filter-select {
-            min-height: 40px;
-            padding: 0 12px;
+            min-height: 44px;
+            padding: 0 14px;
             border: 1px solid #d8dce2;
             border-radius: 8px;
             background: #fff;
-            font-size: 14px;
+            font-size: 15px;
             font-weight: 600;
             cursor: pointer;
             outline: none;
@@ -1473,13 +1462,13 @@ function participation_color(float $rate): string
         }
 
         .results-summary-stat p {
-            font-size: 12px;
+            font-size: 14px;
             color: #64748b;
             margin-bottom: 4px;
         }
 
         .results-summary-stat strong {
-            font-size: 22px;
+            font-size: 26px;
             font-weight: 800;
         }
 
@@ -1487,7 +1476,7 @@ function participation_color(float $rate): string
             padding: 14px 22px;
             background: #eff6ff;
             border-top: 1px solid #bfdbfe;
-            font-size: 13px;
+            font-size: 15px;
             color: #1d4ed8;
             display: flex;
             gap: 10px;
@@ -1522,7 +1511,7 @@ function participation_color(float $rate): string
             border: none;
             background: transparent;
             padding: 10px 8px;
-            font-size: 14px;
+            font-size: 16px;
             width: 100%;
             outline: none;
         }
@@ -1551,12 +1540,12 @@ function participation_color(float $rate): string
         }
 
         .subject-group-header h3 {
-            font-size: 16px;
+            font-size: 18px;
             margin-bottom: 2px;
         }
 
         .subject-group-header small {
-            font-size: 12px;
+            font-size: 14px;
             color: #64748b;
         }
 
@@ -1578,14 +1567,14 @@ function participation_color(float $rate): string
         }
 
         .subject-section-row .sec-info strong {
-            font-size: 14px;
+            font-size: 16px;
             display: flex;
             align-items: center;
             gap: 6px;
         }
 
         .subject-section-row .sec-info p {
-            font-size: 13px;
+            font-size: 15px;
             color: #556070;
             margin-top: 2px;
         }
@@ -1605,13 +1594,13 @@ function participation_color(float $rate): string
         }
 
         .load-stat p {
-            font-size: 12px;
+            font-size: 14px;
             color: #a8b4c4;
             margin-bottom: 4px;
         }
 
         .load-stat strong {
-            font-size: 28px;
+            font-size: 34px;
             font-weight: 800;
             color: #fff;
         }
@@ -2202,18 +2191,18 @@ function participation_color(float $rate): string
         .modal-box {
             background: #fff;
             border-radius: 10px;
-            width: min(90%, 480px);
+            width: min(92%, 560px);
             overflow: hidden;
-            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 24px 70px rgba(0, 0, 0, 0.30);
         }
 
         .modal-header {
-            padding: 18px 22px;
+            padding: 20px 24px;
             display: flex;
             align-items: center;
             justify-content: space-between;
             font-weight: 700;
-            font-size: 17px;
+            font-size: 19px;
             background: #172033;
             color: #fff;
         }
@@ -2234,23 +2223,24 @@ function participation_color(float $rate): string
         }
 
         .modal-body {
-            padding: 22px;
+            padding: 24px;
             display: flex;
             flex-direction: column;
             gap: 16px;
+            font-size: 16px;
         }
 
         .modal-alert-blue {
             background: #eff6ff;
             border: 1px solid #bfdbfe;
             border-radius: 8px;
-            padding: 14px 18px;
+            padding: 16px 20px;
             display: flex;
             gap: 12px;
         }
 
         .modal-alert-blue p {
-            font-size: 13px;
+            font-size: 15px;
             color: #1d4ed8;
             margin: 0;
         }
@@ -2258,8 +2248,8 @@ function participation_color(float $rate): string
         .modal-alert-blue strong {
             display: block;
             color: #1d4ed8;
-            margin-bottom: 4px;
-            font-size: 14px;
+            margin-bottom: 6px;
+            font-size: 16px;
         }
 
         .modal-btn-row {
@@ -2268,14 +2258,15 @@ function participation_color(float $rate): string
         }
 
         .btn-modal-cancel {
-            flex: 1;
             min-height: 46px;
             border: 1px solid #d8dce2;
             border-radius: 8px;
-            background: #f3f4f6;
+            background: #ffffff;
+            color: var(--text, #071226);
             font-weight: 700;
-            font-size: 14px;
-            display: flex;
+            font-size: 16px;
+            padding: 0 20px;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
@@ -2283,18 +2274,19 @@ function participation_color(float $rate): string
 
         .btn-modal-logout {
             flex: 2;
-            min-height: 46px;
+            min-height: 54px;
             border-radius: 8px;
             background: #dc2626;
             color: #fff;
             font-weight: 700;
-            font-size: 14px;
+            font-size: 16px;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            gap: 10px;
             cursor: pointer;
             border: none;
+            padding: 0 22px;
         }
 
         .empty-state {

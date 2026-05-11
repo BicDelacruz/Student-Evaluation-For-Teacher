@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 session_start();
 
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+
 $database_host = "localhost";
 $database_name = "student_evaluation_for_teacher_db";
 $database_username = "root";
@@ -13,236 +15,899 @@ $db = new mysqli($database_host, $database_username, $database_password, $databa
 if ($db->connect_error) {
     die("Database connection failed: " . $db->connect_error);
 }
+$db->set_charset("utf8mb4");
 
 
+function json_response(array $payload): void
+{
+    header("Content-Type: application/json");
+    echo json_encode($payload);
+    exit;
+}
+
+function db_column_exists(mysqli $db, string $table, string $column): bool
+{
+    $stmt = $db->prepare(
+        "SELECT COUNT(*) AS cnt
+         FROM information_schema.columns
+         WHERE table_schema = DATABASE()
+           AND table_name = ?
+           AND column_name = ?"
+    );
+    $stmt->bind_param("ss", $table, $column);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    return ((int) ($row["cnt"] ?? 0)) > 0;
+}
+
+function db_routine_exists(mysqli $db, string $routine_name): bool
+{
+    $stmt = $db->prepare(
+        "SELECT COUNT(*) AS cnt
+         FROM information_schema.routines
+         WHERE routine_schema = DATABASE()
+           AND routine_name = ?
+           AND routine_type = 'PROCEDURE'"
+    );
+    $stmt->bind_param("s", $routine_name);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    return ((int) ($row["cnt"] ?? 0)) > 0;
+}
+
+function get_logged_student(mysqli $db): array
+{
+    $logged_user_id = (int) ($_SESSION["authenticated_user_id"] ?? 0);
+    if ($logged_user_id <= 0) {
+        json_response(["success" => false, "message" => "Not authenticated"]);
+    }
+
+    $stmt = $db->prepare(
+        "SELECT s.student_id, s.student_number, s.full_name, s.user_id
+         FROM student s
+         WHERE s.user_id = ?
+         LIMIT 1"
+    );
+    $stmt->bind_param("i", $logged_user_id);
+    $stmt->execute();
+    $student = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    if (!$student) {
+        json_response(["success" => false, "message" => "Student profile not found"]);
+    }
+
+    return $student;
+}
+
+function get_active_period(mysqli $db, ?int $period_id = null): ?array
+{
+    if ($period_id && $period_id > 0) {
+        $stmt = $db->prepare(
+            "SELECT evaluation_period_id, term_id, period_name, period_status
+             FROM evaluation_period
+             WHERE evaluation_period_id = ?
+             LIMIT 1"
+        );
+        $stmt->bind_param("i", $period_id);
+    } else {
+        $stmt = $db->prepare(
+            "SELECT evaluation_period_id, term_id, period_name, period_status
+             FROM evaluation_period
+             WHERE period_status IN ('Open','Ongoing')
+             ORDER BY evaluation_period_id DESC
+             LIMIT 1"
+        );
+    }
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    return $row ?: null;
+}
+
+function generate_student_evaluation_tasks(mysqli $db, int $student_id, int $period_id): void
+{
+    $period = get_active_period($db, $period_id);
+    if (!$period || !db_column_exists($db, "student_evaluation_task", "teaching_assignment_id")) {
+        return;
+    }
+
+    $term_id = (int) $period["term_id"];
+    $has_attempt = db_column_exists($db, "student_evaluation_task", "attempt_no");
+    $has_active = db_column_exists($db, "student_evaluation_task", "is_active");
+
+    if ($has_attempt && $has_active) {
+        $sql =
+            "INSERT INTO student_evaluation_task
+                (student_id, teaching_assignment_id, evaluation_period_id, attempt_no, task_status, is_active)
+             SELECT DISTINCT
+                ?,
+                ta.teaching_assignment_id,
+                ?,
+                COALESCE((
+                    SELECT MAX(t2.attempt_no)
+                    FROM student_evaluation_task t2
+                    WHERE t2.student_id = ?
+                      AND t2.teaching_assignment_id = ta.teaching_assignment_id
+                      AND t2.evaluation_period_id = ?
+                ), 0) + 1,
+                'Pending',
+                1
+             FROM student_section_enrollment sse
+             JOIN section_subject_offering sso
+               ON sso.section_id = sse.section_id
+              AND sso.term_id = sse.term_id
+              AND sso.offering_status = 'Active'
+             JOIN teaching_assignment ta
+               ON ta.section_subject_offering_id = sso.section_subject_offering_id
+              AND ta.term_id = sso.term_id
+              AND ta.assignment_status = 'Active'
+             WHERE sse.student_id = ?
+               AND sse.term_id = ?
+               AND sse.enrollment_status = 'Active'
+               AND NOT EXISTS (
+                    SELECT 1
+                    FROM student_evaluation_task active_task
+                    WHERE active_task.student_id = ?
+                      AND active_task.teaching_assignment_id = ta.teaching_assignment_id
+                      AND active_task.evaluation_period_id = ?
+                      AND active_task.is_active = 1
+               )";
+        $stmt = $db->prepare($sql);
+        $stmt->bind_param("iiiiiiii", $student_id, $period_id, $student_id, $period_id, $student_id, $term_id, $student_id, $period_id);
+        $stmt->execute();
+        $stmt->close();
+        return;
+    }
+
+    $active_condition = $has_active ? "AND COALESCE(active_task.is_active, 1) = 1" : "";
+    $sql =
+        "INSERT INTO student_evaluation_task
+            (student_id, teaching_assignment_id, evaluation_period_id, task_status)
+         SELECT DISTINCT
+            ?,
+            ta.teaching_assignment_id,
+            ?,
+            'Pending'
+         FROM student_section_enrollment sse
+         JOIN section_subject_offering sso
+           ON sso.section_id = sse.section_id
+          AND sso.term_id = sse.term_id
+          AND sso.offering_status = 'Active'
+         JOIN teaching_assignment ta
+           ON ta.section_subject_offering_id = sso.section_subject_offering_id
+          AND ta.term_id = sso.term_id
+          AND ta.assignment_status = 'Active'
+         WHERE sse.student_id = ?
+           AND sse.term_id = ?
+           AND sse.enrollment_status = 'Active'
+           AND NOT EXISTS (
+                SELECT 1
+                FROM student_evaluation_task active_task
+                WHERE active_task.student_id = ?
+                  AND active_task.teaching_assignment_id = ta.teaching_assignment_id
+                  AND active_task.evaluation_period_id = ?
+                  AND active_task.task_status <> 'Reset'
+                  $active_condition
+           )";
+    $stmt = $db->prepare($sql);
+    $stmt->bind_param("iiiiii", $student_id, $period_id, $student_id, $term_id, $student_id, $period_id);
+    $stmt->execute();
+    $stmt->close();
+}
+
+function get_active_form_id(mysqli $db, int $period_id): int
+{
+    $stmt = $db->prepare(
+        "SELECT evaluation_form_id
+         FROM evaluation_form
+         WHERE evaluation_period_id = ?
+           AND form_status = 'Active'
+         ORDER BY form_version DESC, evaluation_form_id DESC
+         LIMIT 1"
+    );
+    $stmt->bind_param("i", $period_id);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    return $row ? (int) $row["evaluation_form_id"] : 0;
+}
+
+function get_task_for_student(mysqli $db, int $task_id, int $student_id): ?array
+{
+    $active_filter = db_column_exists($db, "student_evaluation_task", "is_active") ? "AND COALESCE(setask.is_active, 1) = 1" : "";
+    $stmt = $db->prepare(
+        "SELECT setask.student_evaluation_task_id,
+                setask.student_id,
+                setask.teaching_assignment_id,
+                setask.evaluation_period_id,
+                setask.task_status
+         FROM student_evaluation_task setask
+         WHERE setask.student_evaluation_task_id = ?
+           AND setask.student_id = ?
+           AND setask.task_status <> 'Reset'
+           $active_filter
+         LIMIT 1"
+    );
+    $stmt->bind_param("ii", $task_id, $student_id);
+    $stmt->execute();
+    $task = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    return $task ?: null;
+}
+
+function load_saved_response(mysqli $db, int $task_id, int $student_id): array
+{
+    $task = get_task_for_student($db, $task_id, $student_id);
+    if (!$task) {
+        return ["success" => false, "message" => "Invalid or inactive evaluation task"];
+    }
+
+    $stmt = $db->prepare(
+        "SELECT evaluation_response_id, response_status, average_score, submitted_at
+         FROM evaluation_response
+         WHERE student_evaluation_task_id = ?
+           AND student_id = ?
+           AND response_status <> 'Voided'
+         ORDER BY evaluation_response_id DESC
+         LIMIT 1"
+    );
+    $stmt->bind_param("ii", $task_id, $student_id);
+    $stmt->execute();
+    $response = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    if (!$response) {
+        return [
+            "success" => true,
+            "task_status" => $task["task_status"],
+            "response_status" => null,
+            "answers" => new stdClass(),
+            "comment" => "",
+            "average_score" => null,
+            "submitted_at" => null,
+        ];
+    }
+
+    $response_id = (int) $response["evaluation_response_id"];
+    $answers = [];
+    $stmt = $db->prepare(
+        "SELECT evaluation_form_item_id, rating_value
+         FROM evaluation_response_answer
+         WHERE evaluation_response_id = ?"
+    );
+    $stmt->bind_param("i", $response_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    while ($row = $result->fetch_assoc()) {
+        $answers[(string) $row["evaluation_form_item_id"]] = (int) $row["rating_value"];
+    }
+    $stmt->close();
+
+    $comment = "";
+    $stmt = $db->prepare(
+        "SELECT comment_text
+         FROM evaluation_response_comment
+         WHERE evaluation_response_id = ?
+         LIMIT 1"
+    );
+    $stmt->bind_param("i", $response_id);
+    $stmt->execute();
+    $comment_row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    if ($comment_row && $comment_row["comment_text"] !== null) {
+        $comment = (string) $comment_row["comment_text"];
+    }
+
+    return [
+        "success" => true,
+        "task_status" => $task["task_status"],
+        "response_status" => $response["response_status"],
+        "answers" => $answers,
+        "comment" => $comment,
+        "average_score" => $response["average_score"],
+        "submitted_at" => $response["submitted_at"],
+    ];
+}
+
+function save_student_response(mysqli $db, int $student_id, int $task_id, array $answers, string $comment, bool $final_submit): array
+{
+    $task = get_task_for_student($db, $task_id, $student_id);
+    if (!$task) {
+        return ["success" => false, "message" => "Invalid or inactive evaluation task"];
+    }
+    if ($task["task_status"] === "Submitted") {
+        return ["success" => false, "message" => "This evaluation was already submitted"];
+    }
+
+    $period_id = (int) $task["evaluation_period_id"];
+    $teaching_assignment_id = (int) $task["teaching_assignment_id"];
+    $form_id = get_active_form_id($db, $period_id);
+    if ($form_id <= 0) {
+        return ["success" => false, "message" => "No active evaluation form found"];
+    }
+
+    $required_items = [];
+    $stmt = $db->prepare(
+        "SELECT efi.evaluation_form_item_id
+         FROM evaluation_form_item efi
+         JOIN evaluation_form_category efc
+           ON efc.evaluation_form_category_id = efi.evaluation_form_category_id
+         WHERE efc.evaluation_form_id = ?
+           AND efi.form_item_status = 'Active'
+           AND efi.is_required = 1"
+    );
+    $stmt->bind_param("i", $form_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    while ($row = $result->fetch_assoc()) {
+        $required_items[] = (int) $row["evaluation_form_item_id"];
+    }
+    $stmt->close();
+
+    $clean_answers = [];
+    foreach ($answers as $item_id => $rating) {
+        $item_id_int = (int) $item_id;
+        $rating_int = (int) $rating;
+        if ($item_id_int > 0 && $rating_int >= 1 && $rating_int <= 5) {
+            $clean_answers[$item_id_int] = $rating_int;
+        }
+    }
+
+    if ($final_submit) {
+        foreach ($required_items as $required_item_id) {
+            if (!isset($clean_answers[$required_item_id])) {
+                return ["success" => false, "message" => "Please answer all required evaluation items before submitting"];
+            }
+        }
+    }
+
+    if (!$final_submit && empty($clean_answers) && $comment === "") {
+        return ["success" => false, "message" => "No answers or comments to save"];
+    }
+
+    $rating_option_map = [];
+    $stmt = $db->prepare(
+        "SELECT rating_value, rating_scale_option_id
+         FROM rating_scale_option
+         WHERE evaluation_form_id = ?"
+    );
+    $stmt->bind_param("i", $form_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    while ($row = $result->fetch_assoc()) {
+        $rating_option_map[(int) $row["rating_value"]] = (int) $row["rating_scale_option_id"];
+    }
+    $stmt->close();
+
+    $total_score = array_sum($clean_answers);
+    $answer_count = count($clean_answers);
+    $average_score = $answer_count > 0 ? round($total_score / $answer_count, 2) : null;
+    $now = date("Y-m-d H:i:s");
+    $response_status = $final_submit ? "Submitted" : "Draft";
+    $event_type = $final_submit ? "Submitted" : "Draft Saved";
+    $event_description = $final_submit ? "Student submitted final evaluation" : "Student saved evaluation draft";
+
+    $db->begin_transaction();
+    try {
+        $stmt = $db->prepare(
+            "SELECT evaluation_response_id, response_status
+             FROM evaluation_response
+             WHERE student_evaluation_task_id = ?
+               AND student_id = ?
+               AND response_status <> 'Voided'
+             ORDER BY evaluation_response_id DESC
+             LIMIT 1"
+        );
+        $stmt->bind_param("ii", $task_id, $student_id);
+        $stmt->execute();
+        $existing = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        if ($existing && $existing["response_status"] === "Submitted") {
+            $db->rollback();
+            return ["success" => false, "message" => "This evaluation was already submitted"];
+        }
+
+        if ($existing) {
+            $response_id = (int) $existing["evaluation_response_id"];
+            $submitted_at = $final_submit ? $now : null;
+            $stmt = $db->prepare(
+                "UPDATE evaluation_response
+                 SET response_status = ?,
+                     total_score = ?,
+                     average_score = ?,
+                     submitted_at = ?,
+                     updated_at = CURRENT_TIMESTAMP
+                 WHERE evaluation_response_id = ?"
+            );
+            $stmt->bind_param("sddsi", $response_status, $total_score, $average_score, $submitted_at, $response_id);
+            $stmt->execute();
+            $stmt->close();
+        } else {
+            $submitted_at = $final_submit ? $now : null;
+            $stmt = $db->prepare(
+                "INSERT INTO evaluation_response
+                    (student_evaluation_task_id, student_id, teaching_assignment_id, evaluation_period_id, evaluation_form_id, response_status, total_score, average_score, submitted_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            );
+            $stmt->bind_param("iiiiisdds", $task_id, $student_id, $teaching_assignment_id, $period_id, $form_id, $response_status, $total_score, $average_score, $submitted_at);
+            $stmt->execute();
+            $response_id = (int) $db->insert_id;
+            $stmt->close();
+        }
+
+        $stmt = $db->prepare("DELETE FROM evaluation_response_answer WHERE evaluation_response_id = ?");
+        $stmt->bind_param("i", $response_id);
+        $stmt->execute();
+        $stmt->close();
+
+        if (!empty($clean_answers)) {
+            $stmt = $db->prepare(
+                "INSERT INTO evaluation_response_answer
+                    (evaluation_response_id, evaluation_form_item_id, rating_scale_option_id, rating_value)
+                 VALUES (?, ?, ?, ?)"
+            );
+            foreach ($clean_answers as $item_id => $rating) {
+                $rating_option_id = $rating_option_map[$rating] ?? 0;
+                if ($rating_option_id <= 0) {
+                    continue;
+                }
+                $stmt->bind_param("iiii", $response_id, $item_id, $rating_option_id, $rating);
+                $stmt->execute();
+            }
+            $stmt->close();
+        }
+
+        $stmt = $db->prepare("SELECT evaluation_response_comment_id FROM evaluation_response_comment WHERE evaluation_response_id = ? LIMIT 1");
+        $stmt->bind_param("i", $response_id);
+        $stmt->execute();
+        $existing_comment = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        if ($comment !== "") {
+            if ($existing_comment) {
+                $comment_id = (int) $existing_comment["evaluation_response_comment_id"];
+                $stmt = $db->prepare(
+                    "UPDATE evaluation_response_comment
+                     SET comment_text = ?, submitted_at = ?
+                     WHERE evaluation_response_comment_id = ?"
+                );
+                $stmt->bind_param("ssi", $comment, $now, $comment_id);
+                $stmt->execute();
+                $stmt->close();
+            } else {
+                $stmt = $db->prepare(
+                    "INSERT INTO evaluation_response_comment
+                        (evaluation_response_id, comment_text, submitted_at)
+                     VALUES (?, ?, ?)"
+                );
+                $stmt->bind_param("iss", $response_id, $comment, $now);
+                $stmt->execute();
+                $stmt->close();
+            }
+        } elseif ($existing_comment) {
+            $comment_id = (int) $existing_comment["evaluation_response_comment_id"];
+            $stmt = $db->prepare("DELETE FROM evaluation_response_comment WHERE evaluation_response_comment_id = ?");
+            $stmt->bind_param("i", $comment_id);
+            $stmt->execute();
+            $stmt->close();
+        }
+
+        $has_active = db_column_exists($db, "student_evaluation_task", "is_active");
+        if ($final_submit) {
+            $active_sql = $has_active ? ", is_active = 1" : "";
+            $stmt = $db->prepare(
+                "UPDATE student_evaluation_task
+                 SET task_status = 'Submitted',
+                     submitted_at = ?,
+                     last_saved_at = ?
+                     $active_sql
+                 WHERE student_evaluation_task_id = ?
+                   AND student_id = ?"
+            );
+            $stmt->bind_param("ssii", $now, $now, $task_id, $student_id);
+        } else {
+            $active_sql = $has_active ? ", is_active = 1" : "";
+            $stmt = $db->prepare(
+                "UPDATE student_evaluation_task
+                 SET task_status = 'Draft',
+                     started_at = COALESCE(started_at, ?),
+                     last_saved_at = ?
+                     $active_sql
+                 WHERE student_evaluation_task_id = ?
+                   AND student_id = ?"
+            );
+            $stmt->bind_param("ssii", $now, $now, $task_id, $student_id);
+        }
+        $stmt->execute();
+        $stmt->close();
+
+        $user_id = (int) ($_SESSION["authenticated_user_id"] ?? 0);
+        if ($user_id > 0) {
+            $stmt = $db->prepare(
+                "INSERT INTO evaluation_response_event
+                    (evaluation_response_id, student_evaluation_task_id, created_by_user_id, event_type, event_description)
+                 VALUES (?, ?, ?, ?, ?)"
+            );
+            $stmt->bind_param("iiiss", $response_id, $task_id, $user_id, $event_type, $event_description);
+            $stmt->execute();
+            $stmt->close();
+        }
+
+        $db->commit();
+        return [
+            "success" => true,
+            "response_id" => $response_id,
+            "response_status" => $response_status,
+            "submitted_at" => $final_submit ? $now : null,
+            "average_score" => $average_score,
+            "answered_count" => $answer_count,
+        ];
+    } catch (Throwable $e) {
+        $db->rollback();
+        return ["success" => false, "message" => "Save failed: " . $e->getMessage()];
+    }
+}
+
+function reset_student_evaluation_progress(mysqli $db, int $student_id, int $period_id): void
+{
+    $period = get_active_period($db, $period_id);
+    if (!$period) {
+        throw new RuntimeException("No active evaluation period found");
+    }
+    $period_id = (int) $period["evaluation_period_id"];
+    $term_id = (int) $period["term_id"];
+    $reason = "Student reset evaluation progress before logout";
+
+    if (db_routine_exists($db, "sp_reset_student_evaluation_progress")) {
+        try {
+            $stmt = $db->prepare("CALL sp_reset_student_evaluation_progress(?, ?, ?)");
+            $stmt->bind_param("iis", $student_id, $period_id, $reason);
+            $stmt->execute();
+            do {
+                if ($result = $stmt->get_result()) {
+                    $result->free();
+                }
+            } while ($stmt->more_results() && $stmt->next_result());
+            $stmt->close();
+
+            $stmt = $db->prepare("DELETE FROM guideline_acceptance WHERE student_id = ? AND evaluation_period_id = ?");
+            $stmt->bind_param("ii", $student_id, $period_id);
+            $stmt->execute();
+            $stmt->close();
+            return;
+        } catch (Throwable $e) {
+            while ($db->more_results()) {
+                $db->next_result();
+                if ($result = $db->store_result()) {
+                    $result->free();
+                }
+            }
+        }
+    }
+
+    $has_active = db_column_exists($db, "student_evaluation_task", "is_active");
+    $has_attempt = db_column_exists($db, "student_evaluation_task", "attempt_no");
+    $has_reset_at = db_column_exists($db, "student_evaluation_task", "reset_at");
+    $has_reset_reason = db_column_exists($db, "student_evaluation_task", "reset_reason");
+
+    $active_filter = $has_active ? "AND COALESCE(setask.is_active, 1) = 1" : "";
+
+    $db->begin_transaction();
+    try {
+        $user_id = (int) ($_SESSION["authenticated_user_id"] ?? 0);
+        if ($user_id > 0) {
+            $event_sql =
+                "INSERT INTO evaluation_response_event
+                    (evaluation_response_id, student_evaluation_task_id, created_by_user_id, event_type, event_description)
+                 SELECT er.evaluation_response_id,
+                        setask.student_evaluation_task_id,
+                        ?,
+                        'Reset Progress',
+                        ?
+                 FROM student_evaluation_task setask
+                 LEFT JOIN evaluation_response er
+                   ON er.student_evaluation_task_id = setask.student_evaluation_task_id
+                  AND er.response_status <> 'Voided'
+                 WHERE setask.student_id = ?
+                   AND setask.evaluation_period_id = ?
+                   AND setask.task_status <> 'Reset'
+                   $active_filter";
+            $stmt = $db->prepare($event_sql);
+            $stmt->bind_param("isii", $user_id, $reason, $student_id, $period_id);
+            $stmt->execute();
+            $stmt->close();
+        }
+
+        $db->query("SET @allow_submitted_response_change = 1");
+        $void_sql =
+            "UPDATE evaluation_response er
+             JOIN student_evaluation_task setask
+               ON setask.student_evaluation_task_id = er.student_evaluation_task_id
+             SET er.response_status = 'Voided',
+                 er.updated_at = CURRENT_TIMESTAMP
+             WHERE setask.student_id = ?
+               AND setask.evaluation_period_id = ?
+               AND setask.task_status <> 'Reset'
+               $active_filter
+               AND er.response_status IN ('Draft','Submitted')";
+        $stmt = $db->prepare($void_sql);
+        $stmt->bind_param("ii", $student_id, $period_id);
+        $stmt->execute();
+        $stmt->close();
+        $db->query("SET @allow_submitted_response_change = 0");
+
+        $stmt = $db->prepare(
+            "DELETE era
+             FROM evaluation_response_answer era
+             JOIN evaluation_response er
+               ON er.evaluation_response_id = era.evaluation_response_id
+             JOIN student_evaluation_task setask
+               ON setask.student_evaluation_task_id = er.student_evaluation_task_id
+             WHERE setask.student_id = ?
+               AND setask.evaluation_period_id = ?
+               AND er.response_status = 'Voided'"
+        );
+        $stmt->bind_param("ii", $student_id, $period_id);
+        $stmt->execute();
+        $stmt->close();
+
+        $stmt = $db->prepare(
+            "DELETE erc
+             FROM evaluation_response_comment erc
+             JOIN evaluation_response er
+               ON er.evaluation_response_id = erc.evaluation_response_id
+             JOIN student_evaluation_task setask
+               ON setask.student_evaluation_task_id = er.student_evaluation_task_id
+             WHERE setask.student_id = ?
+               AND setask.evaluation_period_id = ?
+               AND er.response_status = 'Voided'"
+        );
+        $stmt->bind_param("ii", $student_id, $period_id);
+        $stmt->execute();
+        $stmt->close();
+
+        $extra_set = "";
+        if ($has_active) {
+            $extra_set .= ", is_active = 0";
+        }
+        if ($has_reset_at) {
+            $extra_set .= ", reset_at = CURRENT_TIMESTAMP";
+        }
+        if ($has_reset_reason) {
+            $extra_set .= ", reset_reason = ?";
+        }
+        $reset_sql =
+            "UPDATE student_evaluation_task setask
+             SET task_status = 'Reset'
+                 $extra_set
+             WHERE setask.student_id = ?
+               AND setask.evaluation_period_id = ?
+               AND setask.task_status <> 'Reset'
+               $active_filter";
+        $stmt = $db->prepare($reset_sql);
+        if ($has_reset_reason) {
+            $stmt->bind_param("sii", $reason, $student_id, $period_id);
+        } else {
+            $stmt->bind_param("ii", $student_id, $period_id);
+        }
+        $stmt->execute();
+        $stmt->close();
+
+        $stmt = $db->prepare("DELETE FROM guideline_acceptance WHERE student_id = ? AND evaluation_period_id = ?");
+        $stmt->bind_param("ii", $student_id, $period_id);
+        $stmt->execute();
+        $stmt->close();
+
+        if ($has_attempt && $has_active) {
+            $insert_sql =
+                "INSERT INTO student_evaluation_task
+                    (student_id, teaching_assignment_id, evaluation_period_id, attempt_no, task_status, is_active)
+                 SELECT DISTINCT
+                    ?,
+                    ta.teaching_assignment_id,
+                    ?,
+                    COALESCE((
+                        SELECT MAX(t2.attempt_no)
+                        FROM student_evaluation_task t2
+                        WHERE t2.student_id = ?
+                          AND t2.teaching_assignment_id = ta.teaching_assignment_id
+                          AND t2.evaluation_period_id = ?
+                    ), 0) + 1,
+                    'Pending',
+                    1
+                 FROM student_section_enrollment sse
+                 JOIN section_subject_offering sso
+                   ON sso.section_id = sse.section_id
+                  AND sso.term_id = sse.term_id
+                  AND sso.offering_status = 'Active'
+                 JOIN teaching_assignment ta
+                   ON ta.section_subject_offering_id = sso.section_subject_offering_id
+                  AND ta.term_id = sso.term_id
+                  AND ta.assignment_status = 'Active'
+                 WHERE sse.student_id = ?
+                   AND sse.term_id = ?
+                   AND sse.enrollment_status = 'Active'
+                   AND NOT EXISTS (
+                        SELECT 1
+                        FROM student_evaluation_task active_task
+                        WHERE active_task.student_id = ?
+                          AND active_task.teaching_assignment_id = ta.teaching_assignment_id
+                          AND active_task.evaluation_period_id = ?
+                          AND active_task.is_active = 1
+                   )";
+            $stmt = $db->prepare($insert_sql);
+            $stmt->bind_param("iiiiiiii", $student_id, $period_id, $student_id, $period_id, $student_id, $term_id, $student_id, $period_id);
+            $stmt->execute();
+            $stmt->close();
+        } else {
+            $insert_sql =
+                "INSERT INTO student_evaluation_task
+                    (student_id, teaching_assignment_id, evaluation_period_id, task_status)
+                 SELECT DISTINCT
+                    ?,
+                    ta.teaching_assignment_id,
+                    ?,
+                    'Pending'
+                 FROM student_section_enrollment sse
+                 JOIN section_subject_offering sso
+                   ON sso.section_id = sse.section_id
+                  AND sso.term_id = sse.term_id
+                  AND sso.offering_status = 'Active'
+                 JOIN teaching_assignment ta
+                   ON ta.section_subject_offering_id = sso.section_subject_offering_id
+                  AND ta.term_id = sso.term_id
+                  AND ta.assignment_status = 'Active'
+                 WHERE sse.student_id = ?
+                   AND sse.term_id = ?
+                   AND sse.enrollment_status = 'Active'";
+            $stmt = $db->prepare($insert_sql);
+            $stmt->bind_param("iiii", $student_id, $period_id, $student_id, $term_id);
+            $stmt->execute();
+            $stmt->close();
+        }
+
+        $db->commit();
+        $db->query("SET @allow_submitted_response_change = 0");
+    } catch (Throwable $e) {
+        $db->query("SET @allow_submitted_response_change = 0");
+        $db->rollback();
+        throw $e;
+    }
+}
+
+function destroy_student_session(): void
+{
+    $_SESSION = [];
+    if (ini_get("session.use_cookies")) {
+        $params = session_get_cookie_params();
+        setcookie(session_name(), "", time() - 42000, $params["path"], $params["domain"], $params["secure"], $params["httponly"]);
+    }
+    session_destroy();
+}
 
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"])) {
     $post_action = $_POST["action"];
 
-    if ($post_action === "accept_guidelines") {
-        header("Content-Type: application/json");
-        $post_student_id = (int) ($_POST["student_id"] ?? 0);
-        $post_period_id_g = (int) ($_POST["evaluation_period_id"] ?? 0);
-        if ($post_student_id > 0 && $post_period_id_g > 0) {
+    try {
+        $student_context = get_logged_student($db);
+        $action_student_id = (int) $student_context["student_id"];
+
+        if ($post_action === "accept_guidelines") {
+            $post_period_id_g = (int) ($_POST["evaluation_period_id"] ?? 0);
+            if ($post_period_id_g <= 0) {
+                json_response(["success" => false, "message" => "Invalid evaluation period"]);
+            }
+
+            generate_student_evaluation_tasks($db, $action_student_id, $post_period_id_g);
+
             $gl_find = $db->prepare("SELECT evaluation_guideline_id FROM evaluation_guideline WHERE evaluation_period_id = ? LIMIT 1");
             $gl_find->bind_param("i", $post_period_id_g);
             $gl_find->execute();
             $gl_row = $gl_find->get_result()->fetch_assoc();
             $gl_find->close();
+
             if (!$gl_row) {
-                echo json_encode(["success" => true]);
-                exit;
+                json_response(["success" => true]);
             }
+
             $gl_id = (int) $gl_row["evaluation_guideline_id"];
             $ga_exists = $db->prepare("SELECT guideline_acceptance_id FROM guideline_acceptance WHERE student_id = ? AND evaluation_period_id = ? LIMIT 1");
-            $ga_exists->bind_param("ii", $post_student_id, $post_period_id_g);
+            $ga_exists->bind_param("ii", $action_student_id, $post_period_id_g);
             $ga_exists->execute();
             $ga_found = $ga_exists->get_result()->fetch_assoc();
             $ga_exists->close();
+
             if (!$ga_found) {
                 $ip = substr($_SERVER["REMOTE_ADDR"] ?? "127.0.0.1", 0, 45);
-                $ga_ins = $db->prepare("INSERT INTO guideline_acceptance (evaluation_guideline_id, student_id, evaluation_period_id, accepted_at, ip_address) VALUES (?, ?, ?, NOW(), ?)");
-                $ga_ins->bind_param("iiis", $gl_id, $post_student_id, $post_period_id_g, $ip);
+                $ga_ins = $db->prepare(
+                    "INSERT INTO guideline_acceptance
+                        (evaluation_guideline_id, student_id, evaluation_period_id, accepted_at, ip_address)
+                     VALUES (?, ?, ?, NOW(), ?)"
+                );
+                $ga_ins->bind_param("iiis", $gl_id, $action_student_id, $post_period_id_g, $ip);
                 $ga_ins->execute();
                 $ga_ins->close();
             }
-            echo json_encode(["success" => true]);
-        } else {
-            echo json_encode(["success" => false, "message" => "Invalid parameters"]);
-        }
-        exit;
-    }
 
-    if ($post_action === "submit_evaluation") {
-        header("Content-Type: application/json");
-        $post_student_id = (int) ($_POST["student_id"] ?? 0);
-        $post_task_id = (int) ($_POST["task_id"] ?? 0);
-        $post_period_id = (int) ($_POST["period_id"] ?? 0);
-        $post_ta_id = (int) ($_POST["teaching_assignment_id"] ?? 0);
-        $post_answers = $_POST["answers"] ?? [];
-        $post_comment = trim($_POST["comment"] ?? "");
-
-        if (!$post_student_id || !$post_task_id || !$post_period_id || !$post_ta_id) {
-            echo json_encode(["success" => false, "message" => "Missing required fields"]);
-            exit;
+            json_response(["success" => true]);
         }
 
-        $chk = $db->prepare("SELECT task_status FROM student_evaluation_task WHERE student_evaluation_task_id = ? AND student_id = ?");
-        $chk->bind_param("ii", $post_task_id, $post_student_id);
-        $chk->execute();
-        $chk_row = $chk->get_result()->fetch_assoc();
-        $chk->close();
-
-        if (!$chk_row) {
-            echo json_encode(["success" => false, "message" => "Invalid task"]);
-            exit;
-        }
-        if ($chk_row["task_status"] === "Submitted") {
-            echo json_encode(["success" => false, "message" => "Already submitted"]);
-            exit;
-        }
-
-        $ef_stmt = $db->prepare("SELECT evaluation_form_id FROM evaluation_form WHERE evaluation_period_id = ? AND form_status = 'Active' LIMIT 1");
-        $ef_stmt->bind_param("i", $post_period_id);
-        $ef_stmt->execute();
-        $ef_row = $ef_stmt->get_result()->fetch_assoc();
-        $ef_stmt->close();
-        $post_form_id = $ef_row ? (int) $ef_row["evaluation_form_id"] : 0;
-
-        if (!$post_form_id) {
-            echo json_encode(["success" => false, "message" => "No active evaluation form found"]);
-            exit;
-        }
-
-        $rso_map = [];
-        $rso_stmt = $db->prepare("SELECT rating_value, rating_scale_option_id FROM rating_scale_option WHERE evaluation_form_id = ?");
-        $rso_stmt->bind_param("i", $post_form_id);
-        $rso_stmt->execute();
-        $rso_result = $rso_stmt->get_result();
-        while ($rso_row = $rso_result->fetch_assoc()) {
-            $rso_map[(int) $rso_row["rating_value"]] = (int) $rso_row["rating_scale_option_id"];
-        }
-        $rso_stmt->close();
-
-        $now_ts = date("Y-m-d H:i:s");
-
-        $total_score = 0;
-        $answer_count = 0;
-        foreach ($post_answers as $val) {
-            $v = (int) $val;
-            if ($v >= 1 && $v <= 5) {
-                $total_score += $v;
-                $answer_count++;
+        if ($post_action === "save_draft" || $post_action === "submit_evaluation") {
+            $task_id = (int) ($_POST["task_id"] ?? 0);
+            $answers = $_POST["answers"] ?? [];
+            $comment = trim((string) ($_POST["comment"] ?? ""));
+            if ($task_id <= 0) {
+                json_response(["success" => false, "message" => "Missing evaluation task"]);
             }
-        }
-        $avg_score = $answer_count > 0 ? round($total_score / $answer_count, 2) : 0;
-
-        $db->begin_transaction();
-        try {
-            $upd_task = $db->prepare(
-                "UPDATE student_evaluation_task SET task_status = 'Submitted', submitted_at = ?, last_saved_at = ? WHERE student_evaluation_task_id = ? AND student_id = ?"
-            );
-            $upd_task->bind_param("ssii", $now_ts, $now_ts, $post_task_id, $post_student_id);
-            $upd_task->execute();
-            if ($upd_task->affected_rows < 1) {
-                $upd_task->close();
-                $db->rollback();
-                echo json_encode(["success" => false, "message" => "Failed to update task status"]);
-                exit;
+            if (!is_array($answers)) {
+                $answers = [];
             }
-            $upd_task->close();
+            $payload = save_student_response($db, $action_student_id, $task_id, $answers, $comment, $post_action === "submit_evaluation");
+            json_response($payload);
+        }
 
-            $chk_resp = $db->prepare("SELECT evaluation_response_id FROM evaluation_response WHERE student_evaluation_task_id = ? LIMIT 1");
-            $chk_resp->bind_param("i", $post_task_id);
-            $chk_resp->execute();
-            $existing_resp = $chk_resp->get_result()->fetch_assoc();
-            $chk_resp->close();
-
-            if ($existing_resp) {
-                $response_id = (int) $existing_resp["evaluation_response_id"];
-            } else {
-                $ins_resp = $db->prepare(
-                    "INSERT INTO evaluation_response
-                     (student_evaluation_task_id, student_id, teaching_assignment_id, evaluation_period_id, evaluation_form_id, response_status, average_score, total_score, submitted_at, created_at, updated_at)
-                     VALUES (?, ?, ?, ?, ?, 'Submitted', ?, ?, ?, ?, ?)"
-                );
-                $ins_resp->bind_param("iiiiidisss", $post_task_id, $post_student_id, $post_ta_id, $post_period_id, $post_form_id, $avg_score, $total_score, $now_ts, $now_ts, $now_ts);
-                $ins_resp->execute();
-                $response_id = (int) $db->insert_id;
-                $ins_resp->close();
-                if (!$response_id) {
-                    $db->rollback();
-                    echo json_encode(["success" => false, "message" => "Failed to create evaluation response"]);
-                    exit;
-                }
+        if ($post_action === "load_response") {
+            $task_id = (int) ($_POST["task_id"] ?? 0);
+            if ($task_id <= 0) {
+                json_response(["success" => false, "message" => "Missing evaluation task"]);
             }
+            json_response(load_saved_response($db, $task_id, $action_student_id));
+        }
 
-            if (is_array($post_answers) && count($post_answers) > 0) {
-                $del_ans = $db->prepare("DELETE FROM evaluation_response_answer WHERE evaluation_response_id = ?");
-                $del_ans->bind_param("i", $response_id);
-                $del_ans->execute();
-                $del_ans->close();
-
-                $ins_ans = $db->prepare(
-                    "INSERT INTO evaluation_response_answer (evaluation_response_id, evaluation_form_item_id, rating_scale_option_id, rating_value, created_at, updated_at)
-                     VALUES (?, ?, ?, ?, ?, ?)"
-                );
-                foreach ($post_answers as $item_id_key => $rating_val) {
-                    $item_id_int = (int) $item_id_key;
-                    $rating_int = (int) $rating_val;
-                    if ($item_id_int > 0 && $rating_int >= 1 && $rating_int <= 5) {
-                        $rso_id = $rso_map[$rating_int] ?? 0;
-                        if (!$rso_id)
-                            continue;
-                        $ins_ans->bind_param("iiiiss", $response_id, $item_id_int, $rso_id, $rating_int, $now_ts, $now_ts);
-                        $ins_ans->execute();
-                    }
-                }
-                $ins_ans->close();
+        if ($post_action === "reset_progress_logout") {
+            $period_id = (int) ($_POST["period_id"] ?? 0);
+            $period = get_active_period($db, $period_id > 0 ? $period_id : null);
+            if (!$period) {
+                json_response(["success" => false, "message" => "No active evaluation period found"]);
             }
+            reset_student_evaluation_progress($db, $action_student_id, (int) $period["evaluation_period_id"]);
+            destroy_student_session();
+            json_response(["success" => true, "redirect" => "../login/login_page.php"]);
+        }
 
-            if (!empty($post_comment)) {
-                $chk_cmt = $db->prepare("SELECT evaluation_response_comment_id FROM evaluation_response_comment WHERE evaluation_response_id = ? LIMIT 1");
-                $chk_cmt->bind_param("i", $response_id);
-                $chk_cmt->execute();
-                $existing_cmt = $chk_cmt->get_result()->fetch_assoc();
-                $chk_cmt->close();
-                if (!$existing_cmt) {
-                    $ins_cmt = $db->prepare(
-                        "INSERT INTO evaluation_response_comment (evaluation_response_id, comment_text, submitted_at)
-                         VALUES (?, ?, ?)"
-                    );
-                    $ins_cmt->bind_param("iss", $response_id, $post_comment, $now_ts);
-                    $ins_cmt->execute();
-                    $ins_cmt->close();
-                }
+        if ($post_action === "logout") {
+            destroy_student_session();
+            json_response(["success" => true, "redirect" => "../login/login_page.php"]);
+        }
+
+        if ($post_action === "update_password") {
+            $logged_uid = (int) ($_SESSION["authenticated_user_id"] ?? 0);
+            $current_pw = (string) ($_POST["current_password"] ?? "");
+            $new_pw = (string) ($_POST["new_password"] ?? "");
+            $confirm_pw = (string) ($_POST["confirm_password"] ?? "");
+
+            if ($logged_uid <= 0) {
+                json_response(["success" => false, "message" => "Not authenticated"]);
             }
+            if (strlen($new_pw) < 8 || !preg_match('/[A-Z]/', $new_pw) || !preg_match('/[a-z]/', $new_pw) || !preg_match('/[0-9]/', $new_pw)) {
+                json_response(["success" => false, "message" => "Password does not meet requirements"]);
+            }
+            if ($new_pw !== $confirm_pw) {
+                json_response(["success" => false, "message" => "Passwords do not match"]);
+            }
+            $pw_stmt = $db->prepare("SELECT password_hash FROM user WHERE user_id = ?");
+            $pw_stmt->bind_param("i", $logged_uid);
+            $pw_stmt->execute();
+            $pw_row = $pw_stmt->get_result()->fetch_assoc();
+            $pw_stmt->close();
+            if (!$pw_row || !password_verify($current_pw, $pw_row["password_hash"])) {
+                json_response(["success" => false, "message" => "Current password is incorrect"]);
+            }
+            $new_hash = password_hash($new_pw, PASSWORD_DEFAULT);
+            $upd_pw = $db->prepare("UPDATE user SET password_hash = ? WHERE user_id = ?");
+            $upd_pw->bind_param("si", $new_hash, $logged_uid);
+            $upd_pw->execute();
+            $upd_pw->close();
+            json_response(["success" => true]);
+        }
 
-            $db->commit();
-            echo json_encode(["success" => true, "submitted_at" => $now_ts, "average_score" => $avg_score]);
-        } catch (Throwable $e) {
-            $db->rollback();
-            error_log("submit_evaluation error: " . $e->getMessage());
-            echo json_encode(["success" => false, "message" => "Submission failed: " . $e->getMessage()]);
-        }
-        exit;
-    }
-
-    if ($post_action === "update_password") {
-        header("Content-Type: application/json");
-        $logged_uid = $_SESSION["authenticated_user_id"] ?? null;
-        $current_pw = $_POST["current_password"] ?? "";
-        $new_pw = $_POST["new_password"] ?? "";
-        $confirm_pw = $_POST["confirm_password"] ?? "";
-
-        if (!$logged_uid) {
-            echo json_encode(["success" => false, "message" => "Not authenticated"]);
-            exit;
-        }
-        if (strlen($new_pw) < 8 || !preg_match('/[A-Z]/', $new_pw) || !preg_match('/[a-z]/', $new_pw) || !preg_match('/[0-9]/', $new_pw)) {
-            echo json_encode(["success" => false, "message" => "Password does not meet requirements"]);
-            exit;
-        }
-        if ($new_pw !== $confirm_pw) {
-            echo json_encode(["success" => false, "message" => "Passwords do not match"]);
-            exit;
-        }
-        $pw_stmt = $db->prepare("SELECT password_hash FROM user WHERE user_id = ?");
-        $pw_stmt->bind_param("i", $logged_uid);
-        $pw_stmt->execute();
-        $pw_row = $pw_stmt->get_result()->fetch_assoc();
-        $pw_stmt->close();
-        if (!$pw_row || !password_verify($current_pw, $pw_row["password_hash"])) {
-            echo json_encode(["success" => false, "message" => "Current password is incorrect"]);
-            exit;
-        }
-        $new_hash = password_hash($new_pw, PASSWORD_DEFAULT);
-        $upd_pw = $db->prepare("UPDATE user SET password_hash = ? WHERE user_id = ?");
-        $upd_pw->bind_param("si", $new_hash, $logged_uid);
-        $upd_pw->execute();
-        $upd_pw->close();
-        echo json_encode(["success" => true]);
-        exit;
+        json_response(["success" => false, "message" => "Unknown action"]);
+    } catch (Throwable $e) {
+        json_response(["success" => false, "message" => $e->getMessage()]);
     }
 }
 
@@ -324,31 +989,52 @@ $a = null;
 
 $assigned_teachers = [];
 if ($current_period_id) {
+    generate_student_evaluation_tasks($db, $student_id, $current_period_id);
+
+    $has_active = db_column_exists($db, "student_evaluation_task", "is_active");
+    $active_filter = $has_active ? "AND COALESCE(setask.is_active, 1) = 1" : "";
+
     $stmt = $db->prepare(
         "SELECT
-            set2.student_evaluation_task_id,
-            set2.teaching_assignment_id,
-            set2.task_status,
-            f.full_name    AS faculty_name,
+            setask.student_evaluation_task_id,
+            setask.teaching_assignment_id,
+            f.full_name AS faculty_name,
             subj.subject_title,
             subj.subject_code,
-            d.department_name,
+            COALESCE(d.department_name, '') AS department_name,
+            CASE
+                WHEN er.response_status = 'Submitted' THEN 'Submitted'
+                WHEN er.response_status = 'Draft' OR setask.task_status = 'Draft' THEN 'Draft'
+                ELSE 'Pending'
+            END AS task_status,
             er.submitted_at,
             er.average_score
-         FROM student_evaluation_task set2
-         INNER JOIN teaching_assignment ta
-             ON ta.teaching_assignment_id = set2.teaching_assignment_id
-         INNER JOIN section_subject_offering sso
-             ON sso.section_subject_offering_id = ta.section_subject_offering_id
-         INNER JOIN faculty f    ON f.faculty_id    = ta.faculty_id
-         INNER JOIN subject subj ON subj.subject_id = sso.subject_id
-         LEFT JOIN department d  ON d.department_id = subj.department_id
+         FROM student_evaluation_task setask
+         JOIN teaching_assignment ta
+           ON ta.teaching_assignment_id = setask.teaching_assignment_id
+          AND ta.assignment_status = 'Active'
+         JOIN section_subject_offering sso
+           ON sso.section_subject_offering_id = ta.section_subject_offering_id
+          AND sso.offering_status = 'Active'
+         JOIN student_section_enrollment sse
+           ON sse.student_id = setask.student_id
+          AND sse.section_id = sso.section_id
+          AND sse.term_id = sso.term_id
+          AND sse.enrollment_status = 'Active'
+         JOIN faculty f
+           ON f.faculty_id = ta.faculty_id
+         JOIN subject subj
+           ON subj.subject_id = sso.subject_id
+         LEFT JOIN department d
+           ON d.department_id = subj.department_id
          LEFT JOIN evaluation_response er
-             ON er.student_evaluation_task_id = set2.student_evaluation_task_id
-            AND er.response_status = 'Submitted'
-         WHERE set2.student_id           = ?
-           AND set2.evaluation_period_id = ?
-         ORDER BY subj.subject_code ASC"
+           ON er.student_evaluation_task_id = setask.student_evaluation_task_id
+          AND er.response_status <> 'Voided'
+         WHERE setask.student_id = ?
+           AND setask.evaluation_period_id = ?
+           AND setask.task_status <> 'Reset'
+           $active_filter
+         ORDER BY subj.subject_code ASC, f.full_name ASC, setask.student_evaluation_task_id ASC"
     );
     $stmt->bind_param("ii", $student_id, $current_period_id);
     $stmt->execute();
@@ -361,12 +1047,20 @@ if ($current_period_id) {
 
 $total_teachers = count($assigned_teachers);
 $completed_count = 0;
+$draft_count = 0;
+$pending_task_count = 0;
+
 foreach ($assigned_teachers as $t) {
     if ($t["task_status"] === "Submitted") {
         $completed_count++;
+    } elseif ($t["task_status"] === "Draft") {
+        $draft_count++;
+    } else {
+        $pending_task_count++;
     }
 }
-$pending_count = max($total_teachers - $completed_count, 0);
+
+$pending_count = max($draft_count + $pending_task_count, 0);
 
 $eval_form_items = [];
 if ($current_period_id) {
@@ -2167,6 +2861,149 @@ function svg_icon(string $name, string $color = "currentColor"): string
                 grid-template-columns: 1fr;
             }
         }
+
+        /* Student dashboard update 3: draft states and stronger small text readability */
+        .status-pill.draft {
+            background: #dbeafe;
+            color: #2563eb;
+        }
+
+        .status-pill.draft svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .eval-card[data-status="draft"],
+        .history-record-row[data-status="draft"] {
+            border-color: rgba(37, 99, 235, 0.35);
+            background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+        }
+
+        .eval-card[data-status="draft"]:hover,
+        .history-record-row[data-status="draft"]:hover {
+            border-color: #2563eb;
+            box-shadow: 0 14px 30px rgba(37, 99, 235, 0.12);
+        }
+
+        .content-wrap small,
+        .content-wrap p,
+        .content-wrap label,
+        .content-wrap input,
+        .content-wrap textarea,
+        .content-wrap button,
+        .content-wrap a,
+        .content-wrap td,
+        .content-wrap th,
+        .content-wrap li,
+        .content-wrap span {
+            line-height: 1.45;
+        }
+
+        .eval-form-panel > p,
+        .panel-header p,
+        .history-record-row small,
+        .history-record-row .click-to-view,
+        .view-rating-box small,
+        .rating-lbl,
+        .submission-details div small,
+        .account-info-grid .field-label,
+        #pw-feedback,
+        .logout-note,
+        .comments-field p {
+            font-size: 16px !important;
+        }
+
+        .criteria-table,
+        .criteria-table tbody td,
+        .criteria-table thead th,
+        .review-table,
+        .review-table tbody td,
+        .review-table thead th,
+        .view-rating-item > p,
+        .view-rating-box strong,
+        .view-rating-box small,
+        .comment-text,
+        .modal-body,
+        .modal-body p,
+        .modal-body li,
+        .eval-summary-box,
+        .what-deleted-box,
+        .settings-field label,
+        .settings-field input,
+        .comments-field textarea,
+        .history-search-wrap input,
+        .guide-item p,
+        .guide-reminders li {
+            font-size: 17px !important;
+        }
+
+        .criteria-section-title,
+        .comments-field h3,
+        .review-section-head,
+        .modal-alert strong,
+        .modal-final-warning strong,
+        .eval-summary-box h4,
+        .what-deleted-box strong,
+        .settings-section-header,
+        .history-record-row h3,
+        .list-row h3,
+        .eval-card-top h3 {
+            font-size: 20px !important;
+        }
+
+        .rating-check,
+        .criteria-table tbody td input[type="checkbox"] {
+            width: 24px !important;
+            height: 24px !important;
+        }
+
+        .view-teacher-stats {
+            width: 100%;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 18px;
+        }
+
+        .view-teacher-stat {
+            min-height: 74px;
+            padding: 18px 22px;
+            border-radius: 8px;
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            font-size: 17px !important;
+        }
+
+        .view-teacher-stat svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        .view-rating-text {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .view-rating-text {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .view-rating-text strong {
+            display: inline-block;
+        }
+
+        .view-rating-text small {
+            display: inline-block;
+        }
+
+        @media (max-width: 900px) {
+            .view-teacher-stats {
+                grid-template-columns: 1fr;
+            }
+        }
+
     </style>
 </head>
 
@@ -2238,21 +3075,21 @@ function svg_icon(string $name, string $color = "currentColor"): string
                     <div class="stat-card">
                         <div>
                             <p>Total Teachers</p>
-                            <strong><?php echo $total_teachers; ?></strong>
+                            <strong id="dashboard-total-teachers"><?php echo $total_teachers; ?></strong>
                         </div>
                         <span class="stat-icon dark"><?php echo svg_icon("eval", "#fff"); ?></span>
                     </div>
                     <div class="stat-card">
                         <div>
                             <p>Completed</p>
-                            <strong class="green-text"><?php echo $completed_count; ?></strong>
+                            <strong class="green-text" id="dashboard-completed-count"><?php echo $completed_count; ?></strong>
                         </div>
                         <span class="stat-icon green"><?php echo svg_icon("check-circle", "#16a34a"); ?></span>
                     </div>
                     <div class="stat-card">
                         <div>
                             <p>Pending</p>
-                            <strong class="yellow-text"><?php echo $pending_count; ?></strong>
+                            <strong class="yellow-text" id="dashboard-pending-count"><?php echo $pending_count; ?></strong>
                         </div>
                         <span class="stat-icon yellow"><?php echo svg_icon("clock", "#f59e0b"); ?></span>
                     </div>
@@ -2282,9 +3119,20 @@ function svg_icon(string $name, string $color = "currentColor"): string
                                     <p><?php echo e($teacher["subject_title"]); ?></p>
                                     <small><?php echo e($teacher["department_name"] ?? ""); ?></small>
                                 </div>
-                                <span
-                                    class="status-pill <?php echo $teacher["task_status"] === "Submitted" ? "completed" : "pending"; ?>">
-                                    <?php echo $teacher["task_status"] === "Submitted" ? "Completed" : "Pending"; ?>
+                                <?php
+                                $status_class = "pending";
+                                $status_label = "Pending";
+
+                                if ($teacher["task_status"] === "Submitted") {
+                                    $status_class = "completed";
+                                    $status_label = "Completed";
+                                } elseif ($teacher["task_status"] === "Draft") {
+                                    $status_class = "draft";
+                                    $status_label = "Draft";
+                                }
+                                ?>
+                                <span class="status-pill <?php echo $status_class; ?>">
+                                    <?php echo e($status_label); ?>
                                 </span>
                             </div>
                         <?php endforeach; ?>
@@ -2419,7 +3267,7 @@ function svg_icon(string $name, string $color = "currentColor"): string
 
                     <div class="eval-grid" id="eval-cards-grid">
                         <?php foreach ($assigned_teachers as $teacher): ?>
-                            <div class="eval-card" data-status="<?php echo strtolower(e($teacher["task_status"])); ?>">
+                            <div class="eval-card" data-task-id="<?php echo $teacher["student_evaluation_task_id"]; ?>" data-status="<?php echo strtolower(e($teacher["task_status"])); ?>">
                                 <div class="eval-card-top">
                                     <div>
                                         <h3><?php echo e($teacher["faculty_name"]); ?></h3>
@@ -2427,11 +3275,17 @@ function svg_icon(string $name, string $color = "currentColor"): string
                                         <small><?php echo e($teacher["department_name"] ?? ""); ?></small>
                                     </div>
                                     <?php if ($teacher["task_status"] === "Submitted"): ?>
-                                        <span class="status-pill completed"><?php echo svg_icon("check-circle", "#16a34a"); ?>
-                                            Completed</span>
+                                        <span class="status-pill completed">
+                                            <?php echo svg_icon("check-circle", "#16a34a"); ?> Completed
+                                        </span>
+                                    <?php elseif ($teacher["task_status"] === "Draft"): ?>
+                                        <span class="status-pill draft">
+                                            <?php echo svg_icon("save", "#2563eb"); ?> Draft
+                                        </span>
                                     <?php else: ?>
-                                        <span class="status-pill pending"><?php echo svg_icon("clock", "#a16207"); ?>
-                                            Pending</span>
+                                        <span class="status-pill pending">
+                                            <?php echo svg_icon("clock", "#a16207"); ?> Pending
+                                        </span>
                                     <?php endif; ?>
                                 </div>
 
@@ -2453,7 +3307,8 @@ function svg_icon(string $name, string $color = "currentColor"): string
                                         data-subject="<?php echo e($teacher["subject_title"]); ?>"
                                         data-dept="<?php echo e($teacher["department_name"] ?? ""); ?>"
                                         data-ta-id="<?php echo $teacher["teaching_assignment_id"]; ?>">
-                                        <?php echo svg_icon("arrow-right", "#fff"); ?> Start Evaluation
+                                        <?php echo $teacher["task_status"] === "Draft" ? svg_icon("save", "#fff") : svg_icon("arrow-right", "#fff"); ?>
+                                        <?php echo $teacher["task_status"] === "Draft" ? "Resume Evaluation" : "Start Evaluation"; ?>
                                     </button>
                                 <?php endif; ?>
                             </div>
@@ -2726,21 +3581,21 @@ function svg_icon(string $name, string $color = "currentColor"): string
                     <div class="stat-card">
                         <div>
                             <p>Total</p>
-                            <strong><?php echo $total_teachers; ?></strong>
+                            <strong id="history-total-count"><?php echo $total_teachers; ?></strong>
                         </div>
                         <span class="stat-icon" style="background:#f3f4f6;"><?php echo svg_icon("calendar"); ?></span>
                     </div>
                     <div class="stat-card">
                         <div>
                             <p>Completed</p>
-                            <strong class="green-text"><?php echo $completed_count; ?></strong>
+                            <strong class="green-text" id="history-completed-count"><?php echo $completed_count; ?></strong>
                         </div>
                         <span class="stat-icon green"><?php echo svg_icon("check-circle", "#16a34a"); ?></span>
                     </div>
                     <div class="stat-card">
                         <div>
                             <p>Pending</p>
-                            <strong class="yellow-text"><?php echo $pending_count; ?></strong>
+                            <strong class="yellow-text" id="history-pending-count"><?php echo $pending_count; ?></strong>
                         </div>
                         <span class="stat-icon yellow"><?php echo svg_icon("clock", "#f59e0b"); ?></span>
                     </div>
@@ -2775,7 +3630,7 @@ function svg_icon(string $name, string $color = "currentColor"): string
                             $submitted_time_fmt = $dt->format("h:i A");
                         }
                         ?>
-                        <div class="history-record-row" data-status="<?php echo strtolower(e($teacher["task_status"])); ?>"
+                        <div class="history-record-row" data-task-id="<?php echo $teacher["student_evaluation_task_id"]; ?>" data-status="<?php echo strtolower(e($teacher["task_status"])); ?>"
                             data-name="<?php echo strtolower(e($teacher["faculty_name"])); ?>"
                             data-subject="<?php echo strtolower(e($teacher["subject_title"])); ?>" <?php if ($is_done): ?>
                                 data-action="view-eval" data-task-id="<?php echo $teacher["student_evaluation_task_id"]; ?>"
@@ -2799,9 +3654,11 @@ function svg_icon(string $name, string $color = "currentColor"): string
                                     <p class="click-to-view" style="color:#9ca3af;">Click to view</p>
                                 <?php endif; ?>
                             </div>
-                            <span class="status-pill <?php echo $is_done ? "completed" : "pending"; ?>">
+                            <span class="status-pill <?php echo $is_done ? "completed" : ($teacher["task_status"] === "Draft" ? "draft" : "pending"); ?>">
                                 <?php if ($is_done): ?>
                                     <?php echo svg_icon("check-circle", "#16a34a"); ?> Completed
+                                <?php elseif ($teacher["task_status"] === "Draft"): ?>
+                                    <?php echo svg_icon("save", "#2563eb"); ?> Draft
                                 <?php else: ?>
                                     <?php echo svg_icon("clock", "#a16207"); ?> Pending
                                 <?php endif; ?>
@@ -2976,13 +3833,21 @@ function svg_icon(string $name, string $color = "currentColor"): string
                     <h4>Evaluation Status</h4>
                     <div class="eval-summary-row">
                         <span>Completed:</span>
-                        <strong id="modal-completed-count" style="color:#16a34a;"><?php echo $completed_count; ?>
-                            teachers</strong>
+                        <strong id="modal-completed-count" style="color:#16a34a;">
+                            <?php echo $completed_count; ?> teachers
+                        </strong>
+                    </div>
+                    <div class="eval-summary-row">
+                        <span>Drafts:</span>
+                        <strong id="modal-draft-count" style="color:#2563eb;">
+                            <?php echo $draft_count; ?> teachers
+                        </strong>
                     </div>
                     <div class="eval-summary-row">
                         <span>Pending:</span>
-                        <strong id="modal-pending-count" style="color:#f59e0b;"><?php echo $pending_count; ?>
-                            teachers</strong>
+                        <strong id="modal-pending-count" style="color:#f59e0b;">
+                            <?php echo $pending_task_count; ?> teachers
+                        </strong>
                     </div>
                 </div>
                 <div class="modal-alert modal-alert-yellow">
@@ -3024,6 +3889,8 @@ function svg_icon(string $name, string $color = "currentColor"): string
                     <ul>
                         <li id="modal-completed-deleted"><?php echo $completed_count; ?> completed
                             evaluation<?php echo $completed_count !== 1 ? "s" : ""; ?></li>
+                        <li id="modal-draft-deleted"><?php echo $draft_count; ?> saved
+                            draft<?php echo $draft_count !== 1 ? "s" : ""; ?></li>
                         <li>All evaluation progress and ratings</li>
                         <li>All saved comments and feedback</li>
                     </ul>
@@ -3055,9 +3922,59 @@ function svg_icon(string $name, string $color = "currentColor"): string
             let currentEvalDept = "";
             let currentEvalTaId = null;
             let completedCount = <?php echo $completed_count; ?>;
+            let draftCount = <?php echo $draft_count; ?>;
+            let pendingTaskCount = <?php echo $pending_task_count; ?>;
             const totalTeachers = <?php echo $total_teachers; ?>;
             const studentId = <?php echo $student_id; ?>;
             const periodId = <?php echo $current_period_id ?? 0; ?>;
+
+            function postAction(fields) {
+                const fd = new FormData();
+                Object.entries(fields).forEach(([key, value]) => {
+                    if (key === "answers" && value && typeof value === "object") {
+                        Object.entries(value).forEach(([itemId, rating]) => {
+                            if (rating !== null && rating !== undefined && rating !== "") {
+                                fd.append("answers[" + itemId + "]", rating);
+                            }
+                        });
+                    } else {
+                        fd.append(key, value ?? "");
+                    }
+                });
+                return fetch(window.location.href, { method: "POST", body: fd }).then(r => r.json());
+            }
+
+            function collectAnswersPayload() {
+                const answers = {};
+                document.querySelectorAll(".eval-row").forEach(row => {
+                    const qid = row.dataset.qid;
+                    const itemId = row.dataset.itemId;
+                    const cb = document.querySelector(`.rating-check[data-qid="${qid}"]:checked`);
+                    if (cb && itemId && parseInt(itemId) > 0) {
+                        answers[itemId] = parseInt(cb.value);
+                    }
+                });
+                return answers;
+            }
+
+            function applySavedResponse(data) {
+                if (!data || !data.success) return;
+                const answers = data.answers || {};
+                Object.entries(answers).forEach(([itemId, rating]) => {
+                    const row = document.querySelector(`.eval-row[data-item-id="${itemId}"]`);
+                    if (!row) return;
+                    row.querySelectorAll(".rating-check").forEach(cb => {
+                        cb.checked = parseInt(cb.value) === parseInt(rating);
+                    });
+                    row.classList.add("answered");
+                });
+                if (typeof data.comment === "string") {
+                    document.getElementById("eval-comments").value = data.comment;
+                }
+                updateProgress();
+                checkProceedReady();
+            }
+
 
             function switchTab(tabId) {
                 if (!tabId) return;
@@ -3191,8 +4108,14 @@ function svg_icon(string $name, string $color = "currentColor"): string
                 document.getElementById("eval-form-name").textContent = currentEvalName;
                 document.getElementById("eval-form-meta").textContent = currentEvalSubject + " · " + currentEvalDept;
                 clearEvalAnswers();
-                updateProgress();
                 showEvalView("eval-view-form");
+                postAction({ action: "load_response", task_id: currentEvalTaskId })
+                    .then(data => {
+                        if (data.success && data.response_status === "Draft") {
+                            applySavedResponse(data);
+                        }
+                    })
+                    .catch(() => {});
             }
 
             document.getElementById("btn-eval-clear").addEventListener("click", clearEvalAnswers);
@@ -3262,12 +4185,44 @@ function svg_icon(string $name, string $color = "currentColor"): string
             });
 
             document.getElementById("btn-eval-draft").addEventListener("click", function () {
+                const btn = this;
                 const answered = document.querySelectorAll(".eval-row.answered").length;
-                if (answered === 0) {
-                    alert("No answers to save.");
+                const comment = document.getElementById("eval-comments").value.trim();
+                if (answered === 0 && comment === "") {
+                    alert("No answers or comments to save.");
                     return;
                 }
-                alert("Draft saved. (" + answered + " of " + totalItems + " answered)");
+                btn.disabled = true;
+                const originalText = btn.innerHTML;
+                btn.textContent = "Saving...";
+                postAction({
+                    action: "save_draft",
+                    task_id: currentEvalTaskId,
+                    answers: collectAnswersPayload(),
+                    comment: comment
+                }).then(data => {
+                    if (data.success) {
+                        alert("Draft saved. (" + answered + " of " + totalItems + " answered)");
+                        const teacherInArr = teachers.find(t => t.student_evaluation_task_id == currentEvalTaskId);
+                        if (teacherInArr && teacherInArr.task_status !== "Submitted") {
+                            if (teacherInArr.task_status !== "Draft") {
+                                draftCount++;
+                                pendingTaskCount = Math.max(pendingTaskCount - 1, 0);
+                            }
+                            teacherInArr.task_status = "Draft";
+                            updateEvaluationCardToDraft(currentEvalTaskId);
+                            updateHistoryRowToDraft(currentEvalTaskId);
+                            updateSidebarProgress();
+                        }
+                    } else {
+                        alert(data.message || "Failed to save draft.");
+                    }
+                }).catch(() => {
+                    alert("Failed to save draft. Please try again.");
+                }).finally(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                });
             });
 
             btnProceedReview.addEventListener("click", function () {
@@ -3382,6 +4337,50 @@ function svg_icon(string $name, string $color = "currentColor"): string
                     });
             });
 
+            function updateEvaluationCardToDraft(taskId) {
+                const parentCard = document.querySelector(`.eval-card[data-task-id="${taskId}"]`) || document.querySelector(`[data-action="start-eval"][data-task-id="${taskId}"]`)?.closest(".eval-card");
+                if (!parentCard) return;
+                parentCard.dataset.status = "draft";
+                const badge = parentCard.querySelector(".status-pill");
+                if (badge) {
+                    badge.className = "status-pill draft";
+                    badge.innerHTML = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:15px;height:15px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="17 21 17 13 7 13 7 21" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="7 3 7 8 15 8" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Draft`;
+                }
+                const btn = parentCard.querySelector("[data-action='start-eval']");
+                if (btn) {
+                    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:16px;height:16px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="17 21 17 13 7 13 7 21" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="7 3 7 8 15 8" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Resume Evaluation`;
+                }
+            }
+
+            function updateHistoryRowToDraft(taskId) {
+                const row = document.querySelector(`.history-record-row[data-task-id="${taskId}"]`);
+                if (!row) return;
+                row.dataset.status = "draft";
+                const badge = row.querySelector(".status-pill");
+                if (badge) {
+                    badge.className = "status-pill draft";
+                    badge.innerHTML = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:15px;height:15px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="17 21 17 13 7 13 7 21" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="7 3 7 8 15 8" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Draft`;
+                }
+            }
+
+            function updateHistoryRowToSubmitted(taskId, submittedAt, avgScore) {
+                const row = document.querySelector(`.history-record-row[data-task-id="${taskId}"]`);
+                if (!row) return;
+                row.dataset.status = "submitted";
+                row.dataset.action = "view-eval";
+                row.dataset.nameDisplay = currentEvalName;
+                row.dataset.subjectDisplay = currentEvalSubject;
+                row.dataset.deptDisplay = currentEvalDept;
+                row.dataset.submitted = submittedAt;
+                row.dataset.avg = avgScore;
+                row.style.cursor = "pointer";
+                const badge = row.querySelector(".status-pill");
+                if (badge) {
+                    badge.className = "status-pill completed";
+                    badge.innerHTML = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:15px;height:15px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="22 4 12 14.01 9 11.01" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Completed`;
+                }
+            }
+
             function finalizeSubmission(submittedAt, avgScore) {
                 const card = document.querySelector(`[data-action="start-eval"][data-task-id="${currentEvalTaskId}"]`);
                 if (card) {
@@ -3413,12 +4412,21 @@ function svg_icon(string $name, string $color = "currentColor"): string
 
                 const teacherInArr = teachers.find(t => t.student_evaluation_task_id == currentEvalTaskId);
                 if (teacherInArr) {
+                    const previousStatus = teacherInArr.task_status;
+                    if (previousStatus === "Draft") {
+                        draftCount = Math.max(draftCount - 1, 0);
+                    } else if (previousStatus !== "Submitted") {
+                        pendingTaskCount = Math.max(pendingTaskCount - 1, 0);
+                    }
+                    if (previousStatus !== "Submitted") {
+                        completedCount++;
+                    }
                     teacherInArr.task_status = "Submitted";
                     teacherInArr.submitted_at = submittedAt;
                     teacherInArr.average_score = avgScore;
                 }
 
-                completedCount++;
+                updateHistoryRowToSubmitted(currentEvalTaskId, submittedAt, avgScore);
                 updateSidebarProgress();
                 showSuccessPage(submittedAt);
             }
@@ -3434,7 +4442,7 @@ function svg_icon(string $name, string $color = "currentColor"): string
                     dateStr = now.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
                     timeStr = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
                 }
-                const remaining = totalTeachers - completedCount;
+                const remaining = Math.max(draftCount + pendingTaskCount, 0);
 
                 document.getElementById("success-teacher-name").textContent = currentEvalName;
                 document.getElementById("success-subject").textContent = currentEvalSubject;
@@ -3467,15 +4475,32 @@ function svg_icon(string $name, string $color = "currentColor"): string
             });
 
             function updateSidebarProgress() {
-                const remaining = totalTeachers - completedCount;
+                const remaining = Math.max(draftCount + pendingTaskCount, 0);
                 const sidebarCompleted = document.getElementById("sidebar-completed");
                 const sidebarPending = document.getElementById("sidebar-pending");
                 if (sidebarCompleted) sidebarCompleted.textContent = completedCount;
                 if (sidebarPending) sidebarPending.textContent = remaining;
+
+                const dashboardCompleted = document.getElementById("dashboard-completed-count");
+                const dashboardPending = document.getElementById("dashboard-pending-count");
+                const historyCompleted = document.getElementById("history-completed-count");
+                const historyPending = document.getElementById("history-pending-count");
+                if (dashboardCompleted) dashboardCompleted.textContent = completedCount;
+                if (dashboardPending) dashboardPending.textContent = remaining;
+                if (historyCompleted) historyCompleted.textContent = completedCount;
+                if (historyPending) historyPending.textContent = remaining;
+
                 const modalComp = document.getElementById("modal-completed-count");
+                const modalDraft = document.getElementById("modal-draft-count");
                 const modalPend = document.getElementById("modal-pending-count");
                 if (modalComp) modalComp.textContent = completedCount + " teachers";
-                if (modalPend) modalPend.textContent = remaining + " teachers";
+                if (modalDraft) modalDraft.textContent = draftCount + " teachers";
+                if (modalPend) modalPend.textContent = pendingTaskCount + " teachers";
+
+                const modalDeleted = document.getElementById("modal-completed-deleted");
+                const modalDraftDeleted = document.getElementById("modal-draft-deleted");
+                if (modalDeleted) modalDeleted.textContent = completedCount + " completed evaluation" + (completedCount === 1 ? "" : "s");
+                if (modalDraftDeleted) modalDraftDeleted.textContent = draftCount + " saved draft" + (draftCount === 1 ? "" : "s");
             }
 
             document.getElementById("btn-back-to-eval-list").addEventListener("click", function (e) {
@@ -3492,41 +4517,63 @@ function svg_icon(string $name, string $color = "currentColor"): string
                 const timeEl = document.getElementById("view-submitted-time");
                 const avgEl = document.getElementById("view-avg-score");
 
-                if (submittedAt) {
-                    const dt = new Date(submittedAt.replace(" ", "T"));
-                    if (dateEl) dateEl.textContent = dt.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
-                    if (timeEl) timeEl.textContent = dt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
-                } else {
-                    if (dateEl) dateEl.textContent = "—";
-                    if (timeEl) timeEl.textContent = "—";
-                }
-                if (avgEl) avgEl.textContent = avgScore ? parseFloat(avgScore).toFixed(2) + " / 5.00" : "—";
-
-                let html = "";
-                let qNum = 1;
-                for (const [catName, stmts] of Object.entries(categoryStatements)) {
-                    html += `<div style="font-weight:700;font-size:15px;margin-bottom:14px;margin-top:${qNum > 1 ? '22px' : '0'}">${catName}</div>`;
-                    for (const stmtObj of stmts) {
-                        const stmt = stmtObj.statement || stmtObj;
-                        const r = 4;
-                        const lbl = ratingLabels[r];
-                        const stars = [1, 2, 3, 4, 5].map(s => s <= r
-                            ? `<svg viewBox="0 0 24 24" fill="#f59e0b" xmlns="http://www.w3.org/2000/svg" style="width:18px;height:18px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" fill="#f59e0b"/></svg>`
-                            : `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:18px;height:18px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" stroke="#d1d5db" stroke-width="2"/></svg>`
-                        ).join("");
-                        html += `<div class="view-rating-item">
-                    <p>${qNum}. ${stmt}</p>
-                    <div class="view-rating-box">
-                        <div><strong>${lbl}</strong><small>Rating: ${r} / 5</small></div>
-                        <div class="stars-row">${stars}</div>
-                    </div>
-                </div>`;
-                        qNum++;
+                function setDateAndScore(realSubmittedAt, realAvgScore) {
+                    if (realSubmittedAt) {
+                        const dt = new Date(realSubmittedAt.replace(" ", "T"));
+                        if (dateEl) dateEl.textContent = dt.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+                        if (timeEl) timeEl.textContent = dt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+                    } else {
+                        if (dateEl) dateEl.textContent = "—";
+                        if (timeEl) timeEl.textContent = "—";
                     }
+                    if (avgEl) avgEl.textContent = realAvgScore ? parseFloat(realAvgScore).toFixed(2) + " / 5.00" : "—";
                 }
-                document.getElementById("view-ratings-body").innerHTML = html;
+
+                function renderRatings(savedAnswers) {
+                    let html = "";
+                    let qNum = 1;
+                    for (const [catName, stmts] of Object.entries(categoryStatements)) {
+                        html += `<div style="font-weight:700;font-size:15px;margin-bottom:14px;margin-top:${qNum > 1 ? '22px' : '0'}">${catName}</div>`;
+                        for (const stmtObj of stmts) {
+                            const stmt = stmtObj.statement || stmtObj;
+                            const itemId = stmtObj.evaluation_form_item_id || null;
+                            const r = itemId && savedAnswers[itemId] ? parseInt(savedAnswers[itemId]) : 0;
+                            const lbl = r ? ratingLabels[r] : "No saved rating";
+                            const stars = [1, 2, 3, 4, 5].map(s => s <= r
+                                ? `<svg viewBox="0 0 24 24" fill="#f59e0b" xmlns="http://www.w3.org/2000/svg" style="width:18px;height:18px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" fill="#f59e0b"/></svg>`
+                                : `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:18px;height:18px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" stroke="#d1d5db" stroke-width="2"/></svg>`
+                            ).join("");
+                            html += `<div class="view-rating-item">
+                                <p>${qNum}. ${stmt}</p>
+                                <div class="view-rating-box">
+                                    <div class="view-rating-text">
+                                        <strong>${lbl}</strong>
+                                        <small>Rating: ${r || "—"} / 5</small>
+                                    </div>
+                                    <div class="stars-row">${stars}</div>
+                                </div>
+                            </div>`;
+                            qNum++;
+                        }
+                    }
+                    document.getElementById("view-ratings-body").innerHTML = html;
+                }
+
+                setDateAndScore(submittedAt, avgScore);
+                document.getElementById("view-ratings-body").innerHTML = "<p style='padding:20px;color:#64748b;'>Loading saved ratings...</p>";
                 showEvalView("eval-view-readonly");
                 switchTab("tab-eval");
+
+                postAction({ action: "load_response", task_id: taskId })
+                    .then(data => {
+                        if (data.success) {
+                            setDateAndScore(data.submitted_at || submittedAt, data.average_score || avgScore);
+                            renderRatings(data.answers || {});
+                        } else {
+                            renderRatings({});
+                        }
+                    })
+                    .catch(() => renderRatings({}));
             }
 
             document.querySelectorAll("[data-eval-filter]").forEach(btn => {
@@ -3664,11 +4711,30 @@ function svg_icon(string $name, string $color = "currentColor"): string
             });
 
             document.getElementById("btn-do-logout").addEventListener("click", function () {
-                window.location.href = "../login/login_page.php";
+                postAction({ action: "logout" })
+                    .then(data => { window.location.href = data.redirect || "../login/login_page.php"; })
+                    .catch(() => { window.location.href = "../login/login_page.php"; });
             });
 
             document.getElementById("btn-do-reset-logout").addEventListener("click", function () {
-                window.location.href = "../login/login_page.php";
+                const btn = this;
+                btn.disabled = true;
+                btn.textContent = "Resetting...";
+                postAction({ action: "reset_progress_logout", period_id: periodId })
+                    .then(data => {
+                        if (data.success) {
+                            window.location.href = data.redirect || "../login/login_page.php";
+                        } else {
+                            alert(data.message || "Failed to reset progress.");
+                            btn.disabled = false;
+                            btn.textContent = "Reset & Logout";
+                        }
+                    })
+                    .catch(() => {
+                        alert("Failed to reset progress. Please try again.");
+                        btn.disabled = false;
+                        btn.textContent = "Reset & Logout";
+                    });
             });
 
             function openModal(id) {
