@@ -222,7 +222,12 @@ function ensure_support_tables(mysqli $db): void
             OR eps.start_date_snapshot IS NULL
             OR eps.end_date_snapshot IS NULL
     " );
+
+    if (db_table_exists($db, 'student_evaluation_task') && !db_column_exists($db, 'student_evaluation_task', 'evaluation_access_status')) {
+        $db->query("ALTER TABLE student_evaluation_task ADD COLUMN evaluation_access_status ENUM('Open','Closed') NOT NULL DEFAULT 'Closed' AFTER task_status");
+    }
 }
+
 
 function normalize_academic_year(string $value): string
 {
@@ -561,6 +566,118 @@ function generate_tasks_for_scope(mysqli $db, int $periodId, array $scope): void
                 execute_stmt($db, "INSERT INTO student_evaluation_task (student_id, evaluation_period_id, task_status) VALUES (?, ?, 'Pending')", "ii", [$studentId, $periodId]);
             }
         }
+    }
+}
+
+
+function update_student_task_access_for_scope(mysqli $db, int $periodId, array $scope, string $accessStatus): void
+{
+    if (!db_table_exists($db, 'student_evaluation_task') || !db_column_exists($db, 'student_evaluation_task', 'evaluation_access_status')) {
+        return;
+    }
+
+    $period = fetch_one($db, "SELECT term_id FROM evaluation_period WHERE evaluation_period_id = ? LIMIT 1", "i", [$periodId]);
+    if (!$period) {
+        return;
+    }
+
+    $termId = (int)$period['term_id'];
+    $hasTeachingAssignment = db_column_exists($db, 'student_evaluation_task', 'teaching_assignment_id');
+
+    $scopeType = (string)($scope['scope_type'] ?? 'All');
+    $where = "sse.term_id = ? AND sse.enrollment_status = 'Active'";
+    $types = "i";
+    $params = [$termId];
+
+    if ($scopeType === 'Department' && !empty($scope['department_id'])) {
+        $where .= " AND c.department_id = ?";
+        $types .= "i";
+        $params[] = (int)$scope['department_id'];
+    } elseif ($scopeType === 'Course' && !empty($scope['course_id'])) {
+        $where .= " AND c.course_id = ?";
+        $types .= "i";
+        $params[] = (int)$scope['course_id'];
+    } elseif ($scopeType === 'Year Level' && !empty($scope['year_level'])) {
+        $where .= " AND sec.year_level = ?";
+        $types .= "i";
+        $params[] = (int)$scope['year_level'];
+    } elseif ($scopeType === 'Section' && !empty($scope['section_id'])) {
+        $where .= " AND sec.section_id = ?";
+        $types .= "i";
+        $params[] = (int)$scope['section_id'];
+    }
+
+    if ($hasTeachingAssignment) {
+        $sql = "UPDATE student_evaluation_task setask
+                SET setask.evaluation_access_status = ?
+                WHERE setask.evaluation_period_id = ?
+                  AND setask.task_status <> 'Reset'
+                  AND EXISTS (
+                      SELECT 1
+                      FROM student_section_enrollment sse
+                      INNER JOIN section sec
+                          ON sec.section_id = sse.section_id
+                      INNER JOIN course c
+                          ON c.course_id = sec.course_id
+                      INNER JOIN section_subject_offering sso
+                          ON sso.section_id = sec.section_id
+                         AND sso.term_id = sse.term_id
+                      INNER JOIN teaching_assignment ta
+                          ON ta.section_subject_offering_id = sso.section_subject_offering_id
+                         AND ta.term_id = sse.term_id
+                      WHERE sse.student_id = setask.student_id
+                        AND ta.teaching_assignment_id = setask.teaching_assignment_id
+                        AND $where
+                  )";
+    } else {
+        $sql = "UPDATE student_evaluation_task setask
+                SET setask.evaluation_access_status = ?
+                WHERE setask.evaluation_period_id = ?
+                  AND setask.task_status <> 'Reset'
+                  AND EXISTS (
+                      SELECT 1
+                      FROM student_section_enrollment sse
+                      INNER JOIN section sec
+                          ON sec.section_id = sse.section_id
+                      INNER JOIN course c
+                          ON c.course_id = sec.course_id
+                      WHERE sse.student_id = setask.student_id
+                        AND $where
+                  )";
+    }
+
+    execute_stmt($db, $sql, "si" . $types, array_merge([$accessStatus, $periodId], $params));
+}
+
+function sync_student_task_access_for_period(mysqli $db, int $periodId): void
+{
+    if (!db_table_exists($db, 'student_evaluation_task') || !db_column_exists($db, 'student_evaluation_task', 'evaluation_access_status')) {
+        return;
+    }
+
+    execute_stmt(
+        $db,
+        "UPDATE student_evaluation_task
+         SET evaluation_access_status = 'Closed'
+         WHERE evaluation_period_id = ?
+           AND task_status <> 'Reset'",
+        "i",
+        [$periodId]
+    );
+
+    $activeScopes = fetch_all(
+        $db,
+        "SELECT scope_type, department_id, course_id, year_level, section_id
+         FROM evaluation_period_scope
+         WHERE evaluation_period_id = ?
+           AND scope_status = 'Active'
+         ORDER BY evaluation_period_scope_id ASC",
+        "i",
+        [$periodId]
+    );
+
+    foreach ($activeScopes as $activeScope) {
+        update_student_task_access_for_scope($db, $periodId, $activeScope, 'Open');
     }
 }
 
@@ -974,6 +1091,7 @@ try {
                     ]
                 );
                 generate_tasks_for_scope($db, $periodId, $scope);
+                sync_student_task_access_for_period($db, $periodId);
                 $db->commit();
                 set_flash("Evaluation opened successfully for " . scope_summary($db, $scope['scope_type'], $scope['department_id'], $scope['course_id'], $scope['year_level'], $scope['section_id']) . ".", "success");
                 redirect_self();
@@ -1034,6 +1152,7 @@ try {
                     execute_stmt($db, "UPDATE evaluation_form SET form_status = 'Active' WHERE evaluation_form_id = ?", "i", [$formId]);
                 }
 
+                sync_student_task_access_for_period($db, $periodId);
                 $db->commit();
                 set_flash("Evaluation closed successfully for " . scope_summary($db, $scope['scope_type'], $scope['department_id'], $scope['course_id'], $scope['year_level'], $scope['section_id']) . ".", "success");
                 redirect_self();
@@ -1043,7 +1162,11 @@ try {
         if ($action === 'archive_scope') {
             $scopeId = (int)($_POST['evaluation_period_scope_id'] ?? 0);
             if ($scopeId > 0) {
+                $archivedScope = fetch_one($db, "SELECT evaluation_period_id FROM evaluation_period_scope WHERE evaluation_period_scope_id = ? LIMIT 1", "i", [$scopeId]);
                 execute_stmt($db, "UPDATE evaluation_period_scope SET scope_status = 'Archived' WHERE evaluation_period_scope_id = ?", "i", [$scopeId]);
+                if ($archivedScope) {
+                    sync_student_task_access_for_period($db, (int)$archivedScope['evaluation_period_id']);
+                }
             }
             $db->commit();
             set_flash("Evaluation period history archived successfully.", "success");
@@ -1139,7 +1262,7 @@ $historySemesters = array_values(array_unique(array_map(fn($r) => $r['semester_u
             <a class="nav-link" href="assignment_management.php"><?php echo icon_svg("assignment"); ?> Assignment Management</a>
             <a class="nav-link active" href="evaluation_setup.php"><?php echo icon_svg("settings"); ?> Evaluation Setup</a>
             <a class="nav-link" href="submission_monitoring.php"><?php echo icon_svg("clipboard"); ?> Submission Monitoring</a>
-            <a class="nav-link" href="#"><?php echo icon_svg("reports"); ?> Reports</a>
+            <a class="nav-link" href="report_page.php"><?php echo icon_svg("reports"); ?> Reports</a>
             <a class="nav-link" href="#"><?php echo icon_svg("announcement"); ?> Announcements</a>
             <a class="nav-link" href="#"><?php echo icon_svg("settings"); ?> Settings</a>
             <a class="nav-link" href="#"><?php echo icon_svg("moon"); ?> Dark Mode</a>

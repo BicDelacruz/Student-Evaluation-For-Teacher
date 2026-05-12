@@ -171,7 +171,7 @@ $end_date = $current_period ? date("n/j/Y", strtotime($current_period["end_date"
             <a class="nav-link" href="assignment_management.php"><?php echo icon_svg("faculty"); ?> Assignment Management</a>
             <a class="nav-link" href="evaluation_setup.php"><?php echo icon_svg("settings"); ?> Evaluation Setup</a>
             <a class="nav-link" href="submission_monitoring.php"><?php echo icon_svg("clipboard"); ?> Submission Monitoring</a>
-            <a class="nav-link" href="#"><?php echo icon_svg("chart"); ?> Reports</a>
+            <a class="nav-link" href="report_page.php"><?php echo icon_svg("chart"); ?> Reports</a>
             <a class="nav-link" href="#"><?php echo icon_svg("megaphone"); ?> Announcements</a>
             <a class="nav-link" href="#"><?php echo icon_svg("settings"); ?> Settings</a>
             <a class="nav-link" href="#"><?php echo icon_svg("moon"); ?> Dark Mode</a>

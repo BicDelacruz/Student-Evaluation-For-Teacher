@@ -1,5 +1,147 @@
 <?php
-function icon_svg($name)
+declare(strict_types=1);
+
+session_start();
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+
+$database_host = "localhost";
+$database_name = "student_evaluation_for_teacher_db";
+$database_username = "root";
+$database_password = "";
+
+try {
+    $db = new mysqli($database_host, $database_username, $database_password, $database_name);
+    $db->set_charset("utf8mb4");
+} catch (Throwable $error) {
+    die("Database connection failed. Please check database_connector or local database settings.");
+}
+
+function e($value): string
+{
+    return htmlspecialchars((string)$value, ENT_QUOTES, "UTF-8");
+}
+
+function json_safe($value): string
+{
+    return json_encode($value, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE);
+}
+
+function db_table_exists(mysqli $db, string $table): bool
+{
+    $stmt = $db->prepare("SELECT COUNT(*) AS c FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ?");
+    $stmt->bind_param("s", $table);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    return ((int)($row["c"] ?? 0)) > 0;
+}
+
+function db_column_exists(mysqli $db, string $table, string $column): bool
+{
+    $stmt = $db->prepare("SELECT COUNT(*) AS c FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?");
+    $stmt->bind_param("ss", $table, $column);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    return ((int)($row["c"] ?? 0)) > 0;
+}
+
+function fetch_all(mysqli $db, string $sql, string $types = "", array $params = []): array
+{
+    if ($params) {
+        $stmt = $db->prepare($sql);
+        $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        return $rows;
+    }
+    return $db->query($sql)->fetch_all(MYSQLI_ASSOC);
+}
+
+function fetch_one(mysqli $db, string $sql, string $types = "", array $params = []): ?array
+{
+    $rows = fetch_all($db, $sql, $types, $params);
+    return $rows[0] ?? null;
+}
+
+function execute_stmt(mysqli $db, string $sql, string $types = "", array $params = []): mysqli_stmt
+{
+    $stmt = $db->prepare($sql);
+    if ($params) {
+        $stmt->bind_param($types, ...$params);
+    }
+    $stmt->execute();
+    return $stmt;
+}
+
+function set_flash(string $message, string $type = "success"): void
+{
+    $_SESSION["submission_monitoring_flash"] = ["message" => $message, "type" => $type];
+}
+
+function get_flash(): ?array
+{
+    if (!isset($_SESSION["submission_monitoring_flash"])) {
+        return null;
+    }
+    $flash = $_SESSION["submission_monitoring_flash"];
+    unset($_SESSION["submission_monitoring_flash"]);
+    return $flash;
+}
+
+function current_admin_label(): string
+{
+    return $_SESSION["role_name"] ?? $_SESSION["authenticated_role"] ?? "System Administrator";
+}
+
+function year_level_label($value): string
+{
+    $n = (int)$value;
+    return match ($n) {
+        1 => "1st Year",
+        2 => "2nd Year",
+        3 => "3rd Year",
+        4 => "4th Year",
+        default => $n > 0 ? $n . "th Year" : "Not assigned",
+    };
+}
+
+function term_label(?string $term): string
+{
+    return match ((string)$term) {
+        "First Semester" => "1st Semester",
+        "Second Semester" => "2nd Semester",
+        "Summer" => "Summer",
+        default => $term ?: "Not assigned",
+    };
+}
+
+function format_date_only($value): string
+{
+    if (!$value) {
+        return "—";
+    }
+    $time = strtotime((string)$value);
+    return $time ? date("M d, Y", $time) : "—";
+}
+
+function format_datetime_display($value): string
+{
+    if (!$value) {
+        return "—";
+    }
+    $time = strtotime((string)$value);
+    return $time ? date("M d, Y, h:i A", $time) : "—";
+}
+
+function csv_escape($value): string
+{
+    $value = (string)$value;
+    return '"' . str_replace('"', '""', $value) . '"';
+}
+
+function icon_svg($name): string
 {
     $icons = [
         "dashboard" => '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>',
@@ -21,11 +163,517 @@ function icon_svg($name)
         "clock" => '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>',
         "bar-chart" => '<svg viewBox="0 0 24 24"><path d="M3 3v18h18"></path><path d="M7 16V9"></path><path d="M12 16V5"></path><path d="M17 16v-3"></path></svg>',
         "trend" => '<svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"></path><path d="M14 7h7v7"></path></svg>',
-        "close" => '<svg viewBox="0 0 24 24"><path d="M18 6L6 18"></path><path d="M6 6l12 12"></path></svg>'
+        "close" => '<svg viewBox="0 0 24 24"><path d="M18 6L6 18"></path><path d="M6 6l12 12"></path></svg>',
+        "download" => '<svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="M7 10l5 5 5-5"></path><path d="M12 15V3"></path></svg>',
+        "x-circle" => '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M15 9l-6 6"></path><path d="M9 9l6 6"></path></svg>',
+        "alert" => '<svg viewBox="0 0 24 24"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>'
     ];
-
     return $icons[$name] ?? "";
 }
+
+function get_current_period(mysqli $db): ?array
+{
+    $sql = "
+        SELECT
+            ep.evaluation_period_id,
+            ep.term_id,
+            ep.period_name,
+            ep.start_date,
+            ep.end_date,
+            ep.period_status,
+            t.term_name,
+            ay.academic_year_id,
+            ay.academic_year_name
+        FROM evaluation_period ep
+        LEFT JOIN term t ON t.term_id = ep.term_id
+        LEFT JOIN academic_year ay ON ay.academic_year_id = t.academic_year_id
+        ORDER BY
+            CASE ep.period_status
+                WHEN 'Open' THEN 1
+                WHEN 'Ongoing' THEN 2
+                WHEN 'Draft' THEN 3
+                WHEN 'Closed' THEN 4
+                ELSE 5
+            END,
+            ep.evaluation_period_id DESC
+        LIMIT 1
+    ";
+    return fetch_one($db, $sql);
+}
+
+function student_has_open_access(array $student, array $activeScopes): bool
+{
+    foreach ($activeScopes as $scope) {
+        $scopeType = (string)($scope["scope_type"] ?? "");
+        if ($scopeType === "All") {
+            return true;
+        }
+        if ($scopeType === "Department" && (int)($scope["department_id"] ?? 0) === (int)$student["department_id"]) {
+            return true;
+        }
+        if ($scopeType === "Course" && (int)($scope["course_id"] ?? 0) === (int)$student["course_id"]) {
+            return true;
+        }
+        if ($scopeType === "Year Level" && (int)($scope["year_level"] ?? 0) === (int)$student["year_level_number"]) {
+            return true;
+        }
+        if ($scopeType === "Section" && (int)($scope["section_id"] ?? 0) === (int)$student["section_id"]) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function make_query_with_params(array $overrides = []): string
+{
+    $params = array_merge($_GET, $overrides);
+    foreach ($params as $key => $value) {
+        if ($value === "" || $value === null) {
+            unset($params[$key]);
+        }
+    }
+    return "?" . http_build_query($params);
+}
+
+function build_query_params(array $overrides = []): array
+{
+    $params = array_merge($_GET, $overrides);
+    foreach ($params as $key => $value) {
+        if ($value === "" || $value === null) {
+            unset($params[$key]);
+        }
+    }
+    return $params;
+}
+
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    $action = $_POST["action"] ?? "";
+
+    if ($action === "delete_monitoring_record") {
+        $studentId = (int)($_POST["student_id"] ?? 0);
+        if ($studentId > 0) {
+            try {
+                $dependencyRow = fetch_one($db, "
+                    SELECT
+                        (SELECT COUNT(*) FROM student_evaluation_task WHERE student_id = ?) AS task_count,
+                        (SELECT COUNT(*) FROM evaluation_response WHERE student_id = ?) AS response_count,
+                        (SELECT COUNT(*) FROM student_section_enrollment WHERE student_id = ?) AS enrollment_count
+                ", "iii", [$studentId, $studentId, $studentId]);
+                $dependencyCount = (int)($dependencyRow["task_count"] ?? 0) + (int)($dependencyRow["response_count"] ?? 0) + (int)($dependencyRow["enrollment_count"] ?? 0);
+
+                if ($dependencyCount > 0) {
+                    execute_stmt($db, "UPDATE student SET student_status = 'Inactive' WHERE student_id = ?", "i", [$studentId])->close();
+                    set_flash("You cannot delete an entity with record inside. This will mark as inactive", "warning");
+                } else {
+                    execute_stmt($db, "DELETE FROM student WHERE student_id = ?", "i", [$studentId])->close();
+                    set_flash("Monitoring record deleted successfully.", "success");
+                }
+            } catch (Throwable $error) {
+                error_log("Submission monitoring delete error: " . $error->getMessage());
+                set_flash("Unable to update this monitoring record right now.", "error");
+            }
+        }
+        header("Location: submission_monitoring.php" . make_query_with_params(["action" => null]));
+        exit;
+    }
+}
+
+$currentPeriod = get_current_period($db);
+$currentPeriodId = (int)($currentPeriod["evaluation_period_id"] ?? 0);
+$currentTermId = (int)($currentPeriod["term_id"] ?? 0);
+
+$hasTaskTeachingAssignment = db_column_exists($db, "student_evaluation_task", "teaching_assignment_id");
+$hasTaskIsActive = db_column_exists($db, "student_evaluation_task", "is_active");
+$hasTaskAttemptNo = db_column_exists($db, "student_evaluation_task", "attempt_no");
+$hasEvalPeriodScope = db_table_exists($db, "evaluation_period_scope");
+
+$filters = [
+    "search" => trim((string)($_GET["search"] ?? "")),
+    "department_id" => (int)($_GET["department_id"] ?? 0),
+    "course_id" => (int)($_GET["course_id"] ?? 0),
+    "year_level" => (int)($_GET["year_level"] ?? 0),
+    "section_id" => (int)($_GET["section_id"] ?? 0),
+    "academic_year_id" => (int)($_GET["academic_year_id"] ?? 0),
+    "semester" => trim((string)($_GET["semester"] ?? "")),
+    "evaluation_access" => trim((string)($_GET["evaluation_access"] ?? "")),
+    "status" => trim((string)($_GET["status"] ?? "")),
+    "tab" => trim((string)($_GET["tab"] ?? "All")),
+];
+if (!in_array($filters["tab"], ["All", "Completed", "Pending"], true)) {
+    $filters["tab"] = "All";
+}
+
+$departments = fetch_all($db, "SELECT department_id, department_name FROM department WHERE department_status = 'Active' ORDER BY department_name");
+$courses = fetch_all($db, "SELECT course_id, course_code, course_name, department_id FROM course WHERE course_status = 'Active' ORDER BY course_code, course_name");
+$sections = fetch_all($db, "SELECT section_id, section_name, course_id, year_level FROM section WHERE section_status = 'Active' ORDER BY section_name");
+$academicYears = fetch_all($db, "SELECT academic_year_id, academic_year_name FROM academic_year ORDER BY academic_year_name DESC");
+$semesters = fetch_all($db, "SELECT DISTINCT term_name FROM term ORDER BY FIELD(term_name, 'First Semester', 'Second Semester', 'Summer')");
+
+$activeScopes = [];
+if ($hasEvalPeriodScope) {
+    $activeScopes = fetch_all($db, "
+        SELECT eps.*
+        FROM evaluation_period_scope eps
+        INNER JOIN evaluation_period ep ON ep.evaluation_period_id = eps.evaluation_period_id
+        WHERE eps.scope_status = 'Active'
+          AND ep.period_status IN ('Open', 'Ongoing')
+        ORDER BY eps.opened_at DESC, eps.evaluation_period_scope_id DESC
+    ");
+}
+
+$studentRows = fetch_all($db, "
+    SELECT
+        s.student_id,
+        s.student_number,
+        s.full_name,
+        s.first_name,
+        s.middle_name,
+        s.last_name,
+        COALESCE(sec.section_id, s.current_section_id, 0) AS section_id,
+        COALESCE(sec.section_name, 'Not assigned') AS section_name,
+        COALESCE(sec.year_level, s.current_year_level, 0) AS year_level_number,
+        COALESCE(active_course.course_id, base_course.course_id, 0) AS course_id,
+        COALESCE(active_course.course_code, base_course.course_code, '') AS course_code,
+        COALESCE(active_course.course_name, base_course.course_name, 'Not assigned') AS course_name,
+        COALESCE(active_department.department_id, base_department.department_id, 0) AS department_id,
+        COALESCE(active_department.department_name, base_department.department_name, 'Not assigned') AS department_name,
+        COALESCE(active_term.term_id, sse.term_id, sec.term_id, 0) AS term_id,
+        COALESCE(active_term.term_name, 'Not assigned') AS term_name,
+        COALESCE(active_year.academic_year_id, s.academic_year_id, 0) AS academic_year_id,
+        COALESCE(active_year.academic_year_name, 'Not assigned') AS academic_year_name
+    FROM student s
+    LEFT JOIN student_section_enrollment sse
+        ON sse.student_section_enrollment_id = (
+            SELECT sse2.student_section_enrollment_id
+            FROM student_section_enrollment sse2
+            WHERE sse2.student_id = s.student_id
+              AND sse2.enrollment_status = 'Active'
+            ORDER BY sse2.student_section_enrollment_id DESC
+            LIMIT 1
+        )
+    LEFT JOIN section sec
+        ON sec.section_id = COALESCE(sse.section_id, s.current_section_id)
+    LEFT JOIN course base_course
+        ON base_course.course_id = s.course_id
+    LEFT JOIN course active_course
+        ON active_course.course_id = COALESCE(sec.course_id, s.course_id)
+    LEFT JOIN department base_department
+        ON base_department.department_id = base_course.department_id
+    LEFT JOIN department active_department
+        ON active_department.department_id = active_course.department_id
+    LEFT JOIN term active_term
+        ON active_term.term_id = COALESCE(sse.term_id, sec.term_id)
+    LEFT JOIN academic_year active_year
+        ON active_year.academic_year_id = COALESCE(sec.academic_year_id, s.academic_year_id, active_term.academic_year_id)
+    WHERE s.student_status = 'Active'
+    ORDER BY s.last_name, s.first_name, s.student_number
+");
+
+$studentIds = array_map(static fn($row) => (int)$row["student_id"], $studentRows);
+$taskStats = [];
+$responseStats = [];
+$evaluatedDetails = [];
+$pendingAssignments = [];
+
+if ($studentIds) {
+    $idPlaceholders = implode(",", array_fill(0, count($studentIds), "?"));
+    $idTypes = str_repeat("i", count($studentIds));
+
+    if ($currentPeriodId > 0) {
+        $activeTaskCondition = $hasTaskIsActive ? "AND setask.is_active = 1" : "";
+        $taskRows = fetch_all($db, "
+            SELECT
+                setask.student_id,
+                COUNT(DISTINCT setask.student_evaluation_task_id) AS task_count,
+                COUNT(DISTINCT CASE WHEN setask.task_status = 'Submitted' THEN setask.student_evaluation_task_id END) AS submitted_task_count,
+                COUNT(DISTINCT CASE WHEN setask.task_status IN ('Pending', 'Draft') THEN setask.student_evaluation_task_id END) AS unfinished_task_count,
+                MAX(setask.submitted_at) AS latest_submitted_at
+            FROM student_evaluation_task setask
+            WHERE setask.evaluation_period_id = ?
+              AND setask.task_status <> 'Reset'
+              $activeTaskCondition
+              AND setask.student_id IN ($idPlaceholders)
+            GROUP BY setask.student_id
+        ", "i" . $idTypes, array_merge([$currentPeriodId], $studentIds));
+        foreach ($taskRows as $row) {
+            $taskStats[(int)$row["student_id"]] = $row;
+        }
+
+        $responseRows = fetch_all($db, "
+            SELECT
+                er.student_id,
+                COUNT(DISTINCT er.evaluation_response_id) AS response_count,
+                AVG(er.average_score) AS average_rating,
+                MAX(er.submitted_at) AS latest_response_submitted_at
+            FROM evaluation_response er
+            WHERE er.evaluation_period_id = ?
+              AND er.response_status = 'Submitted'
+              AND er.student_id IN ($idPlaceholders)
+            GROUP BY er.student_id
+        ", "i" . $idTypes, array_merge([$currentPeriodId], $studentIds));
+        foreach ($responseRows as $row) {
+            $responseStats[(int)$row["student_id"]] = $row;
+        }
+
+        $detailsRows = fetch_all($db, "
+            SELECT
+                er.student_id,
+                er.evaluation_response_id,
+                er.average_score,
+                er.total_score,
+                er.submitted_at,
+                subj.subject_code,
+                subj.subject_title,
+                COALESCE(f.full_name, CONCAT_WS(' ', f.first_name, f.middle_name, f.last_name), 'Not assigned') AS faculty_name,
+                COALESCE(erc.comment_text, '') AS comment_text
+            FROM evaluation_response er
+            INNER JOIN teaching_assignment ta
+                ON ta.teaching_assignment_id = er.teaching_assignment_id
+            INNER JOIN section_subject_offering sso
+                ON sso.section_subject_offering_id = ta.section_subject_offering_id
+            INNER JOIN subject subj
+                ON subj.subject_id = sso.subject_id
+            INNER JOIN faculty f
+                ON f.faculty_id = ta.faculty_id
+            LEFT JOIN evaluation_response_comment erc
+                ON erc.evaluation_response_id = er.evaluation_response_id
+            WHERE er.evaluation_period_id = ?
+              AND er.response_status = 'Submitted'
+              AND er.student_id IN ($idPlaceholders)
+            ORDER BY er.student_id, subj.subject_code, subj.subject_title
+        ", "i" . $idTypes, array_merge([$currentPeriodId], $studentIds));
+        foreach ($detailsRows as $row) {
+            $evaluatedDetails[(int)$row["student_id"]][] = $row;
+        }
+
+        $pendingJoinTask = "";
+        $pendingSelectStatus = "'Pending' AS task_status";
+        if ($hasTaskTeachingAssignment) {
+            $pendingJoinTask = "
+                LEFT JOIN student_evaluation_task setask
+                    ON setask.student_id = s.student_id
+                   AND setask.evaluation_period_id = ?
+                   AND setask.teaching_assignment_id = ta.teaching_assignment_id
+                   AND setask.task_status <> 'Reset'
+            ";
+            $pendingSelectStatus = "COALESCE(setask.task_status, 'Pending') AS task_status";
+        }
+
+        $pendingParams = $hasTaskTeachingAssignment ? array_merge([$currentTermId, $currentPeriodId], $studentIds) : array_merge([$currentTermId], $studentIds);
+        $pendingTypes = ($hasTaskTeachingAssignment ? "ii" : "i") . $idTypes;
+        $pendingRows = fetch_all($db, "
+            SELECT DISTINCT
+                s.student_id,
+                ta.teaching_assignment_id,
+                subj.subject_code,
+                subj.subject_title,
+                COALESCE(f.full_name, CONCAT_WS(' ', f.first_name, f.middle_name, f.last_name), 'Not assigned') AS faculty_name,
+                $pendingSelectStatus
+            FROM student s
+            LEFT JOIN student_section_enrollment sse
+                ON sse.student_section_enrollment_id = (
+                    SELECT sse2.student_section_enrollment_id
+                    FROM student_section_enrollment sse2
+                    WHERE sse2.student_id = s.student_id
+                      AND sse2.enrollment_status = 'Active'
+                    ORDER BY sse2.student_section_enrollment_id DESC
+                    LIMIT 1
+                )
+            INNER JOIN section sec
+                ON sec.section_id = COALESCE(sse.section_id, s.current_section_id)
+            INNER JOIN section_subject_offering sso
+                ON sso.section_id = sec.section_id
+               AND sso.offering_status = 'Active'
+               AND sso.term_id = ?
+            INNER JOIN subject subj
+                ON subj.subject_id = sso.subject_id
+               AND subj.subject_status = 'Active'
+            INNER JOIN teaching_assignment ta
+                ON ta.section_subject_offering_id = sso.section_subject_offering_id
+               AND ta.assignment_status = 'Active'
+            INNER JOIN faculty f
+                ON f.faculty_id = ta.faculty_id
+            $pendingJoinTask
+            WHERE s.student_id IN ($idPlaceholders)
+            ORDER BY s.student_id, subj.subject_code, subj.subject_title
+        ", $pendingTypes, $pendingParams);
+        foreach ($pendingRows as $row) {
+            $pendingAssignments[(int)$row["student_id"]][] = $row;
+        }
+    }
+}
+
+$records = [];
+foreach ($studentRows as $student) {
+    $studentId = (int)$student["student_id"];
+    $tasks = $taskStats[$studentId] ?? [
+        "task_count" => 0,
+        "submitted_task_count" => 0,
+        "unfinished_task_count" => 0,
+        "latest_submitted_at" => null,
+    ];
+    $responses = $responseStats[$studentId] ?? [
+        "response_count" => 0,
+        "average_rating" => null,
+        "latest_response_submitted_at" => null,
+    ];
+
+    $taskCount = (int)($tasks["task_count"] ?? 0);
+    $submittedTaskCount = (int)($tasks["submitted_task_count"] ?? 0);
+    $responseCount = (int)($responses["response_count"] ?? 0);
+    $isCompleted = $taskCount > 0 && $submittedTaskCount >= $taskCount;
+    if (!$isCompleted && $taskCount === 0 && $responseCount > 0) {
+        $isCompleted = true;
+    }
+
+    $status = $isCompleted ? "Completed" : "Pending";
+    $access = student_has_open_access($student, $activeScopes) ? "Open" : "Closed";
+    $submittedRaw = $responses["latest_response_submitted_at"] ?: ($tasks["latest_submitted_at"] ?? null);
+
+    $programDisplay = trim((string)$student["course_code"] . " - " . (string)$student["course_name"], " -");
+    $record = [
+        "student_id" => $studentId,
+        "student_number" => $student["student_number"],
+        "student_name" => $student["full_name"],
+        "department_id" => (int)$student["department_id"],
+        "department_name" => $student["department_name"],
+        "course_id" => (int)$student["course_id"],
+        "course_code" => $student["course_code"],
+        "course_name" => $student["course_name"],
+        "program_display" => $programDisplay,
+        "year_level_number" => (int)$student["year_level_number"],
+        "year_level" => year_level_label($student["year_level_number"]),
+        "section_id" => (int)$student["section_id"],
+        "section_name" => $student["section_name"],
+        "academic_year_id" => (int)$student["academic_year_id"],
+        "academic_year" => $student["academic_year_name"],
+        "semester" => term_label($student["term_name"]),
+        "semester_raw" => $student["term_name"],
+        "submitted_date_raw" => $submittedRaw,
+        "submitted_date" => format_datetime_display($submittedRaw),
+        "status" => $status,
+        "evaluation_access" => $access,
+        "task_count" => $taskCount,
+        "submitted_task_count" => $submittedTaskCount,
+        "response_count" => $responseCount,
+        "average_rating" => $responses["average_rating"] !== null ? round((float)$responses["average_rating"], 2) : null,
+        "evaluated_subjects" => [],
+        "pending_subjects" => [],
+    ];
+
+    foreach ($evaluatedDetails[$studentId] ?? [] as $detail) {
+        $record["evaluated_subjects"][] = [
+            "subject" => trim($detail["subject_code"] . " - " . $detail["subject_title"], " -"),
+            "faculty" => $detail["faculty_name"],
+            "rating" => $detail["average_score"] !== null ? round((float)$detail["average_score"], 2) : null,
+            "comment" => $detail["comment_text"] ?: "No comment submitted.",
+            "submitted_at" => format_datetime_display($detail["submitted_at"]),
+        ];
+    }
+    foreach ($pendingAssignments[$studentId] ?? [] as $assignment) {
+        if (strtolower((string)$assignment["task_status"]) === "submitted") {
+            continue;
+        }
+        $record["pending_subjects"][] = [
+            "subject" => trim($assignment["subject_code"] . " - " . $assignment["subject_title"], " -"),
+            "faculty" => $assignment["faculty_name"],
+            "status" => $assignment["task_status"] ?: "Pending",
+        ];
+    }
+
+    $records[] = $record;
+}
+
+$allRecords = $records;
+$filteredRecords = array_values(array_filter($records, function (array $record) use ($filters): bool {
+    if ($filters["tab"] !== "All" && $record["status"] !== $filters["tab"]) {
+        return false;
+    }
+    if ($filters["status"] !== "" && $record["status"] !== $filters["status"]) {
+        return false;
+    }
+    if ($filters["evaluation_access"] !== "" && $record["evaluation_access"] !== $filters["evaluation_access"]) {
+        return false;
+    }
+    if ($filters["department_id"] > 0 && $record["department_id"] !== $filters["department_id"]) {
+        return false;
+    }
+    if ($filters["course_id"] > 0 && $record["course_id"] !== $filters["course_id"]) {
+        return false;
+    }
+    if ($filters["year_level"] > 0 && $record["year_level_number"] !== $filters["year_level"]) {
+        return false;
+    }
+    if ($filters["section_id"] > 0 && $record["section_id"] !== $filters["section_id"]) {
+        return false;
+    }
+    if ($filters["academic_year_id"] > 0 && $record["academic_year_id"] !== $filters["academic_year_id"]) {
+        return false;
+    }
+    if ($filters["semester"] !== "" && $record["semester_raw"] !== $filters["semester"]) {
+        return false;
+    }
+    if ($filters["search"] !== "") {
+        $text = strtolower(implode(" ", [
+            $record["student_number"],
+            $record["student_name"],
+            $record["department_name"],
+            $record["program_display"],
+            $record["year_level"],
+            $record["section_name"],
+            $record["academic_year"],
+            $record["semester"],
+            $record["status"],
+            $record["evaluation_access"],
+        ]));
+        if (strpos($text, strtolower($filters["search"])) === false) {
+            return false;
+        }
+    }
+    return true;
+}));
+
+$totalAll = count($allRecords);
+$completedAll = count(array_filter($allRecords, static fn($r) => $r["status"] === "Completed"));
+$pendingAll = count(array_filter($allRecords, static fn($r) => $r["status"] === "Pending"));
+
+$totalFiltered = count($filteredRecords);
+$completedFiltered = count(array_filter($filteredRecords, static fn($r) => $r["status"] === "Completed"));
+$pendingFiltered = count(array_filter($filteredRecords, static fn($r) => $r["status"] === "Pending"));
+$totalResponses = $completedFiltered;
+$participationRate = $totalFiltered > 0 ? round(($completedFiltered / $totalFiltered) * 100, 1) : 0.0;
+
+if (($_GET["export"] ?? "") === "csv") {
+    header("Content-Type: text/csv; charset=utf-8");
+    header("Content-Disposition: attachment; filename=submission_monitoring_export_" . date("Ymd_His") . ".csv");
+    $headers = ["Student ID", "Student Name", "Program", "Year Level", "Section", "Academic Year", "Semester", "Submitted Date", "Status", "Evaluation Access", "Average Rating"];
+    echo implode(",", array_map("csv_escape", $headers)) . "\n";
+    foreach ($filteredRecords as $record) {
+        $line = [
+            $record["student_number"],
+            $record["student_name"],
+            $record["program_display"],
+            $record["year_level"],
+            $record["section_name"],
+            $record["academic_year"],
+            $record["semester"],
+            $record["submitted_date"],
+            $record["status"],
+            $record["evaluation_access"],
+            $record["average_rating"] !== null ? number_format((float)$record["average_rating"], 2) : "",
+        ];
+        echo implode(",", array_map("csv_escape", $line)) . "\n";
+    }
+    exit;
+}
+
+$recordsJson = [];
+foreach ($filteredRecords as $record) {
+    $recordsJson[$record["student_id"]] = $record;
+}
+
+$flash = get_flash();
+$logout_role_label = current_admin_label();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -34,6 +682,100 @@ function icon_svg($name)
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Submission Monitoring</title>
     <link rel="stylesheet" href="submission-monitoring.css?v=<?php echo time(); ?>">
+
+    <style>
+        .filter-buttons {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .clear-filter-button {
+            background: #f1f5f9 !important;
+            color: #374151 !important;
+            border-color: #d8dce2 !important;
+        }
+
+        .clear-filter-button:hover {
+            background: #e5e7eb !important;
+            border-color: #cbd5e1 !important;
+            color: #111827 !important;
+        }
+
+        .filter-form.is-auto-submitting {
+            opacity: 0.96;
+        }
+
+        .student-info-grid .status-badge,
+        .student-info-grid .access-badge {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 7px !important;
+            width: fit-content !important;
+            min-width: 96px !important;
+            max-width: max-content !important;
+            min-height: 32px !important;
+            padding: 0 13px !important;
+            border-radius: 999px !important;
+            font-size: 14px !important;
+            font-weight: 700 !important;
+            line-height: 1 !important;
+            white-space: nowrap !important;
+            margin: 0 !important;
+        }
+
+        .student-info-grid .status-badge > span,
+        .student-info-grid .access-badge > span {
+            display: inline-flex !important;
+            width: 7px !important;
+            height: 7px !important;
+            min-width: 7px !important;
+            max-width: 7px !important;
+            border-radius: 999px !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            flex: 0 0 7px !important;
+        }
+
+        .student-info-grid .status-badge.completed {
+            background: #dcfce7 !important;
+            color: #16a34a !important;
+        }
+
+        .student-info-grid .status-badge.completed > span {
+            background: #16a34a !important;
+        }
+
+        .student-info-grid .status-badge.pending {
+            background: #ffedd5 !important;
+            color: #fb4b05 !important;
+        }
+
+        .student-info-grid .status-badge.pending > span {
+            background: #fb4b05 !important;
+        }
+
+        .student-info-grid .access-badge.open {
+            background: #dcfce7 !important;
+            color: #16a34a !important;
+        }
+
+        .student-info-grid .access-badge.open > span {
+            background: #16a34a !important;
+        }
+
+        .student-info-grid .access-badge.closed {
+            background: #fee2e2 !important;
+            color: #dc2626 !important;
+        }
+
+        .student-info-grid .access-badge.closed > span {
+            background: #dc2626 !important;
+        }
+    </style>
 </head>
 <body class="submission-monitoring-page">
     <aside class="sidebar">
@@ -51,14 +793,14 @@ function icon_svg($name)
             <a class="nav-link" href="assignment_management.php"><?php echo icon_svg("assignment"); ?> Assignment Management</a>
             <a class="nav-link" href="evaluation_setup.php"><?php echo icon_svg("settings"); ?> Evaluation Setup</a>
             <a class="nav-link active" href="submission_monitoring.php"><?php echo icon_svg("clipboard"); ?> Submission Monitoring</a>
-            <a class="nav-link" href="#"><?php echo icon_svg("reports"); ?> Reports</a>
+            <a class="nav-link" href="report_page.php"><?php echo icon_svg("reports"); ?> Reports</a>
             <a class="nav-link" href="#"><?php echo icon_svg("announcement"); ?> Announcements</a>
             <a class="nav-link" href="#"><?php echo icon_svg("settings"); ?> Settings</a>
             <a class="nav-link" href="#"><?php echo icon_svg("moon"); ?> Dark Mode</a>
         </nav>
 
         <div class="sidebar-bottom">
-            <a class="logout-link" href="../login/login_page.php"><?php echo icon_svg("logout"); ?> Logout</a>
+            <a class="logout-link" href="submission_monitoring.php?logout=1"><?php echo icon_svg("logout"); ?> Logout</a>
         </div>
     </aside>
 
@@ -69,13 +811,33 @@ function icon_svg($name)
                     <h1>Submission Monitoring</h1>
                     <p>Track completed and pending evaluations</p>
                 </div>
+                <?php if ($currentPeriod): ?>
+                    <div class="period-chip">
+                        <strong><?php echo e(term_label($currentPeriod["term_name"] ?? "")); ?></strong>
+                        <span><?php echo e($currentPeriod["academic_year_name"] ?? ""); ?></span>
+                    </div>
+                <?php endif; ?>
             </div>
+
+            <?php if ($flash): ?>
+                <div class="toast-modal <?php echo e($flash["type"]); ?>" id="pageToast"><?php echo e($flash["message"]); ?></div>
+            <?php endif; ?>
+
+            <?php if (!$currentPeriod): ?>
+                <div class="system-alert">
+                    <?php echo icon_svg("alert"); ?>
+                    <div>
+                        <strong>No evaluation period found</strong>
+                        <p>Please configure an evaluation period in Evaluation Setup before monitoring submissions.</p>
+                    </div>
+                </div>
+            <?php endif; ?>
 
             <section class="summary-grid">
                 <article class="summary-card completed-card">
                     <div>
                         <span>Completed</span>
-                        <strong id="completedCount">0</strong>
+                        <strong><?php echo (int)$completedFiltered; ?></strong>
                     </div>
                     <div class="summary-icon"><?php echo icon_svg("check-circle"); ?></div>
                 </article>
@@ -83,7 +845,7 @@ function icon_svg($name)
                 <article class="summary-card pending-card">
                     <div>
                         <span>Pending</span>
-                        <strong id="pendingCount">0</strong>
+                        <strong><?php echo (int)$pendingFiltered; ?></strong>
                     </div>
                     <div class="summary-icon"><?php echo icon_svg("clock"); ?></div>
                 </article>
@@ -91,7 +853,7 @@ function icon_svg($name)
                 <article class="summary-card response-card">
                     <div>
                         <span>Total Responses</span>
-                        <strong id="totalResponsesCount">0</strong>
+                        <strong><?php echo (int)$totalResponses; ?></strong>
                     </div>
                     <div class="summary-icon"><?php echo icon_svg("bar-chart"); ?></div>
                 </article>
@@ -99,55 +861,122 @@ function icon_svg($name)
                 <article class="summary-card rate-card">
                     <div>
                         <span>Participation Rate</span>
-                        <strong id="participationRate">0%</strong>
+                        <strong><?php echo e(number_format($participationRate, 1)); ?>%</strong>
                     </div>
                     <div class="summary-icon"><?php echo icon_svg("trend"); ?></div>
                 </article>
             </section>
 
             <section class="status-tabs">
-                <button class="tab-button active all-tab" type="button" data-tab="All">All <span id="allTabCount">(0)</span></button>
-                <button class="tab-button completed-tab" type="button" data-tab="Completed">Completed <span id="completedTabCount">(0)</span></button>
-                <button class="tab-button pending-tab" type="button" data-tab="Pending">Pending <span id="pendingTabCount">(0)</span></button>
+                <a class="tab-button all-tab <?php echo $filters["tab"] === "All" ? "active" : ""; ?>" href="submission_monitoring.php<?php echo e(make_query_with_params(["tab" => "All", "export" => null])); ?>">All <span>(<?php echo (int)$totalAll; ?>)</span></a>
+                <a class="tab-button completed-tab <?php echo $filters["tab"] === "Completed" ? "active" : ""; ?>" href="submission_monitoring.php<?php echo e(make_query_with_params(["tab" => "Completed", "export" => null])); ?>">Completed <span>(<?php echo (int)$completedAll; ?>)</span></a>
+                <a class="tab-button pending-tab <?php echo $filters["tab"] === "Pending" ? "active" : ""; ?>" href="submission_monitoring.php<?php echo e(make_query_with_params(["tab" => "Pending", "export" => null])); ?>">Pending <span>(<?php echo (int)$pendingAll; ?>)</span></a>
             </section>
 
             <section class="filter-panel">
-                <div class="filter-title">
-                    <?php echo icon_svg("filter"); ?>
-                    <h2>Search & Filters</h2>
-                </div>
-
-                <div class="search-row">
-                    <label for="searchInput">Search</label>
-                    <div class="search-box">
-                        <?php echo icon_svg("search"); ?>
-                        <input type="text" id="searchInput" placeholder="Search by student name, ID, or course...">
-                    </div>
-                </div>
-
-                <div class="filter-grid">
-                    <div>
-                        <label for="departmentFilter">Department</label>
-                        <select id="departmentFilter"></select>
+                <form method="GET" action="submission_monitoring.php" class="filter-form">
+                    <input type="hidden" name="tab" value="<?php echo e($filters["tab"]); ?>">
+                    <div class="filter-title">
+                        <?php echo icon_svg("filter"); ?>
+                        <h2>Search and Filters</h2>
                     </div>
 
-                    <div>
-                        <label for="courseFilter">Course</label>
-                        <select id="courseFilter"></select>
+                    <div class="search-row">
+                        <label for="searchInput">Search</label>
+                        <div class="search-box">
+                            <?php echo icon_svg("search"); ?>
+                            <input type="text" id="searchInput" name="search" value="<?php echo e($filters["search"]); ?>" placeholder="Search by student name, ID, program, section, or status...">
+                        </div>
                     </div>
 
-                    <div>
-                        <label for="yearFilter">Year Level</label>
-                        <select id="yearFilter"></select>
+                    <div class="filter-grid filter-grid-eight">
+                        <div>
+                            <label for="departmentFilter">College</label>
+                            <select id="departmentFilter" name="department_id">
+                                <option value="0">All Colleges</option>
+                                <?php foreach ($departments as $department): ?>
+                                    <option value="<?php echo (int)$department["department_id"]; ?>" <?php echo $filters["department_id"] === (int)$department["department_id"] ? "selected" : ""; ?>><?php echo e($department["department_name"]); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="courseFilter">Program</label>
+                            <select id="courseFilter" name="course_id">
+                                <option value="0">All Programs</option>
+                                <?php foreach ($courses as $course): ?>
+                                    <option value="<?php echo (int)$course["course_id"]; ?>" data-department="<?php echo (int)$course["department_id"]; ?>" <?php echo $filters["course_id"] === (int)$course["course_id"] ? "selected" : ""; ?>><?php echo e($course["course_code"] . " - " . $course["course_name"]); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="yearFilter">Year Level</label>
+                            <select id="yearFilter" name="year_level">
+                                <option value="0">All Year Levels</option>
+                                <?php for ($i = 1; $i <= 6; $i++): ?>
+                                    <option value="<?php echo $i; ?>" <?php echo $filters["year_level"] === $i ? "selected" : ""; ?>><?php echo e(year_level_label($i)); ?></option>
+                                <?php endfor; ?>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="sectionFilter">Section</label>
+                            <select id="sectionFilter" name="section_id">
+                                <option value="0">All Sections</option>
+                                <?php foreach ($sections as $section): ?>
+                                    <option value="<?php echo (int)$section["section_id"]; ?>" data-course="<?php echo (int)$section["course_id"]; ?>" data-year="<?php echo (int)$section["year_level"]; ?>" <?php echo $filters["section_id"] === (int)$section["section_id"] ? "selected" : ""; ?>><?php echo e($section["section_name"]); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="academicYearFilter">Academic Year</label>
+                            <select id="academicYearFilter" name="academic_year_id">
+                                <option value="0">All Academic Years</option>
+                                <?php foreach ($academicYears as $academicYear): ?>
+                                    <option value="<?php echo (int)$academicYear["academic_year_id"]; ?>" <?php echo $filters["academic_year_id"] === (int)$academicYear["academic_year_id"] ? "selected" : ""; ?>><?php echo e($academicYear["academic_year_name"]); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="semesterFilter">Semester</label>
+                            <select id="semesterFilter" name="semester">
+                                <option value="">All Semesters</option>
+                                <?php foreach ($semesters as $semester): ?>
+                                    <option value="<?php echo e($semester["term_name"]); ?>" <?php echo $filters["semester"] === $semester["term_name"] ? "selected" : ""; ?>><?php echo e(term_label($semester["term_name"])); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="accessFilter">Evaluation Access</label>
+                            <select id="accessFilter" name="evaluation_access">
+                                <option value="">All Access</option>
+                                <option value="Open" <?php echo $filters["evaluation_access"] === "Open" ? "selected" : ""; ?>>Open</option>
+                                <option value="Closed" <?php echo $filters["evaluation_access"] === "Closed" ? "selected" : ""; ?>>Closed</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="statusFilter">Status</label>
+                            <select id="statusFilter" name="status">
+                                <option value="">All Status</option>
+                                <option value="Completed" <?php echo $filters["status"] === "Completed" ? "selected" : ""; ?>>Completed</option>
+                                <option value="Pending" <?php echo $filters["status"] === "Pending" ? "selected" : ""; ?>>Pending</option>
+                            </select>
+                        </div>
                     </div>
 
-                    <div>
-                        <label for="sectionFilter">Section</label>
-                        <select id="sectionFilter"></select>
+                    <div class="filter-action-row">
+                        <div class="filter-count">Showing <?php echo (int)$totalFiltered; ?> of <?php echo (int)$totalAll; ?> student submissions</div>
+                        <div class="filter-buttons">
+                            <a class="secondary-button clear-filter-button" href="submission_monitoring.php">Clear</a>
+                            <a class="export-button" href="submission_monitoring.php<?php echo e(make_query_with_params(["export" => "csv"])); ?>"><?php echo icon_svg("download"); ?> Export</a>
+                        </div>
                     </div>
-                </div>
-
-                <div class="filter-count" id="filterCountText">Showing 0 of 0 student submissions</div>
+                </form>
             </section>
 
             <section class="table-card">
@@ -156,15 +985,63 @@ function icon_svg($name)
                         <tr>
                             <th>Student ID</th>
                             <th>Student Name</th>
-                            <th>Course</th>
+                            <th>Program</th>
                             <th>Year Level</th>
                             <th>Section</th>
+                            <th>Academic Year</th>
+                            <th>Semester</th>
                             <th>Submitted Date</th>
                             <th>Status</th>
+                            <th>Evaluation Access</th>
                             <th class="actions-head">Actions</th>
                         </tr>
                     </thead>
-                    <tbody id="submissionTableBody"></tbody>
+                    <tbody>
+                        <?php if (!$filteredRecords): ?>
+                            <tr>
+                                <td colspan="11" class="empty-row">No student submissions found.</td>
+                            </tr>
+                        <?php else: ?>
+                            <?php foreach ($filteredRecords as $record): ?>
+                                <tr>
+                                    <td><strong><?php echo e($record["student_number"]); ?></strong></td>
+                                    <td><?php echo e($record["student_name"]); ?></td>
+                                    <td><?php echo e($record["program_display"]); ?></td>
+                                    <td><?php echo e($record["year_level"]); ?></td>
+                                    <td><?php echo e($record["section_name"]); ?></td>
+                                    <td><?php echo e($record["academic_year"]); ?></td>
+                                    <td><?php echo e($record["semester"]); ?></td>
+                                    <td><?php echo e($record["status"] === "Completed" ? $record["submitted_date"] : "—"); ?></td>
+                                    <td>
+                                        <span class="status-badge <?php echo strtolower($record["status"]); ?>">
+                                            <span></span>
+                                            <?php echo e($record["status"]); ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="access-badge <?php echo strtolower($record["evaluation_access"]); ?>">
+                                            <span></span>
+                                            <?php echo e($record["evaluation_access"]); ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="action-icons">
+                                            <button class="view" type="button" title="View Details" onclick="openSubmissionDetails(<?php echo (int)$record["student_id"]; ?>)">
+                                                <?php echo icon_svg("eye"); ?>
+                                            </button>
+                                            <form method="POST" onsubmit="return confirmDeleteMonitoring();">
+                                                <input type="hidden" name="action" value="delete_monitoring_record">
+                                                <input type="hidden" name="student_id" value="<?php echo (int)$record["student_id"]; ?>">
+                                                <button class="delete" type="submit" title="Delete Record">
+                                                    <?php echo icon_svg("trash"); ?>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
                 </table>
             </section>
         </div>
@@ -172,282 +1049,33 @@ function icon_svg($name)
 
     <div id="modalRoot"></div>
 
+    <div class="admin_logout_overlay" id="adminLogoutOverlay" aria-hidden="true">
+        <div class="admin_logout_modal" role="dialog" aria-modal="true" aria-labelledby="adminLogoutTitle">
+            <div class="admin_logout_icon"><?php echo icon_svg("alert"); ?></div>
+            <h2 id="adminLogoutTitle">Log Out Confirmation</h2>
+            <p>
+                Are you sure you want to log out of the
+                <strong><?php echo e($logout_role_label); ?></strong>
+                account? You will need to sign in again to continue managing the
+                <strong>Student Evaluation for Teacher System.</strong>
+            </p>
+            <div class="admin_logout_divider"></div>
+            <div class="admin_logout_actions">
+                <button type="button" class="admin_logout_cancel" id="adminLogoutCancel">Cancel</button>
+                <button type="button" class="admin_logout_confirm" id="adminLogoutConfirm"><?php echo icon_svg("logout"); ?> Log Out</button>
+            </div>
+        </div>
+    </div>
+
     <script>
+        const submissionRecords = <?php echo json_safe($recordsJson); ?>;
         const iconSvg = {
-            eye: '<?php echo icon_svg("eye"); ?>',
-            trash: '<?php echo icon_svg("trash"); ?>',
-            close: '<?php echo icon_svg("close"); ?>'
+            close: <?php echo json_safe(icon_svg("close")); ?>
         };
-
-        let activeTab = "All";
-
-        let submissionRecords = [
-            {
-                id: 1,
-                studentId: "24-001234",
-                studentName: "Domingo, Mario Jr. C.",
-                department: "College of Computer Studies",
-                course: "BSIT - Bachelor of Science in Information Technology",
-                courseCode: "BSIT",
-                yearLevel: "2nd Year",
-                section: "BSIT-2A",
-                submittedDate: "Apr 10, 2026, 03:45 PM",
-                status: "Completed",
-                averageRating: 3.92,
-                subjects: [
-                    { code: "IT 221", title: "Human Computer Interaction", faculty: "Prof. Maria Teresa Dela Cruz", rating: 4.5, comment: "Excellent teaching methods and very engaging classes." },
-                    { code: "IT 111", title: "Introduction to Computing", faculty: "Julius R. Samonte", rating: 4.2, comment: "Clear explanations and helpful during consultations." },
-                    { code: "GE 102", title: "Purposive Communication", faculty: "Fernando J. Alvarez", rating: 3.0, comment: "Good content delivery but could improve engagement." },
-                    { code: "GE 101", title: "Understanding the Self", faculty: "Beatriz G. Navarro", rating: 3.5, comment: "Interesting discussions and thought provoking lectures." }
-                ]
-            },
-            {
-                id: 2,
-                studentId: "23-005678",
-                studentName: "Reyes, Maria Clara S.",
-                department: "College of Computer Studies",
-                course: "BSCS - Bachelor of Science in Computer Science",
-                courseCode: "BSCS",
-                yearLevel: "3rd Year",
-                section: "BSCS-3A",
-                submittedDate: "Apr 12, 2026, 09:15 AM",
-                status: "Completed",
-                averageRating: 4.28,
-                subjects: [
-                    { code: "CS 321", title: "Software Engineering", faculty: "Dr. Elmer V. Ramos", rating: 4.7, comment: "Organized and practical lessons." },
-                    { code: "CS 303", title: "Database Systems", faculty: "Prof. Liza M. Ortega", rating: 4.4, comment: "The activities helped us understand database design." },
-                    { code: "GE 102", title: "Purposive Communication", faculty: "Fernando J. Alvarez", rating: 3.9, comment: "Helpful feedback on presentations." },
-                    { code: "GE 101", title: "Understanding the Self", faculty: "Beatriz G. Navarro", rating: 4.1, comment: "The class was reflective and meaningful." }
-                ]
-            },
-            {
-                id: 3,
-                studentId: "22-000632",
-                studentName: "Reyes, Amaris D.",
-                department: "College of Computer Studies",
-                course: "BSIT - Bachelor of Science in Information Technology",
-                courseCode: "BSIT",
-                yearLevel: "4th Year",
-                section: "BSIT-4A",
-                submittedDate: "Apr 11, 2026, 04:45 PM",
-                status: "Completed",
-                averageRating: 4.10,
-                subjects: [
-                    { code: "IT 421", title: "Capstone Project", faculty: "Dr. Robert Anderson", rating: 4.6, comment: "Very supportive during project consultations." },
-                    { code: "IT 414", title: "System Integration", faculty: "Prof. Emily Chen", rating: 4.0, comment: "Clear project expectations and examples." },
-                    { code: "IT 405", title: "Information Assurance", faculty: "Dr. Michael Torres", rating: 3.8, comment: "Good lectures and relevant topics." }
-                ]
-            },
-            {
-                id: 4,
-                studentId: "24-002345",
-                studentName: "Santos, Leon B.",
-                department: "College of Computer Studies",
-                course: "BSCS - Bachelor of Science in Computer Science",
-                courseCode: "BSCS",
-                yearLevel: "2nd Year",
-                section: "BSCS-2A",
-                submittedDate: "",
-                status: "Pending",
-                averageRating: null,
-                subjects: []
-            },
-            {
-                id: 5,
-                studentId: "23-004821",
-                studentName: "Villar, Theo G.",
-                department: "College of Computer Studies",
-                course: "BSIT - Bachelor of Science in Information Technology",
-                courseCode: "BSIT",
-                yearLevel: "3rd Year",
-                section: "BSIT-3A",
-                submittedDate: "Apr 20, 2026, 10:15 AM",
-                status: "Completed",
-                averageRating: 4.35,
-                subjects: [
-                    { code: "IT 311", title: "Networking 2", faculty: "Prof. Daniel Lim", rating: 4.3, comment: "Hands on activities were useful." },
-                    { code: "IT 312", title: "Web Development", faculty: "Prof. Emily Chen", rating: 4.5, comment: "Very clear examples and demonstrations." },
-                    { code: "IT 313", title: "Application Development", faculty: "Prof. Linda Martinez", rating: 4.6, comment: "The instructor gave helpful coding feedback." }
-                ]
-            },
-            {
-                id: 6,
-                studentId: "25-000832",
-                studentName: "Guerrero, June E.",
-                department: "College of Computer Studies",
-                course: "BSIT - Bachelor of Science in Information Technology",
-                courseCode: "BSIT",
-                yearLevel: "1st Year",
-                section: "BSIT-1B",
-                submittedDate: "",
-                status: "Pending",
-                averageRating: null,
-                subjects: []
-            },
-            {
-                id: 7,
-                studentId: "25-001245",
-                studentName: "Garcia, Sofia M.",
-                department: "College of Nursing",
-                course: "BSN - Bachelor of Science in Nursing",
-                courseCode: "BSN",
-                yearLevel: "1st Year",
-                section: "BSN-1A",
-                submittedDate: "Apr 14, 2026, 10:30 AM",
-                status: "Completed",
-                averageRating: 4.48,
-                subjects: [
-                    { code: "NCM 101", title: "Fundamentals of Nursing", faculty: "Dr. Grace Mendoza", rating: 4.8, comment: "Very professional and organized." },
-                    { code: "BIO 101", title: "Anatomy and Physiology", faculty: "Prof. Carla Reyes", rating: 4.4, comment: "Difficult topics were explained clearly." }
-                ]
-            },
-            {
-                id: 8,
-                studentId: "24-003156",
-                studentName: "Mendoza, Carlos J.",
-                department: "College of Business and Accountancy",
-                course: "BSBA - Bachelor of Science in Business Administration",
-                courseCode: "BSBA",
-                yearLevel: "2nd Year",
-                section: "BSBA-2B",
-                submittedDate: "",
-                status: "Pending",
-                averageRating: null,
-                subjects: []
-            },
-            {
-                id: 9,
-                studentId: "23-002789",
-                studentName: "Fernandez, Isabella R.",
-                department: "College of Arts and Sciences",
-                course: "BS-Psych - Bachelor of Science in Psychology",
-                courseCode: "BS-Psych",
-                yearLevel: "3rd Year",
-                section: "BS-Psych-3A",
-                submittedDate: "Apr 15, 2026, 01:45 PM",
-                status: "Completed",
-                averageRating: 4.20,
-                subjects: [
-                    { code: "PSY 301", title: "Abnormal Psychology", faculty: "Dr. Hannah Cruz", rating: 4.3, comment: "The lessons were engaging and informative." },
-                    { code: "PSY 302", title: "Psychological Assessment", faculty: "Prof. Aaron Velasco", rating: 4.0, comment: "Assessment examples were helpful." }
-                ]
-            },
-            {
-                id: 10,
-                studentId: "22-001534",
-                studentName: "Lopez, Miguel T.",
-                department: "College of Engineering",
-                course: "BSECE - Bachelor of Science in Electronics and Communications Engineering",
-                courseCode: "BSECE",
-                yearLevel: "4th Year",
-                section: "BSECE-4A",
-                submittedDate: "Apr 16, 2026, 03:00 PM",
-                status: "Completed",
-                averageRating: 3.85,
-                subjects: [
-                    { code: "ECE 421", title: "Communication Systems", faculty: "Engr. Marco Santos", rating: 4.0, comment: "Good explanations of technical topics." },
-                    { code: "ECE 422", title: "Electronics Design", faculty: "Engr. Ana Cruz", rating: 3.8, comment: "The activities were challenging but useful." }
-                ]
-            },
-            {
-                id: 11,
-                studentId: "25-002876",
-                studentName: "Torres, Daniela V.",
-                department: "College of Hospitality Management",
-                course: "BSHM - Bachelor of Science in Hospitality Management",
-                courseCode: "BSHM",
-                yearLevel: "1st Year",
-                section: "BSHM-1A",
-                submittedDate: "",
-                status: "Pending",
-                averageRating: null,
-                subjects: []
-            },
-            {
-                id: 12,
-                studentId: "23-005123",
-                studentName: "Rivera, Andre P.",
-                department: "College of Business and Accountancy",
-                course: "BSA - Bachelor of Science in Accountancy",
-                courseCode: "BSA",
-                yearLevel: "3rd Year",
-                section: "BSA-3B",
-                submittedDate: "Apr 17, 2026, 09:30 AM",
-                status: "Completed",
-                averageRating: 4.05,
-                subjects: [
-                    { code: "ACC 301", title: "Financial Accounting", faculty: "Prof. Renato Aguilar", rating: 4.0, comment: "Clear problem solving examples." },
-                    { code: "ACC 302", title: "Cost Accounting", faculty: "Prof. Norma Abella", rating: 4.1, comment: "Helpful exercises and explanations." }
-                ]
-            },
-            {
-                id: 13,
-                studentId: "24-004567",
-                studentName: "Navarro, Camila L.",
-                department: "College of Education",
-                course: "BEEd - Bachelor of Elementary Education",
-                courseCode: "BEEd",
-                yearLevel: "2nd Year",
-                section: "BEEd-2A",
-                submittedDate: "Apr 18, 2026, 02:15 PM",
-                status: "Completed",
-                averageRating: 4.55,
-                subjects: [
-                    { code: "ED 201", title: "Child and Adolescent Development", faculty: "Prof. Sarah Williams", rating: 4.6, comment: "The lessons were organized and inspiring." },
-                    { code: "ED 202", title: "Assessment of Learning", faculty: "Dr. James Rodriguez", rating: 4.5, comment: "Clear and practical examples." }
-                ]
-            },
-            {
-                id: 14,
-                studentId: "22-003421",
-                studentName: "Morales, Gabriel S.",
-                department: "College of Education",
-                course: "BSEd-English - Bachelor of Secondary Education major in English",
-                courseCode: "BSEd-English",
-                yearLevel: "4th Year",
-                section: "BSEd-English-4A",
-                submittedDate: "",
-                status: "Pending",
-                averageRating: null,
-                subjects: []
-            },
-            {
-                id: 15,
-                studentId: "23-001987",
-                studentName: "Castillo, Valentina C.",
-                department: "College of Education",
-                course: "BSEd-Math - Bachelor of Secondary Education major in Mathematics",
-                courseCode: "BSEd-Math",
-                yearLevel: "3rd Year",
-                section: "BSEd-Math-3A",
-                submittedDate: "",
-                status: "Pending",
-                averageRating: null,
-                subjects: []
-            },
-            {
-                id: 16,
-                studentId: "25-003654",
-                studentName: "Ramos, Santiago D.",
-                department: "College of Education",
-                course: "BSEd-Filipino - Bachelor of Secondary Education major in Filipino",
-                courseCode: "BSEd-Filipino",
-                yearLevel: "1st Year",
-                section: "BSEd-Filipino-1A",
-                submittedDate: "Apr 19, 2026, 11:00 AM",
-                status: "Completed",
-                averageRating: 4.00,
-                subjects: [
-                    { code: "FIL 101", title: "Introduksiyon sa Pag aaral ng Wika", faculty: "Prof. Linda Martinez", rating: 4.1, comment: "Maayos ang pagpapaliwanag sa bawat paksa." },
-                    { code: "ED 101", title: "The Teaching Profession", faculty: "Dr. James Rodriguez", rating: 4.0, comment: "The lessons were clear and useful." }
-                ]
-            }
-        ];
-
         const modalRoot = document.getElementById("modalRoot");
 
         function escapeHTML(value) {
-            return String(value)
+            return String(value ?? "")
                 .replace(/&/g, "&amp;")
                 .replace(/</g, "&lt;")
                 .replace(/>/g, "&gt;")
@@ -455,178 +1083,14 @@ function icon_svg($name)
                 .replace(/'/g, "&#039;");
         }
 
-        function getUniqueValues(key) {
-            return [...new Set(submissionRecords.map(function (record) {
-                return record[key];
-            }))].sort();
+        function statusBadge(status) {
+            const statusClass = String(status || "Pending").toLowerCase();
+            return `<span class="status-badge ${statusClass}"><span></span>${escapeHTML(status || "Pending")}</span>`;
         }
 
-        function createOption(value, label) {
-            return `<option value="${escapeHTML(value)}">${escapeHTML(label)}</option>`;
-        }
-
-        function populateFilters() {
-            const departmentFilter = document.getElementById("departmentFilter");
-            const courseFilter = document.getElementById("courseFilter");
-            const yearFilter = document.getElementById("yearFilter");
-            const sectionFilter = document.getElementById("sectionFilter");
-
-            departmentFilter.innerHTML = createOption("", "All Departments") + getUniqueValues("department").map(function (value) {
-                return createOption(value, value);
-            }).join("");
-
-            courseFilter.innerHTML = createOption("", "All Courses") + getUniqueValues("courseCode").map(function (value) {
-                return createOption(value, value);
-            }).join("");
-
-            yearFilter.innerHTML = createOption("", "All Year Levels") + getUniqueValues("yearLevel").map(function (value) {
-                return createOption(value, value);
-            }).join("");
-
-            sectionFilter.innerHTML = createOption("", "All Sections") + getUniqueValues("section").map(function (value) {
-                return createOption(value, value);
-            }).join("");
-        }
-
-        function getFilteredRecords() {
-            const searchValue = document.getElementById("searchInput").value.trim().toLowerCase();
-            const department = document.getElementById("departmentFilter").value;
-            const course = document.getElementById("courseFilter").value;
-            const yearLevel = document.getElementById("yearFilter").value;
-            const section = document.getElementById("sectionFilter").value;
-
-            return submissionRecords.filter(function (record) {
-                const matchesTab = activeTab === "All" || record.status === activeTab;
-
-                const combinedText = [
-                    record.studentId,
-                    record.studentName,
-                    record.course,
-                    record.courseCode,
-                    record.yearLevel,
-                    record.section,
-                    record.department
-                ].join(" ").toLowerCase();
-
-                const matchesSearch = searchValue === "" || combinedText.includes(searchValue);
-                const matchesDepartment = department === "" || record.department === department;
-                const matchesCourse = course === "" || record.courseCode === course;
-                const matchesYear = yearLevel === "" || record.yearLevel === yearLevel;
-                const matchesSection = section === "" || record.section === section;
-
-                return matchesTab && matchesSearch && matchesDepartment && matchesCourse && matchesYear && matchesSection;
-            });
-        }
-
-        function renderSummary() {
-            const total = submissionRecords.length;
-            const completed = submissionRecords.filter(function (record) {
-                return record.status === "Completed";
-            }).length;
-            const pending = submissionRecords.filter(function (record) {
-                return record.status === "Pending";
-            }).length;
-            const rate = total > 0 ? ((completed / total) * 100).toFixed(1) : "0.0";
-
-            document.getElementById("completedCount").textContent = completed;
-            document.getElementById("pendingCount").textContent = pending;
-            document.getElementById("totalResponsesCount").textContent = completed;
-            document.getElementById("participationRate").textContent = rate + "%";
-
-            document.getElementById("allTabCount").textContent = "(" + total + ")";
-            document.getElementById("completedTabCount").textContent = "(" + completed + ")";
-            document.getElementById("pendingTabCount").textContent = "(" + pending + ")";
-        }
-
-        function renderTabs() {
-            document.querySelectorAll(".tab-button").forEach(function (button) {
-                button.classList.remove("active");
-
-                if (button.dataset.tab === activeTab) {
-                    button.classList.add("active");
-                }
-            });
-        }
-
-        function renderTable() {
-            const records = getFilteredRecords();
-            const tbody = document.getElementById("submissionTableBody");
-
-            if (records.length === 0) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="8" class="empty-row">No student submissions found.</td>
-                    </tr>
-                `;
-            } else {
-                tbody.innerHTML = records.map(function (record) {
-                    const statusClass = record.status.toLowerCase();
-                    const submittedDate = record.submittedDate === "" ? "—" : record.submittedDate;
-
-                    return `
-                        <tr>
-                            <td><strong>${escapeHTML(record.studentId)}</strong></td>
-                            <td>${escapeHTML(record.studentName)}</td>
-                            <td>${escapeHTML(record.course)}</td>
-                            <td>${escapeHTML(record.yearLevel)}</td>
-                            <td>${escapeHTML(record.section)}</td>
-                            <td>${escapeHTML(submittedDate)}</td>
-                            <td>
-                                <span class="status-badge ${statusClass}">
-                                    <span></span>
-                                    ${escapeHTML(record.status)}
-                                </span>
-                            </td>
-                            <td>
-                                <div class="action-icons">
-                                    <button class="view" type="button" title="View Details" onclick="openSubmissionDetails(${record.id})">
-                                        ${iconSvg.eye}
-                                    </button>
-
-                                    <button class="delete" type="button" title="Delete Record" onclick="deleteSubmission(${record.id})">
-                                        ${iconSvg.trash}
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                    `;
-                }).join("");
-            }
-
-            document.getElementById("filterCountText").textContent =
-                "Showing " + records.length + " of " + submissionRecords.length + " student submissions";
-        }
-
-        function renderAll() {
-            renderSummary();
-            renderTabs();
-            renderTable();
-        }
-
-        function setActiveTab(tab) {
-            activeTab = tab;
-            renderAll();
-        }
-
-        function deleteSubmission(id) {
-            const record = submissionRecords.find(function (item) {
-                return Number(item.id) === Number(id);
-            });
-
-            if (!record) {
-                return;
-            }
-
-            if (!confirm("Delete this submission monitoring record?")) {
-                return;
-            }
-
-            submissionRecords = submissionRecords.filter(function (item) {
-                return Number(item.id) !== Number(id);
-            });
-
-            populateFilters();
-            renderAll();
+        function accessBadge(status) {
+            const accessClass = String(status || "Closed").toLowerCase();
+            return `<span class="access-badge ${accessClass}"><span></span>${escapeHTML(status || "Closed")}</span>`;
         }
 
         function closeModal() {
@@ -645,102 +1109,74 @@ function icon_svg($name)
             document.body.classList.add("modal-open");
         }
 
-        function openSubmissionDetails(id) {
-            const record = submissionRecords.find(function (item) {
-                return Number(item.id) === Number(id);
-            });
+        function openSubmissionDetails(studentId) {
+            const record = submissionRecords[String(studentId)];
+            if (!record) return;
 
-            if (!record) {
-                return;
-            }
+            const averageContent = record.status === "Completed"
+                ? `<div class="average-card">
+                       <span>Average Rating All Teachers</span>
+                       <strong>${record.average_rating !== null ? Number(record.average_rating).toFixed(2) : "0.00"} / 5.0</strong>
+                       <p>Based on ${Number(record.response_count || 0)} submitted evaluation${Number(record.response_count || 0) === 1 ? "" : "s"}</p>
+                   </div>`
+                : `<div class="average-card pending-average">
+                       <span>Average Rating All Teachers</span>
+                       <strong>Pending</strong>
+                       <p>No submitted evaluations yet</p>
+                   </div>`;
 
-            const statusClass = record.status.toLowerCase();
+            const evaluatedSubjects = Array.isArray(record.evaluated_subjects) ? record.evaluated_subjects : [];
+            const pendingSubjects = Array.isArray(record.pending_subjects) ? record.pending_subjects : [];
 
             let subjectContent = "";
-
-            if (record.status === "Pending") {
+            if (record.status === "Completed") {
+                subjectContent = `<h3 class="details-section-title">Evaluated Courses and Teachers</h3>`;
+                if (evaluatedSubjects.length === 0) {
+                    subjectContent += `<div class="pending-message"><h3>No course details found</h3><p>The student is marked completed, but no submitted course details were found for the current evaluation period.</p></div>`;
+                } else {
+                    subjectContent += evaluatedSubjects.map(subject => `
+                        <div class="subject-detail-card">
+                            <div class="subject-detail-top">
+                                <div>
+                                    <strong>${escapeHTML(subject.subject)}</strong>
+                                    <p>Faculty: ${escapeHTML(subject.faculty)}</p>
+                                </div>
+                                <div class="rating-box">
+                                    <span>Rating</span>
+                                    <strong>${subject.rating !== null ? Number(subject.rating).toFixed(1) : "0.0"} / 5.0</strong>
+                                </div>
+                            </div>
+                            <div class="comment-box">
+                                <span>Comment</span>
+                                <p>${escapeHTML(subject.comment)}</p>
+                            </div>
+                        </div>
+                    `).join("");
+                }
+            } else {
                 subjectContent = `
                     <div class="pending-message">
                         <h3>Evaluation Not Submitted Yet</h3>
-                        <p>This student still has pending teacher evaluations. No ratings, comments, or submitted evaluation details are available yet.</p>
+                        <p>This student still has pending teacher evaluations. No final ratings or comments are available yet.</p>
                     </div>
-
-                    <h3 class="details-section-title">Assigned Subjects Pending Evaluation</h3>
-
-                    <div class="subject-detail-card pending-subject">
-                        <div class="subject-detail-top">
-                            <div>
-                                <strong>IT 221, Human Computer Interaction</strong>
-                                <p>Faculty: Prof. Maria Teresa Dela Cruz</p>
-                            </div>
-                            <div class="rating-box">Pending</div>
-                        </div>
-                    </div>
-
-                    <div class="subject-detail-card pending-subject">
-                        <div class="subject-detail-top">
-                            <div>
-                                <strong>IT 111, Introduction to Computing</strong>
-                                <p>Faculty: Julius R. Samonte</p>
-                            </div>
-                            <div class="rating-box">Pending</div>
-                        </div>
-                    </div>
-
-                    <div class="subject-detail-card pending-subject">
-                        <div class="subject-detail-top">
-                            <div>
-                                <strong>GE 102, Purposive Communication</strong>
-                                <p>Faculty: Fernando J. Alvarez</p>
-                            </div>
-                            <div class="rating-box">Pending</div>
-                        </div>
-                    </div>
+                    <h3 class="details-section-title">Assigned Courses Pending Evaluation</h3>
                 `;
-            } else {
-                subjectContent = `
-                    <h3 class="details-section-title">Evaluated Subjects and Teachers</h3>
-
-                    ${record.subjects.map(function (subject) {
-                        return `
-                            <div class="subject-detail-card">
-                                <div class="subject-detail-top">
-                                    <div>
-                                        <strong>${escapeHTML(subject.code)}, ${escapeHTML(subject.title)}</strong>
-                                        <p>Faculty: ${escapeHTML(subject.faculty)}</p>
-                                    </div>
-
-                                    <div class="rating-box">
-                                        <span>Rating</span>
-                                        <strong>${Number(subject.rating).toFixed(1)} / 5.0</strong>
-                                    </div>
+                if (pendingSubjects.length === 0) {
+                    subjectContent += `<div class="subject-detail-card pending-subject"><div class="subject-detail-top"><div><strong>No assigned pending courses found</strong><p>Please check assignment management and generated student evaluation tasks.</p></div><div class="rating-box">Pending</div></div></div>`;
+                } else {
+                    subjectContent += pendingSubjects.map(subject => `
+                        <div class="subject-detail-card pending-subject">
+                            <div class="subject-detail-top">
+                                <div>
+                                    <strong>${escapeHTML(subject.subject)}</strong>
+                                    <p>Faculty: ${escapeHTML(subject.faculty)}</p>
                                 </div>
-
-                                <div class="comment-box">
-                                    <span>Comment</span>
-                                    <p>“${escapeHTML(subject.comment)}”</p>
-                                </div>
+                                <div class="rating-box">${escapeHTML(subject.status || "Pending")}</div>
                             </div>
-                        `;
-                    }).join("")}
-                `;
+                        </div>
+                    `).join("");
+                }
             }
-
-            const averageContent = record.status === "Completed"
-                ? `
-                    <div class="average-card">
-                        <span>Average Rating (All Teachers)</span>
-                        <strong>${Number(record.averageRating).toFixed(2)} / 5.0</strong>
-                        <p>Based on ${record.subjects.length} evaluations</p>
-                    </div>
-                `
-                : `
-                    <div class="average-card pending-average">
-                        <span>Average Rating (All Teachers)</span>
-                        <strong>Pending</strong>
-                        <p>No submitted evaluations yet</p>
-                    </div>
-                `;
 
             openModal(`
                 <div class="modal-overlay" onclick="closeModalOnBackdrop(event)">
@@ -749,57 +1185,25 @@ function icon_svg($name)
                             <h2>Submission Details</h2>
                             <button class="modal-close" type="button" onclick="closeModal()">${iconSvg.close}</button>
                         </div>
-
                         <div class="modal-body">
                             <section class="student-info-card">
                                 <h3>Student Information</h3>
-
                                 <div class="student-info-grid">
-                                    <div>
-                                        <span>Student ID</span>
-                                        <strong>${escapeHTML(record.studentId)}</strong>
-                                    </div>
-
-                                    <div>
-                                        <span>Student Name</span>
-                                        <strong>${escapeHTML(record.studentName)}</strong>
-                                    </div>
-
-                                    <div>
-                                        <span>Course</span>
-                                        <strong>${escapeHTML(record.course)}</strong>
-                                    </div>
-
-                                    <div>
-                                        <span>Year Level</span>
-                                        <strong>${escapeHTML(record.yearLevel)}</strong>
-                                    </div>
-
-                                    <div>
-                                        <span>Section</span>
-                                        <strong>${escapeHTML(record.section)}</strong>
-                                    </div>
-
-                                    <div>
-                                        <span>Status</span>
-                                        <span class="status-badge ${statusClass}">
-                                            <span></span>
-                                            ${escapeHTML(record.status)}
-                                        </span>
-                                    </div>
-
-                                    <div>
-                                        <span>Submitted Date</span>
-                                        <strong>${escapeHTML(record.submittedDate === "" ? "Not submitted yet" : record.submittedDate)}</strong>
-                                    </div>
+                                    <div><span>Student ID</span><strong>${escapeHTML(record.student_number)}</strong></div>
+                                    <div><span>Student Name</span><strong>${escapeHTML(record.student_name)}</strong></div>
+                                    <div><span>Program</span><strong>${escapeHTML(record.program_display)}</strong></div>
+                                    <div><span>Year Level</span><strong>${escapeHTML(record.year_level)}</strong></div>
+                                    <div><span>Section</span><strong>${escapeHTML(record.section_name)}</strong></div>
+                                    <div><span>Academic Year</span><strong>${escapeHTML(record.academic_year)}</strong></div>
+                                    <div><span>Semester</span><strong>${escapeHTML(record.semester)}</strong></div>
+                                    <div><span>Status</span>${statusBadge(record.status)}</div>
+                                    <div><span>Evaluation Access</span>${accessBadge(record.evaluation_access)}</div>
+                                    <div><span>Submitted Date</span><strong>${record.status === "Completed" ? escapeHTML(record.submitted_date) : "Not submitted yet"}</strong></div>
                                 </div>
                             </section>
-
                             ${averageContent}
-
                             ${subjectContent}
                         </div>
-
                         <div class="modal-footer">
                             <button class="secondary-button" type="button" onclick="closeModal()">Close</button>
                         </div>
@@ -808,287 +1212,135 @@ function icon_svg($name)
             `);
         }
 
-        document.querySelectorAll(".tab-button").forEach(function (button) {
-            button.addEventListener("click", function () {
-                setActiveTab(button.dataset.tab);
-            });
+        function confirmDeleteMonitoring() {
+            return confirm("Delete this monitoring record? Records with existing evaluation data will be marked inactive instead.");
+        }
+
+        document.addEventListener("keydown", function (event) {
+            if (event.key === "Escape") closeModal();
         });
 
-        document.getElementById("searchInput").addEventListener("input", renderTable);
-        document.getElementById("departmentFilter").addEventListener("change", renderTable);
-        document.getElementById("courseFilter").addEventListener("change", renderTable);
-        document.getElementById("yearFilter").addEventListener("change", renderTable);
-        document.getElementById("sectionFilter").addEventListener("change", renderTable);
+        (function initDependentFilters() {
+            const departmentFilter = document.getElementById("departmentFilter");
+            const courseFilter = document.getElementById("courseFilter");
+            const yearFilter = document.getElementById("yearFilter");
+            const sectionFilter = document.getElementById("sectionFilter");
 
-        populateFilters();
-        renderAll();
-    </script>
+            function updateCourses() {
+                const departmentId = departmentFilter.value;
+                Array.from(courseFilter.options).forEach(option => {
+                    if (option.value === "0") {
+                        option.hidden = false;
+                        return;
+                    }
+                    option.hidden = departmentId !== "0" && option.dataset.department !== departmentId;
+                });
+                if (courseFilter.selectedOptions[0] && courseFilter.selectedOptions[0].hidden) {
+                    courseFilter.value = "0";
+                }
+                updateSections();
+            }
 
-<?php
-$logout_role_label = $_SESSION["role_name"] ?? "System Administrator";
-?>
+            function updateSections() {
+                const courseId = courseFilter.value;
+                const year = yearFilter.value;
+                Array.from(sectionFilter.options).forEach(option => {
+                    if (option.value === "0") {
+                        option.hidden = false;
+                        return;
+                    }
+                    const matchesCourse = courseId === "0" || option.dataset.course === courseId;
+                    const matchesYear = year === "0" || option.dataset.year === year;
+                    option.hidden = !(matchesCourse && matchesYear);
+                });
+                if (sectionFilter.selectedOptions[0] && sectionFilter.selectedOptions[0].hidden) {
+                    sectionFilter.value = "0";
+                }
+            }
 
-<style>
-.admin_logout_overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.48);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 99999;
-    padding: 24px;
-}
+            departmentFilter.addEventListener("change", updateCourses);
+            courseFilter.addEventListener("change", updateSections);
+            yearFilter.addEventListener("change", updateSections);
+            updateCourses();
+        })();
 
-.admin_logout_overlay.show {
-    display: flex;
-}
 
-.admin_logout_modal {
-    width: 100%;
-    max-width: 610px;
-    background: #ffffff;
-    border-radius: 10px;
-    padding: 36px 34px 32px;
-    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.32);
-    text-align: center;
-    font-family: Arial, Helvetica, sans-serif;
-    animation: admin_logout_pop 0.18s ease;
-}
+        (function initAutoFilterSubmission() {
+            const form = document.querySelector(".filter-form");
+            if (!form) return;
 
-@keyframes admin_logout_pop {
-    from {
-        opacity: 0;
-        transform: scale(0.96) translateY(10px);
-    }
+            const searchInput = document.getElementById("searchInput");
+            const selectFilters = form.querySelectorAll("select");
+            let filterTimer = null;
+            let submitting = false;
 
-    to {
-        opacity: 1;
-        transform: scale(1) translateY(0);
-    }
-}
+            function submitAutomatically(delay = 350) {
+                window.clearTimeout(filterTimer);
+                filterTimer = window.setTimeout(() => {
+                    if (submitting) return;
+                    submitting = true;
+                    form.classList.add("is-auto-submitting");
+                    form.submit();
+                }, delay);
+            }
 
-.admin_logout_icon {
-    width: 92px;
-    height: 92px;
-    border-radius: 999px;
-    background: #fee2e2;
-    color: #dc2626;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 22px;
-}
+            if (searchInput) {
+                searchInput.addEventListener("input", () => submitAutomatically(550));
+                searchInput.addEventListener("keydown", event => {
+                    if (event.key === "Enter") {
+                        event.preventDefault();
+                        submitAutomatically(0);
+                    }
+                });
+            }
 
-.admin_logout_icon svg {
-    width: 48px;
-    height: 48px;
-    stroke: currentColor;
-    fill: none;
-    stroke-width: 2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-}
-
-.admin_logout_modal h2 {
-    font-size: 32px;
-    line-height: 1.2;
-    color: #172033;
-    font-weight: 700;
-    margin-bottom: 20px;
-}
-
-.admin_logout_modal p {
-    font-size: 19px;
-    line-height: 1.55;
-    color: #4b5563;
-    max-width: 500px;
-    margin: 0 auto 28px;
-}
-
-.admin_logout_modal p strong {
-    color: #374151;
-    font-weight: 700;
-}
-
-.admin_logout_divider {
-    height: 1px;
-    background: #e5e7eb;
-    margin: 0 0 28px;
-}
-
-.admin_logout_actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 22px;
-}
-
-.admin_logout_cancel,
-.admin_logout_confirm {
-    min-height: 56px;
-    border-radius: 8px;
-    font-size: 18px;
-    font-weight: 700;
-    cursor: pointer;
-    font-family: Arial, Helvetica, sans-serif;
-    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
-}
-
-.admin_logout_cancel {
-    background: #ffffff;
-    color: #172033;
-    border: 1px solid #d8dce2;
-}
-
-.admin_logout_cancel:hover {
-    background: #f8fafc;
-    border-color: #bfc7d4;
-    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
-    transform: translateY(-1px);
-}
-
-.admin_logout_confirm {
-    background: #dc2626;
-    color: #ffffff;
-    border: none;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 11px;
-}
-
-.admin_logout_confirm:hover {
-    background: #b91c1c;
-    box-shadow: 0 10px 22px rgba(220, 38, 38, 0.24);
-    transform: translateY(-1px);
-}
-
-.admin_logout_confirm svg {
-    width: 24px;
-    height: 24px;
-    stroke: currentColor;
-    fill: none;
-    stroke-width: 2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-}
-
-.admin_logout_cancel:active,
-.admin_logout_confirm:active {
-    transform: scale(0.98);
-}
-
-body.admin_logout_locked {
-    overflow: hidden;
-}
-
-@media (max-width: 640px) {
-    .admin_logout_modal {
-        padding: 30px 24px 26px;
-    }
-
-    .admin_logout_modal h2 {
-        font-size: 26px;
-    }
-
-    .admin_logout_modal p {
-        font-size: 16px;
-    }
-
-    .admin_logout_actions {
-        grid-template-columns: 1fr;
-        gap: 14px;
-    }
-}
-</style>
-
-<div class="admin_logout_overlay" id="adminLogoutOverlay" aria-hidden="true">
-    <div class="admin_logout_modal" role="dialog" aria-modal="true" aria-labelledby="adminLogoutTitle">
-        <div class="admin_logout_icon">
-            <svg viewBox="0 0 24 24">
-                <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                <line x1="12" y1="9" x2="12" y2="13"></line>
-                <line x1="12" y1="17" x2="12.01" y2="17"></line>
-            </svg>
-        </div>
-
-        <h2 id="adminLogoutTitle">Log Out Confirmation</h2>
-
-        <p>
-            Are you sure you want to log out of the
-            <strong><?php echo htmlspecialchars($logout_role_label); ?></strong>
-            account? You will need to sign in again to continue managing the
-            <strong>Student Evaluation for Teacher System.</strong>
-        </p>
-
-        <div class="admin_logout_divider"></div>
-
-        <div class="admin_logout_actions">
-            <button type="button" class="admin_logout_cancel" id="adminLogoutCancel">Cancel</button>
-
-            <button type="button" class="admin_logout_confirm" id="adminLogoutConfirm">
-                <svg viewBox="0 0 24 24">
-                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                    <polyline points="16 17 21 12 16 7"></polyline>
-                    <line x1="21" y1="12" x2="9" y2="12"></line>
-                </svg>
-                Log Out
-            </button>
-        </div>
-    </div>
-</div>
-
-<script>
-(function () {
-    const overlay = document.getElementById("adminLogoutOverlay");
-    const cancelBtn = document.getElementById("adminLogoutCancel");
-    const confirmBtn = document.getElementById("adminLogoutConfirm");
-
-    let logoutUrl = "../login/login_page.php";
-
-    function openAdminLogoutModal(url) {
-        logoutUrl = url || logoutUrl;
-        overlay.classList.add("show");
-        overlay.setAttribute("aria-hidden", "false");
-        document.body.classList.add("admin_logout_locked");
-    }
-
-    function closeAdminLogoutModal() {
-        overlay.classList.remove("show");
-        overlay.setAttribute("aria-hidden", "true");
-        document.body.classList.remove("admin_logout_locked");
-    }
-
-    document.querySelectorAll(".logout-link, a[href*='logout'], a[href*='login_page.php']").forEach(function (link) {
-        const text = (link.textContent || "").trim().toLowerCase();
-
-        if (link.classList.contains("logout-link") || text.includes("logout") || text.includes("log out")) {
-            link.addEventListener("click", function (event) {
-                event.preventDefault();
-                openAdminLogoutModal(link.getAttribute("href"));
+            selectFilters.forEach(select => {
+                select.addEventListener("change", () => submitAutomatically(150));
             });
-        }
-    });
+        })();
 
-    cancelBtn.addEventListener("click", closeAdminLogoutModal);
+        (function initToast() {
+            const toast = document.getElementById("pageToast");
+            if (!toast) return;
+            window.setTimeout(() => toast.classList.add("hide"), 3000);
+            window.setTimeout(() => toast.remove(), 3500);
+        })();
 
-    overlay.addEventListener("click", function (event) {
-        if (event.target === overlay) {
-            closeAdminLogoutModal();
-        }
-    });
+        (function initAdminLogoutModal() {
+            const overlay = document.getElementById("adminLogoutOverlay");
+            const cancelBtn = document.getElementById("adminLogoutCancel");
+            const confirmBtn = document.getElementById("adminLogoutConfirm");
+            let logoutUrl = "../login/login_page.php";
 
-    document.addEventListener("keydown", function (event) {
-        if (event.key === "Escape" && overlay.classList.contains("show")) {
-            closeAdminLogoutModal();
-        }
-    });
+            function openAdminLogoutModal(url) {
+                logoutUrl = url || logoutUrl;
+                overlay.classList.add("show");
+                overlay.setAttribute("aria-hidden", "false");
+                document.body.classList.add("admin_logout_locked");
+            }
+            function closeAdminLogoutModal() {
+                overlay.classList.remove("show");
+                overlay.setAttribute("aria-hidden", "true");
+                document.body.classList.remove("admin_logout_locked");
+            }
 
-    confirmBtn.addEventListener("click", function () {
-        window.location.href = logoutUrl;
-    });
-})();
-</script>
-
+            document.querySelectorAll(".logout-link").forEach(link => {
+                link.addEventListener("click", function (event) {
+                    event.preventDefault();
+                    openAdminLogoutModal(link.getAttribute("href"));
+                });
+            });
+            cancelBtn.addEventListener("click", closeAdminLogoutModal);
+            overlay.addEventListener("click", event => {
+                if (event.target === overlay) closeAdminLogoutModal();
+            });
+            document.addEventListener("keydown", event => {
+                if (event.key === "Escape" && overlay.classList.contains("show")) closeAdminLogoutModal();
+            });
+            confirmBtn.addEventListener("click", function () {
+                window.location.href = "../login/login_page.php";
+            });
+        })();
+    </script>
 </body>
 </html>
