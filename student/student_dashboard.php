@@ -4382,6 +4382,10 @@ function svg_icon(string $name, string $color = "currentColor"): string
             }
 
             function finalizeSubmission(submittedAt, avgScore) {
+                const submitBtn = document.getElementById("btn-confirm-submit");
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<?php echo addslashes(svg_icon("check-circle", "#fff")); ?> Confirm Submission';
+
                 const card = document.querySelector(`[data-action="start-eval"][data-task-id="${currentEvalTaskId}"]`);
                 if (card) {
                     const parentCard = card.closest(".eval-card");
