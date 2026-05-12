@@ -980,7 +980,7 @@ $js_section_enrollments = json_encode($section_enrollments);
             <a class="nav-link<?php echo active_class('submission_monitoring.php'); ?>" href="submission_monitoring.php"><?php echo icon_svg("clipboard"); ?>Submission Monitoring</a>
             <a class="nav-link<?php echo active_class('report_page.php'); ?>" href="report_page.php"><?php echo icon_svg("reports"); ?>Reports</a>
             <a class="nav-link<?php echo active_class('announcement_page.php'); ?>" href="announcement_page.php"><?php echo icon_svg("announcement"); ?>Announcements</a>
-            <a class="nav-link<?php echo active_class('settings.php'); ?>" href="settings.php"><?php echo icon_svg("settings"); ?>Settings</a>
+            <a class="nav-link<?php echo active_class('settings_page.php'); ?>" href="settings_page.php"><?php echo icon_svg("settings"); ?>Settings</a>
             <a class="nav-link" href="#"><?php echo icon_svg("moon"); ?>Dark Mode</a>
         </nav>
 

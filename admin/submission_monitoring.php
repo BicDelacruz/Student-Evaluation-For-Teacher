@@ -795,7 +795,7 @@ $logout_role_label = current_admin_label();
             <a class="nav-link active" href="submission_monitoring.php"><?php echo icon_svg("clipboard"); ?> Submission Monitoring</a>
             <a class="nav-link" href="report_page.php"><?php echo icon_svg("reports"); ?> Reports</a>
             <a class="nav-link" href="announcement_page.php"><?php echo icon_svg("announcement"); ?> Announcements</a>
-            <a class="nav-link" href="#"><?php echo icon_svg("settings"); ?> Settings</a>
+            <a class="nav-link" href="settings_page.php"><?php echo icon_svg("settings"); ?> Settings</a>
             <a class="nav-link" href="#"><?php echo icon_svg("moon"); ?> Dark Mode</a>
         </nav>
 
