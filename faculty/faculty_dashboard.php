@@ -920,6 +920,9 @@ if ($faculty_id && $period_id && $active_period_term_id) {
     try {
         // Build $all_results directly from evaluation_response so data shows even before
         // sp_compute_faculty_result has been run (faculty_evaluation_result may be empty).
+        // NOTE: A single teaching_assignment can have MULTIPLE faculty_evaluation_result rows
+        // (one per release batch). We use a subquery to pick only the LATEST released result
+        // per teaching_assignment to avoid duplicate rows in the output.
         $stmt = $pdo->prepare("
             SELECT
                 ta.teaching_assignment_id,
@@ -931,9 +934,9 @@ if ($faculty_id && $period_id && $active_period_term_id) {
                 COUNT(DISTINCT s_elig.student_id) AS eligible_student_count,
                 COUNT(DISTINCT CASE WHEN er.response_status = 'Submitted' THEN er.evaluation_response_id END) AS submitted_response_count,
                 ROUND(AVG(CASE WHEN er.response_status = 'Submitted' THEN er.average_score END), 2) AS overall_average_score,
-                COALESCE(fer.result_status, 'Pending') AS result_status,
-                fer.released_at,
-                fer.faculty_evaluation_result_id
+                COALESCE(fer_latest.result_status, 'Pending') AS result_status,
+                fer_latest.released_at,
+                fer_latest.faculty_evaluation_result_id
             FROM teaching_assignment ta
             INNER JOIN section_subject_offering sso
                 ON sso.section_subject_offering_id = ta.section_subject_offering_id
@@ -947,16 +950,26 @@ if ($faculty_id && $period_id && $active_period_term_id) {
             LEFT JOIN evaluation_response er
                 ON er.teaching_assignment_id = ta.teaching_assignment_id
                AND er.evaluation_period_id   = :period_id
-            LEFT JOIN faculty_evaluation_result fer
-                ON fer.teaching_assignment_id = ta.teaching_assignment_id
-               AND fer.evaluation_period_id   = :period_id
+            -- Use a subquery to get only the single latest faculty_evaluation_result per TA
+            LEFT JOIN (
+                SELECT fer_inner.*
+                FROM faculty_evaluation_result fer_inner
+                INNER JOIN (
+                    SELECT teaching_assignment_id, MAX(faculty_evaluation_result_id) AS max_fer_id
+                    FROM faculty_evaluation_result
+                    WHERE evaluation_period_id = :period_id
+                    GROUP BY teaching_assignment_id
+                ) fer_max ON fer_max.teaching_assignment_id = fer_inner.teaching_assignment_id
+                         AND fer_max.max_fer_id = fer_inner.faculty_evaluation_result_id
+            ) fer_latest
+                ON fer_latest.teaching_assignment_id = ta.teaching_assignment_id
             WHERE ta.faculty_id = :faculty_id
               AND ta.term_id    = :term_id
             GROUP BY
                 ta.teaching_assignment_id,
                 sub.subject_code, sub.subject_title,
                 sec.section_name, c.course_code,
-                fer.result_status, fer.released_at, fer.faculty_evaluation_result_id
+                fer_latest.result_status, fer_latest.released_at, fer_latest.faculty_evaluation_result_id
             ORDER BY sub.subject_code, sec.section_name
         ");
         $stmt->execute([
@@ -985,16 +998,31 @@ if ($faculty_id && $period_id && $active_period_term_id) {
                 sub.subject_code,
                 sub.subject_title,
                 sec.section_name,
-                fer.overall_average_score AS average_score
+                fer_latest.overall_average_score AS average_score
             FROM evaluation_response_comment erc
             JOIN evaluation_response er ON er.evaluation_response_id = erc.evaluation_response_id
             JOIN teaching_assignment ta ON ta.teaching_assignment_id = er.teaching_assignment_id
             INNER JOIN section_subject_offering sso ON sso.section_subject_offering_id = ta.section_subject_offering_id
             INNER JOIN subject sub ON sub.subject_id = sso.subject_id
             INNER JOIN section sec ON sec.section_id = sso.section_id
-            LEFT JOIN faculty_evaluation_result fer
-                ON fer.teaching_assignment_id = ta.teaching_assignment_id
-                AND fer.evaluation_period_id = er.evaluation_period_id
+            -- Use a subquery to pick only the LATEST faculty_evaluation_result per TA.
+            -- Without this, a TA with multiple release batches would join N fer rows,
+            -- producing N copies of every comment.
+            LEFT JOIN (
+                SELECT fer_inner.teaching_assignment_id, fer_inner.evaluation_period_id,
+                       fer_inner.overall_average_score
+                FROM faculty_evaluation_result fer_inner
+                INNER JOIN (
+                    SELECT teaching_assignment_id, evaluation_period_id,
+                           MAX(faculty_evaluation_result_id) AS max_fer_id
+                    FROM faculty_evaluation_result
+                    GROUP BY teaching_assignment_id, evaluation_period_id
+                ) fer_max ON fer_max.teaching_assignment_id = fer_inner.teaching_assignment_id
+                         AND fer_max.evaluation_period_id  = fer_inner.evaluation_period_id
+                         AND fer_max.max_fer_id             = fer_inner.faculty_evaluation_result_id
+            ) fer_latest
+                ON fer_latest.teaching_assignment_id = ta.teaching_assignment_id
+               AND fer_latest.evaluation_period_id   = er.evaluation_period_id
             WHERE ta.faculty_id = :fid 
               AND er.evaluation_period_id = :pid
               AND er.response_status = 'Submitted'
@@ -1027,6 +1055,8 @@ if ($faculty_id && $period_id && $active_period_term_id) {
 
         $participation_data = $all_results;
 
+        // Use only the LATEST faculty_evaluation_result per TA (max ID) to prevent
+        // duplicate category rows when a TA has been released multiple times.
         $stmt = $pdo->prepare("
             SELECT
                 fer.faculty_evaluation_result_id,
@@ -1058,6 +1088,14 @@ if ($faculty_id && $period_id && $active_period_term_id) {
                 fer.overall_average_score,
                 efc.display_order
             FROM faculty_evaluation_result fer
+            -- Only pick the single latest fer per TA (highest ID) to avoid duplicate category blocks
+            INNER JOIN (
+                SELECT teaching_assignment_id, MAX(faculty_evaluation_result_id) AS max_fer_id
+                FROM faculty_evaluation_result
+                WHERE evaluation_period_id = :pid
+                GROUP BY teaching_assignment_id
+            ) fer_dedup ON fer_dedup.teaching_assignment_id = fer.teaching_assignment_id
+                       AND fer_dedup.max_fer_id = fer.faculty_evaluation_result_id
             INNER JOIN teaching_assignment ta ON ta.teaching_assignment_id = fer.teaching_assignment_id
             INNER JOIN section_subject_offering sso ON sso.section_subject_offering_id = ta.section_subject_offering_id
             INNER JOIN subject sub ON sub.subject_id = sso.subject_id
@@ -1104,15 +1142,40 @@ if ($faculty_id && $period_id && $active_period_term_id) {
     }
 }
 
-// Dashboard summary stats — guarded so they work even if the try-catch above failed
+// Dashboard summary stats — derived entirely from $all_results (already de-duped, one row per TA)
+// This avoids separate queries that were producing wrong counts due to multiple
+// faculty_evaluation_result rows per teaching_assignment (multiple release batches).
 $assigned_subjects_count = 0;
 $released_results_count  = 0;
 $total_eligible          = 0;
 $total_responses         = 0;
 $overall_average_score   = 0.0;
 
-if (!empty($faculty_id) && !empty($period_id) && !empty($active_period_term_id)) {
-    // 1. Total Assigned Subjects for the active period's term
+if (!empty($all_results)) {
+    $assigned_subjects_count = count($all_results);
+
+    $released_results_count = 0;
+    $unreleased_results_count = 0;
+    $avg_sum   = 0.0;
+    $avg_count = 0;
+
+    foreach ($all_results as $r) {
+        if ($r['result_status'] === 'Released') {
+            $released_results_count++;
+        } else {
+            $unreleased_results_count++;
+        }
+        $total_eligible  += (int) $r['eligible_student_count'];
+        $total_responses += (int) $r['submitted_response_count'];
+        if ($r['overall_average_score'] !== null) {
+            $avg_sum += (float) $r['overall_average_score'];
+            $avg_count++;
+        }
+    }
+
+    $overall_average_score = $avg_count > 0 ? round($avg_sum / $avg_count, 2) : 0.0;
+} elseif (!empty($faculty_id) && !empty($period_id) && !empty($active_period_term_id)) {
+    // Fallback: if $all_results is empty (results query failed), use a safe direct count
     $stmt = $pdo->prepare("
         SELECT COUNT(*)
         FROM teaching_assignment
@@ -1122,66 +1185,18 @@ if (!empty($faculty_id) && !empty($period_id) && !empty($active_period_term_id))
     ");
     $stmt->execute(['fid' => $faculty_id, 'tid' => $active_period_term_id]);
     $assigned_subjects_count = (int) $stmt->fetchColumn();
-
-    // 2. Subjects with at least one submitted response in this period
-    $stmt = $pdo->prepare("
-        SELECT COUNT(DISTINCT er.teaching_assignment_id)
-        FROM evaluation_response er
-        INNER JOIN teaching_assignment ta ON ta.teaching_assignment_id = er.teaching_assignment_id
-        WHERE er.evaluation_period_id = :pid
-          AND er.response_status      = 'Submitted'
-          AND ta.faculty_id           = :fid
-          AND ta.term_id              = :tid
-    ");
-    $stmt->execute(['pid' => $period_id, 'fid' => $faculty_id, 'tid' => $active_period_term_id]);
-    $released_results_count = (int) $stmt->fetchColumn();
-
-    // 3. Overall submitted responses & average score for this faculty / period
-    $stmt = $pdo->prepare("
-        SELECT
-            COUNT(er.evaluation_response_id) AS total_responses,
-            AVG(er.average_score)            AS avg_score
-        FROM evaluation_response er
-        INNER JOIN teaching_assignment ta ON ta.teaching_assignment_id = er.teaching_assignment_id
-        WHERE er.evaluation_period_id = :pid
-          AND ta.faculty_id           = :fid
-          AND ta.term_id              = :tid
-          AND er.response_status      = 'Submitted'
-    ");
-    $stmt->execute(['pid' => $period_id, 'fid' => $faculty_id, 'tid' => $active_period_term_id]);
-    $overall_stats       = $stmt->fetch();
-    $total_responses     = (int)   ($overall_stats['total_responses'] ?? 0);
-    $overall_average_score = (float) ($overall_stats['avg_score'] ?? 0.0);
-    if ($overall_average_score) {
-        $overall_average_score = round($overall_average_score, 2);
-    }
-
-    // 4. Total Eligible Students — count distinct students whose current_section_id
-    //    matches any section the faculty teaches this term (dynamic join, no assignment table)
-    $stmt = $pdo->prepare("
-        SELECT COUNT(DISTINCT s.student_id)
-        FROM student s
-        INNER JOIN section_subject_offering sso ON sso.section_id = s.current_section_id
-        INNER JOIN teaching_assignment ta
-            ON ta.section_subject_offering_id = sso.section_subject_offering_id
-        WHERE ta.faculty_id  = :fid
-          AND ta.term_id     = :tid
-          AND ta.assignment_status = 'Active'
-          AND s.student_status     = 'Active'
-    ");
-    $stmt->execute(['fid' => $faculty_id, 'tid' => $active_period_term_id]);
-    $total_eligible = (int) $stmt->fetchColumn();
+    $unreleased_results_count = $assigned_subjects_count;
 }
 
-$overall_participation_rate = $total_eligible > 0
-    ? round(($total_responses / $total_eligible) * 100, 1)
-    : 0;
+// All participation totals come from $all_results (already de-duped) via $participation_data below.
+// We set a placeholder here; the real rate is computed after $participation_data is built.
+$overall_participation_rate = 0;
 
-$assigned_count = $assigned_subjects_count;
-$released_count = $released_results_count;
-$unreleased_count = max($assigned_subjects_count - $released_results_count, 0);
-$overall_average = number_format($overall_average_score, 2);
-$participation_rate = number_format($overall_participation_rate, 1);
+$assigned_count   = $assigned_subjects_count;
+$released_count   = $released_results_count;
+$unreleased_count = isset($unreleased_results_count) ? $unreleased_results_count : max($assigned_subjects_count - $released_results_count, 0);
+$overall_average  = number_format($overall_average_score, 2);
+// $participation_rate is set further below after $overall_participation_rate is recalculated
 
 $term_label = $current_period
     ? $current_period["term_name"] . " · " . $current_period["academic_year_name"]
@@ -1215,6 +1230,9 @@ $total_participation_pending = array_sum(array_column($participation_data, "pend
 $overall_participation_rate = $total_participation_students > 0
     ? number_format(($total_participation_submitted / $total_participation_students) * 100, 1)
     : "0.0";
+
+// Now that participation totals are correct, set the dashboard display variable.
+$participation_rate = $overall_participation_rate;
 
 function score_color(float $score): string
 {
