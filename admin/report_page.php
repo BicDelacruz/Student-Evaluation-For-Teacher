@@ -296,15 +296,36 @@ function build_base_parts(mysqli $db, array $filters, string $prefix = "setask")
         INNER JOIN evaluation_period ep ON ep.evaluation_period_id = setask.evaluation_period_id
         INNER JOIN term t ON t.term_id = ep.term_id
         INNER JOIN academic_year ay ON ay.academic_year_id = t.academic_year_id
-        LEFT JOIN evaluation_response er ON er.student_evaluation_task_id = setask.student_evaluation_task_id AND er.response_status = 'Submitted'
-        LEFT JOIN teaching_assignment ta ON {$assignmentJoin}
-        LEFT JOIN faculty f ON f.faculty_id = ta.faculty_id
-        LEFT JOIN department fd ON fd.department_id = f.department_id
-        LEFT JOIN section_subject_offering sso ON sso.section_subject_offering_id = ta.section_subject_offering_id
-        LEFT JOIN subject subj ON subj.subject_id = sso.subject_id
+        
+        INNER JOIN teaching_assignment ta 
+            ON ta.teaching_assignment_id = setask.teaching_assignment_id
+        AND ta.assignment_status <> 'Inactive'
+
+        INNER JOIN section_subject_offering sso 
+            ON sso.section_subject_offering_id = ta.section_subject_offering_id
+        AND sso.section_id = sec.section_id
+        AND sso.term_id = t.term_id
+        AND sso.offering_status <> 'Inactive'
+
+        INNER JOIN subject subj 
+            ON subj.subject_id = sso.subject_id
+
+        LEFT JOIN evaluation_response er 
+            ON er.student_evaluation_task_id = setask.student_evaluation_task_id
+        AND er.teaching_assignment_id = ta.teaching_assignment_id
+        AND er.response_status = 'Submitted'
+
+        LEFT JOIN faculty f 
+            ON f.faculty_id = ta.faculty_id
+
+        LEFT JOIN department fd 
+            ON fd.department_id = f.department_id
     ";
 
-    $where = ["setask.task_status <> 'Reset'"];
+    $where = [
+    "setask.task_status <> 'Reset'",
+    "setask.is_active = 1"
+    ];
     $types = "";
     $params = [];
 
@@ -343,16 +364,33 @@ function build_answer_parts(mysqli $db, array $filters): array
         INNER JOIN evaluation_period ep ON ep.evaluation_period_id = er.evaluation_period_id
         INNER JOIN term t ON t.term_id = ep.term_id
         INNER JOIN academic_year ay ON ay.academic_year_id = t.academic_year_id
-        LEFT JOIN teaching_assignment ta ON ta.teaching_assignment_id = er.teaching_assignment_id
-        LEFT JOIN faculty f ON f.faculty_id = ta.faculty_id
-        LEFT JOIN section_subject_offering sso ON sso.section_subject_offering_id = ta.section_subject_offering_id
-        LEFT JOIN subject subj ON subj.subject_id = sso.subject_id
+
+        INNER JOIN teaching_assignment ta 
+            ON ta.teaching_assignment_id = er.teaching_assignment_id
+        AND ta.teaching_assignment_id = setask.teaching_assignment_id
+        AND ta.assignment_status <> 'Inactive'
+
+        INNER JOIN section_subject_offering sso 
+            ON sso.section_subject_offering_id = ta.section_subject_offering_id
+        AND sso.section_id = sec.section_id
+        AND sso.term_id = t.term_id
+        AND sso.offering_status <> 'Inactive'
+
+        INNER JOIN subject subj 
+            ON subj.subject_id = sso.subject_id
+
+        LEFT JOIN faculty f 
+            ON f.faculty_id = ta.faculty_id
+
         INNER JOIN evaluation_form_item efi ON efi.evaluation_form_item_id = era.evaluation_form_item_id
         INNER JOIN evaluation_form_category efc ON efc.evaluation_form_category_id = efi.evaluation_form_category_id
         INNER JOIN evaluation_category ec ON ec.evaluation_category_id = efc.evaluation_category_id
     ";
 
-    $where = ["setask.task_status <> 'Reset'"];
+    $where = [
+    "setask.task_status <> 'Reset'",
+    "setask.is_active = 1"
+    ];
     $types = "";
     $params = [];
     $map = [
