@@ -1194,7 +1194,7 @@ $modal_id = isset($_GET["id"]) ? (int) $_GET["id"] : 0;
             <a class="nav-link" href="evaluation_setup.php"><?php echo icon_svg("settings"); ?> Evaluation Setup</a>
             <a class="nav-link" href="submission_monitoring.php"><?php echo icon_svg("clipboard"); ?> Submission Monitoring</a>
             <a class="nav-link" href="report_page.php"><?php echo icon_svg("chart"); ?> Reports</a>
-            <a class="nav-link" href="#"><?php echo icon_svg("megaphone"); ?> Announcements</a>
+            <a class="nav-link" href="announcement_page.php"><?php echo icon_svg("megaphone"); ?> Announcements</a>
             <a class="nav-link" href="#"><?php echo icon_svg("settings"); ?> Settings</a>
             <a class="nav-link" href="#"><?php echo icon_svg("moon"); ?> Dark Mode</a>
         </nav>
