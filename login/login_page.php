@@ -245,6 +245,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     $_SESSION["login_profile_id"] = (int) $profile_id;
                     $_SESSION["login_role"] = $role_name;
                     $_SESSION["login_university_id"] = $account["university_id"];
+                    $_SESSION["login_email"] = $account["email"];
 
                     if ((int) $account["is_two_factor_enabled"] === 1) {
                         $_SESSION["two_factor_pending"] = true;

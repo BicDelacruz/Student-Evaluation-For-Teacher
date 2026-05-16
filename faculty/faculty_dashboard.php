@@ -2349,6 +2349,129 @@ function participation_color(float $rate): string
                 gap: 12px;
             }
         }
+    
+        /* ══════════════════════════════════════════════════════════
+           DARK MODE — faculty_dashboard  (AMOLED)
+           ══════════════════════════════════════════════════════════ */
+
+        .nav-link-darkmode {
+            -webkit-appearance: none;
+            appearance: none;
+            display: flex;
+            align-items: center;
+            gap: 13px;
+            min-height: 52px;
+            padding: 0 18px;
+            border-radius: 8px;
+            color: var(--text);
+            font-weight: 700;
+            font-size: 17px;
+            white-space: nowrap;
+            background: none;
+            border: none;
+            outline: none;
+            box-shadow: none;
+            margin: 0;
+            width: 100%;
+            text-align: left;
+            font-family: inherit;
+            cursor: pointer;
+            line-height: normal;
+            transition: background 0.18s, color 0.18s, transform 0.18s;
+        }
+        .nav-link-darkmode svg {
+            width: 22px; height: 22px; flex-shrink: 0;
+            stroke: currentColor; fill: none;
+            stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+        }
+        .nav-link-darkmode:hover {
+            background: var(--primary-soft);
+            color: var(--primary);
+            transform: translateX(4px);
+        }
+
+        body.dark-mode {
+            --primary:      #4a6cf7;
+            --primary-dark: #3a5ce0;
+            --primary-soft: #131630;
+            --border:       #2a2a2a;
+            --border-soft:  #222222;
+            --text:         #f0f0f0;
+            --muted:        #888888;
+            --surface:      #0a0a0a;
+            --surface-soft: #111111;
+            background:     #000000;
+            color:          #f0f0f0;
+        }
+
+        body.dark-mode .nav-link-darkmode       { color: #7b9cff; }
+        body.dark-mode .nav-link-darkmode:hover { background: #131630; color: #a5bfff; transform: translateX(4px); }
+
+        body.dark-mode .section-badge           { background: #4a6cf7; color: #fff; }
+        body.dark-mode .badge-course            { background: #0d1230; color: #7b9cff; }
+        body.dark-mode .badge-year              { background: #150d30; color: #c084fc; }
+        body.dark-mode .result-row:hover        { background: #111111; }
+        body.dark-mode .result-row p            { color: #888888; }
+        body.dark-mode .result-row small        { color: #555555; }
+        body.dark-mode .status-released         { background: #0a1f0f; color: #4ade80; }
+        body.dark-mode .status-unreleased       { background: #1a0505; color: #ff6b6b; }
+        body.dark-mode .score-right small       { color: #888888; }
+        body.dark-mode .results-search-wrap     { background: #111111; border-color: #2a2a2a; }
+        body.dark-mode .results-search-wrap input { color: #f0f0f0; background: transparent; }
+        body.dark-mode .filter-select           { background: #111111; border-color: #2a2a2a; color: #f0f0f0; }
+        body.dark-mode .results-summary-stat p  { color: #888888; }
+        body.dark-mode .note-box                { background: #0d1230; color: #7b9cff; border-top-color: #1a1f50; }
+        body.dark-mode .subjects-search-input   { background: #111111; border-color: #2a2a2a; }
+        body.dark-mode .subjects-search-input input { color: #f0f0f0; background: transparent; }
+        body.dark-mode .subject-group-header    { background: #111111; }
+        body.dark-mode .subject-group-header svg { color: #888888; }
+        body.dark-mode .subject-group-header small { color: #555555; }
+        body.dark-mode .subject-section-row:hover { background: #111111; }
+        body.dark-mode .subject-section-row .sec-info p { color: #888888; }
+        body.dark-mode .teaching-load-summary   { background: #080808; }
+        body.dark-mode .load-stat p             { color: #555555; }
+        body.dark-mode .load-stat strong        { color: #f0f0f0; }
+        body.dark-mode .criteria-header-card    { background: #080808; }
+        body.dark-mode .criteria-header-card h2 { color: #f0f0f0; }
+        body.dark-mode .criteria-header-card p  { color: #555555; }
+        body.dark-mode .criteria-header-score small  { color: #555555; }
+        body.dark-mode .criteria-header-score strong { color: #fbbf24; }
+        body.dark-mode .cat-bar-wrap            { background: #222222; }
+        body.dark-mode .cat-score-right small   { color: #888888; }
+        body.dark-mode .highlight-card small    { color: #888888; }
+        body.dark-mode .rating-scale-guide      { color: #888888; }
+        body.dark-mode .comments-header-info    { background: #0d1230; border-bottom-color: #1a1f50; }
+        body.dark-mode .comments-header-info p  { color: #7b9cff; }
+        body.dark-mode .comment-group-header    { background: #111111; }
+        body.dark-mode .comment-group-header p  { color: #888888; }
+        body.dark-mode .comment-avatar          { background: #0d1535; color: #7b9cff; }
+        body.dark-mode .anon-identity           { background: #111111; color: #888888; }
+        body.dark-mode .comment-body .comment-date  { color: #444444; }
+        body.dark-mode .comment-body .comment-text  { color: #f0f0f0; }
+        body.dark-mode .comments-footer         { background: #111111; border-top-color: #2a2a2a; }
+        body.dark-mode .comments-footer-stat p  { color: #888888; }
+        body.dark-mode .participation-summary-stat p  { color: #888888; }
+        body.dark-mode .participation-class-top p { color: #888888; }
+        body.dark-mode .participation-stat      { color: #888888; }
+        body.dark-mode .participation-stat strong { color: #f0f0f0; }
+        body.dark-mode .participation-bar       { background: #222222; }
+        body.dark-mode .report-stat p           { color: #888888; }
+        body.dark-mode .btn-report-preview      { background: #1a3ab8; color: #fff; }
+        body.dark-mode .btn-report-download     { background: #0f5e25; color: #fff; }
+        body.dark-mode .btn-report-print        { background: #0d1535; color: #fff; }
+        body.dark-mode .report-contents-header p { color: #888888; }
+        body.dark-mode .report-content-item p  { color: #888888; }
+        body.dark-mode .modal-box               { background: #0a0a0a; }
+        body.dark-mode .modal-overlay           { background: rgba(0,0,0,0.75); }
+        body.dark-mode .modal-header            { background: #0d1535; color: #fff; }
+        body.dark-mode .btn-modal-close         { color: #fff; }
+        body.dark-mode .modal-alert-blue        { background: #0d1230; border-color: #1a1f50; }
+        body.dark-mode .modal-alert-blue p      { color: #7b9cff; }
+        body.dark-mode .modal-alert-blue strong { color: #7b9cff; }
+        body.dark-mode .btn-modal-cancel        { background: #111111; color: #f0f0f0; border-color: #2a2a2a; }
+        body.dark-mode .btn-modal-logout        { background: #5e0f0f; color: #fff; }
+        body.dark-mode .empty-state             { color: #888888; }
+
     </style>
 </head>
 
@@ -2370,6 +2493,11 @@ function participation_color(float $rate): string
             <a class="nav-link" href="#" data-tab="tab-comments"><?php echo svg_icon("comment"); ?> Comments</a>
             <a class="nav-link" href="#" data-tab="tab-participation"><?php echo svg_icon("users"); ?> Participation</a>
             <a class="nav-link" href="#" data-tab="tab-reports"><?php echo svg_icon("file"); ?> Reports</a>
+            <button class="nav-link nav-link-darkmode" id="btn-dark-mode" aria-label="Toggle dark mode">
+                <span class="dm-icon-moon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                <span class="dm-icon-sun" style="display:none;"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></span>
+                <span class="dm-label">Dark Mode</span>
+            </button>
         </nav>
 
         <div class="sidebar-bottom">
@@ -3489,6 +3617,30 @@ function participation_color(float $rate): string
                 }
             });
 
+        })();
+    </script>
+
+    <script>
+        /* ── Dark mode toggle — default light, restores saved pref ── */
+        (function () {
+            var btn      = document.getElementById("btn-dark-mode");
+            var iconMoon = btn.querySelector(".dm-icon-moon");
+            var iconSun  = btn.querySelector(".dm-icon-sun");
+            var label    = btn.querySelector(".dm-label");
+            var KEY      = "dashboard_dark_mode";
+            function applyDark(on) {
+                document.body.classList.toggle("dark-mode", on);
+                iconMoon.style.display = on ? "none" : "";
+                iconSun.style.display  = on ? ""     : "none";
+                label.textContent      = on ? "Light Mode" : "Dark Mode";
+            }
+            var saved = localStorage.getItem(KEY);
+            if (saved !== null) { applyDark(saved === "1"); }
+            btn.addEventListener("click", function () {
+                var isDark = document.body.classList.contains("dark-mode");
+                applyDark(!isDark);
+                localStorage.setItem(KEY, isDark ? "0" : "1");
+            });
         })();
     </script>
 </body>

@@ -3004,6 +3004,262 @@ function svg_icon(string $name, string $color = "currentColor"): string
             }
         }
 
+    
+        /* ══════════════════════════════════════════════════════════
+           DARK MODE — student_dashboard  (AMOLED)
+           body.dark-mode specificity (0,2,x) beats all inline
+           block rules (0,1,x) and external body. rules (0,1,1).
+           Rules fighting external body. use !important.
+           ══════════════════════════════════════════════════════════ */
+
+        .nav-link-darkmode {
+            -webkit-appearance: none;
+            appearance: none;
+            display: flex;
+            align-items: center;
+            gap: 13px;
+            min-height: 52px;
+            padding: 0 18px;
+            border-radius: 8px;
+            color: var(--text);
+            font-weight: 700;
+            font-size: 17px;
+            white-space: nowrap;
+            background: none;
+            border: none;
+            outline: none;
+            box-shadow: none;
+            margin: 0;
+            width: 100%;
+            text-align: left;
+            font-family: inherit;
+            cursor: pointer;
+            line-height: normal;
+            transition: background 0.18s, color 0.18s, transform 0.18s;
+        }
+        .nav-link-darkmode svg {
+            width: 22px; height: 22px; flex-shrink: 0;
+            stroke: currentColor; fill: none;
+            stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+        }
+        .nav-link-darkmode:hover {
+            background: var(--primary-soft);
+            color: var(--primary);
+            transform: translateX(4px);
+        }
+
+        /* ── Variable overrides ── */
+        body.dark-mode {
+            --primary:      #4a6cf7;
+            --primary-dark: #3a5ce0;
+            --primary-soft: #131630;
+            --border:       #2a2a2a;
+            --border-soft:  #222222;
+            --text:         #f0f0f0;
+            --muted:        #888888;
+            --surface:      #0a0a0a;
+            --surface-soft: #111111;
+            background:     #000000;
+            color:          #f0f0f0;
+        }
+
+        /* ── nav toggle in dark mode ── */
+        body.dark-mode .nav-link-darkmode       { color: #7b9cff; }
+        body.dark-mode .nav-link-darkmode:hover { background: #131630; color: #a5bfff; transform: translateX(4px); }
+
+        /* ── stat-icons: fight external CSS light backgrounds with !important ── */
+        body.dark-mode .stat-icon.dark          { background: #4a6cf7 !important; color: #fff !important; }
+        body.dark-mode .stat-icon.green         { background: #0a1f0f !important; color: #4ade80 !important; }
+        body.dark-mode .stat-icon.yellow        { background: #1a1400 !important; color: #fbbf24 !important; }
+        body.dark-mode .stat-icon.blue          { background: #0d1230 !important; color: #7b9cff !important; }
+
+        /* ── guide ── */
+        body.dark-mode .guide-header            { background: #0d1535; color: #f0f0f0; }
+        body.dark-mode .guide-header h2         { color: #f0f0f0; }
+        body.dark-mode .guide-header p          { color: #888888; }
+        body.dark-mode .guide-item              { background: #111111; border-left-color: #f59e0b; }
+        body.dark-mode .guide-num               { background: #f59e0b; color: #000; }
+        body.dark-mode .guide-item p            { color: #888888; }
+        body.dark-mode .guide-reminders         { background: #080e22; color: #f0f0f0; }
+        body.dark-mode .guide-reminders h3      { color: #f0f0f0; }
+        body.dark-mode .guide-reminders li      { color: #f0f0f0; }
+        body.dark-mode .guide-agree-row         { background: #111111; }
+        body.dark-mode .guide-agree-row label   { color: #f0f0f0; }
+        body.dark-mode .btn-back-guide          { background: #111111; color: #f0f0f0; border-color: #2a2a2a; }
+        body.dark-mode .btn-proceed             { background: #1a1a1a; color: #444444; }
+        body.dark-mode .btn-proceed.enabled     { background: #4a6cf7; color: #fff; }
+        body.dark-mode .eval-locked-notice      { background: #1a0505; border-color: #4a0000; }
+        body.dark-mode .eval-locked-notice strong { color: #ff6b6b; }
+        body.dark-mode .eval-locked-notice p    { color: #ff6b6b; }
+        body.dark-mode .btn-go-guidelines       { background: #4a6cf7; color: #fff; }
+
+        /* ── eval filter buttons ── */
+        body.dark-mode .eval-filter-btn         { background: #111111; color: #888888; border-color: #2a2a2a; }
+        body.dark-mode .eval-filter-btn.active-filter { background: #4a6cf7; color: #fff; border-color: #4a6cf7; }
+
+        /* ── eval cards ── */
+        body.dark-mode .eval-card               { background: #0a0a0a; border-color: #2a2a2a; }
+        body.dark-mode .eval-card:hover         { border-color: #3a3a3a; }
+        body.dark-mode .eval-card-top h3        { color: #f0f0f0; }
+        body.dark-mode .eval-card-top p         { color: #6b8cff; }
+        body.dark-mode .eval-card-top small     { color: #666666; }
+        body.dark-mode .status-pill.completed   { background: #0a1f0f; color: #4ade80; }
+        body.dark-mode .status-pill.pending     { background: #1a1400; color: #fbbf24; }
+        body.dark-mode .status-pill.draft       { background: #0d1230; color: #7b9cff; }
+        body.dark-mode .eval-card-completed-note { color: #666666; }
+        body.dark-mode .btn-start-eval          { background: #4a6cf7; color: #fff; }
+        body.dark-mode .btn-view-eval           { background: #0d1535; color: #7b9cff; }
+        body.dark-mode .eval-teacher-meta p     { color: #888888; }
+        body.dark-mode .eval-progress-row       { color: #888888; }
+        body.dark-mode .eval-progress-bar       { background: rgba(255,255,255,0.06); }
+        body.dark-mode .eval-card[data-status="draft"]       { background: #080d20; border-color: rgba(74,108,247,0.4); }
+        body.dark-mode .eval-card[data-status="draft"]:hover { border-color: #4a6cf7; }
+        body.dark-mode .eval-card[data-status="submitted"],
+        body.dark-mode .eval-card[data-status="completed"]   { border-color: rgba(74,222,128,0.2); }
+        body.dark-mode .eval-card.just-submitted { background: #080f08; }
+
+        /* ── criteria table ── */
+        body.dark-mode .criteria-table thead th { background: #111111; color: #888888; border-bottom-color: #2a2a2a; }
+        body.dark-mode .criteria-table thead th:not(:first-child):hover { background: #1a1a1a; }
+        body.dark-mode .criteria-table tbody tr.answered      { background: #080f08; }
+        body.dark-mode .criteria-table tbody tr.answered:hover { background: #0a130a; }
+        body.dark-mode .criteria-table tbody td:first-child   { color: #f0f0f0; }
+
+        /* ── comments field ── */
+        body.dark-mode .comments-field textarea { background: #111111; border-color: #2a2a2a; color: #f0f0f0; }
+        body.dark-mode .comments-field textarea:focus { border-color: #4a6cf7; }
+        body.dark-mode .comments-field p        { color: #888888; }
+
+        /* ── eval form action buttons ── */
+        body.dark-mode .btn-eval-back           { background: #111111; color: #f0f0f0; border-color: #2a2a2a; }
+        body.dark-mode .btn-eval-draft          { background: #111111; color: #f0f0f0; border-color: #2a2a2a; }
+        body.dark-mode .btn-eval-clear          { background: #1a0505; color: #ff6b6b; border-color: #4a0000; }
+        body.dark-mode .btn-eval-proceed        { background: #1a1a1a; color: #444444; }
+        body.dark-mode .btn-eval-proceed.ready  { background: #4a6cf7; color: #fff; }
+        body.dark-mode .btn-confirm-submit      { background: #0f5e25; color: #fff; }
+
+        /* ── review panel ── */
+        body.dark-mode .review-panel-header p   { color: #888888; }
+        body.dark-mode .review-table thead th   { background: #111111; color: #888888; border-bottom-color: #2a2a2a; }
+        body.dark-mode .review-table tbody td   { color: #f0f0f0; border-bottom-color: #2a2a2a; }
+        body.dark-mode .review-table tbody td:first-child { color: #6b8cff; }
+        body.dark-mode .rating-lbl              { color: #888888; }
+        body.dark-mode .review-section-head     { background: #111111; color: #f0f0f0; }
+        body.dark-mode .notice-important        { background: #1a0505; border-color: #4a0000; }
+        body.dark-mode .notice-important strong { color: #ff6b6b; }
+        body.dark-mode .notice-important p      { color: #ff6b6b; }
+        body.dark-mode .btn-cancel-review       { background: #111111; color: #f0f0f0; border-color: #2a2a2a; }
+        body.dark-mode .btn-edit-review         { background: #111111; color: #f0f0f0; border-color: #2a2a2a; }
+
+        /* ── success page ── */
+        body.dark-mode .success-banner          { background: #0a1f0f; color: #4ade80; }
+        body.dark-mode .submission-details      { background: #111111; border-color: #2a2a2a; }
+        body.dark-mode .submission-details div small { color: #888888; }
+        body.dark-mode .eval-progress-card      { background: #120f00; border-color: #2a2200; }
+        body.dark-mode .eval-progress-card .prog-row span:last-child { color: #fbbf24; }
+        body.dark-mode .btn-next-teacher        { background: #4a6cf7; color: #fff; }
+        body.dark-mode .btn-success-sec         { background: #111111; color: #f0f0f0; border-color: #2a2a2a; }
+
+        /* ── readonly eval view ── */
+        body.dark-mode .confidential-note       { background: #0a1f0f; color: #4ade80; border-color: #0f5e25; }
+        body.dark-mode .view-eval-header        { background: #0d1535; color: #f0f0f0; }
+        body.dark-mode .view-eval-header h2     { color: #f0f0f0; }
+        body.dark-mode .view-eval-header p      { color: #888888; }
+        body.dark-mode .view-teacher-meta p     { color: #888888; }
+        body.dark-mode .view-teacher-stat       { background: #111111; color: #888888; border-color: #2a2a2a; }
+        body.dark-mode .view-rating-item > p    { color: #6b8cff; }
+        body.dark-mode .view-rating-box         { background: #111111; border-color: #2a2a2a; }
+        body.dark-mode .view-rating-box small   { color: #888888; }
+        /* view-comments-box: external CSS sets background:#ffffff — needs !important */
+        body.dark-mode .view-comments-box       { background: #0a0a0a !important; border-color: #2a2a2a !important; }
+        body.dark-mode .view-comments-box p.sub { color: #888888; }
+        body.dark-mode .view-comments-box .comment-text { background: #111111; color: #f0f0f0; border-color: #2a2a2a; }
+        body.dark-mode .view-only-notice        { background: #0d1230; border-color: #1a1f50; }
+        body.dark-mode .view-only-notice strong { color: #7b9cff; }
+        body.dark-mode .view-only-notice p      { color: #7b9cff; }
+        body.dark-mode .btn-view-history        { background: #4a6cf7; color: #fff; }
+        /* btn-back-to-eval-list has inline style="color:#172033" — ID beats inline with !important */
+        body.dark-mode #btn-back-to-eval-list   { color: #7b9cff !important; }
+
+        /* ── submission history ── */
+        body.dark-mode .history-search-wrap     { background: #111111; border-color: #2a2a2a; color: #f0f0f0; }
+        body.dark-mode .history-search-wrap input { background: transparent; color: #f0f0f0; }
+        body.dark-mode .history-search-wrap svg { color: #555555; }
+        body.dark-mode .history-filter-btn      { background: #111111; color: #888888; border-color: #2a2a2a; }
+        body.dark-mode .history-filter-btn.active-filter { background: #4a6cf7; color: #fff; border-color: #4a6cf7; }
+        /* history-filter-row: external CSS body.history-filter-row background:#ffffff — !important */
+        body.dark-mode .history-filter-row      { background: #0a0a0a !important; border-color: #2a2a2a !important; }
+        /* history-records-header: external body. rule sets background:#f8fafc — !important */
+        body.dark-mode .history-records-header  { background: #0a0a0a !important; border-bottom-color: #2a2a2a; }
+        body.dark-mode .history-records-header h2 { color: #f0f0f0; }
+        body.dark-mode .history-records-header p  { color: #888888; }
+        /* history-record-row: default state must be dark (was transparent/white) */
+        body.dark-mode .history-record-row      { background: #0a0a0a !important; border-bottom-color: #2a2a2a; }
+        /* hover: darker shade */
+        body.dark-mode .history-record-row:hover { background: #111111 !important; }
+        body.dark-mode .history-record-row h3   { color: #f0f0f0 !important; }
+        body.dark-mode .history-record-row p    { color: #888888 !important; }
+        body.dark-mode .history-record-row small,
+        body.dark-mode .history-record-row .click-to-view { color: #555555 !important; }
+        body.dark-mode .history-record-row.just-submitted  { background: #080f08 !important; }
+        body.dark-mode .history-record-row[data-status="draft"]       { background: #080d20 !important; border-color: rgba(74,108,247,0.35) !important; }
+        body.dark-mode .history-record-row[data-status="draft"]:hover { background: #0d1230 !important; border-color: #4a6cf7 !important; }
+
+        /* ── settings / change password ── */
+        /* external body. sets background:#ffffff on settings-section — !important */
+        body.dark-mode .settings-section        { background: #0a0a0a !important; border-color: #2a2a2a !important; }
+        /* external body. sets background:#f8fafc on settings-section-header — !important */
+        body.dark-mode .settings-section-header { background: #111111 !important; color: #f0f0f0 !important; border-bottom-color: #2a2a2a !important; }
+        body.dark-mode .settings-section-body   { background: #0a0a0a !important; }
+        /* external body. sets background via history-records-panel too */
+        body.dark-mode .history-records-panel   { background: #0a0a0a !important; border-color: #2a2a2a !important; }
+        body.dark-mode .account-info-grid .field-label  { color: #888888; }
+        body.dark-mode .account-info-grid .field-value  { color: #f0f0f0; }
+        body.dark-mode .settings-field label    { color: #f0f0f0; }
+        body.dark-mode .badge-active            { background: #0a1f0f; color: #4ade80; }
+        body.dark-mode .settings-field input[type="password"],
+        body.dark-mode .settings-field input[type="text"]  { background: #111111; border-color: #2a2a2a; color: #f0f0f0; }
+        body.dark-mode .settings-field input:focus         { border-color: #4a6cf7; background: #1a1a1a; box-shadow: 0 0 0 3px rgba(74,108,247,0.18); }
+        body.dark-mode .settings-field input::placeholder  { color: #444444; }
+        body.dark-mode .toggle-pw               { color: #555555; background: transparent; }
+        body.dark-mode .toggle-pw:hover         { color: #888888; }
+        body.dark-mode .pw-requirements         { background: #0d1230; border-color: #1a1f50; }
+        body.dark-mode .pw-requirements strong  { color: #7b9cff; }
+        body.dark-mode .pw-requirements li      { color: #7b9cff; }
+        body.dark-mode #pw-feedback             { color: #888888; }
+        body.dark-mode .btn-update-pw           { background: #4a6cf7; color: #fff; }
+        body.dark-mode .security-row p          { color: #888888; }
+        body.dark-mode .btn-logout-all          { background: #1a0505; color: #ff6b6b; border-color: #4a0000; }
+
+        /* ── modals ── */
+        body.dark-mode .modal-box               { background: #0a0a0a; }
+        body.dark-mode .modal-overlay           { background: rgba(0,0,0,0.75); }
+        body.dark-mode .modal-header-green      { background: #0f5e25; color: #fff; }
+        body.dark-mode .modal-header-red        { background: #5e0f0f; color: #fff; }
+        body.dark-mode .modal-header .btn-modal-close { color: #fff; }
+        body.dark-mode .modal-alert-green       { background: #080f08; border-color: #0f5e25; }
+        body.dark-mode .modal-alert-green strong,
+        body.dark-mode .modal-alert-green p     { color: #4ade80; }
+        body.dark-mode .modal-alert-red         { background: #1a0505; border-color: #5e0f0f; }
+        body.dark-mode .modal-alert-red strong,
+        body.dark-mode .modal-alert-red p       { color: #ff6b6b; }
+        body.dark-mode .modal-alert-yellow      { background: #120f00; border-color: #3a2e00; }
+        body.dark-mode .modal-alert-yellow strong { color: #fbbf24; }
+        body.dark-mode .modal-alert-yellow p    { color: #fde68a; }
+        body.dark-mode .eval-summary-box        { background: #111111; color: #f0f0f0; border-color: #2a2a2a; }
+        body.dark-mode .eval-summary-box h4     { color: #f0f0f0; }
+        body.dark-mode .modal-final-warning     { background: #1a0505; border-color: #4a0000; }
+        body.dark-mode .modal-final-warning strong { color: #ff6b6b; }
+        body.dark-mode .modal-final-warning p   { color: #ff6b6b; }
+        body.dark-mode .modal-final-warning b   { color: #ff4444; }
+        body.dark-mode .what-deleted-box        { background: #111111; color: #888888; border-color: #2a2a2a; }
+        body.dark-mode .what-deleted-box strong { color: #f0f0f0; }
+        body.dark-mode .btn-modal-cancel        { background: #111111; color: #f0f0f0; border-color: #2a2a2a; }
+        body.dark-mode .btn-modal-logout-green  { background: #0f5e25; color: #fff; }
+        body.dark-mode .btn-modal-reset         { background: #5e0f0f; color: #fff; }
+        body.dark-mode .btn-modal-reset-final   { background: #5e0f0f; color: #fff; }
+        body.dark-mode .btn-continue-eval       { background: #4a6cf7; color: #fff; }
+
     </style>
 </head>
 
@@ -3026,6 +3282,11 @@ function svg_icon(string $name, string $color = "currentColor"): string
             <a class="nav-link" href="#" data-tab="tab-history"><?php echo svg_icon("history"); ?> Submission
                 History</a>
             <a class="nav-link" href="#" data-tab="tab-settings"><?php echo svg_icon("settings"); ?> Settings</a>
+            <button class="nav-link nav-link-darkmode" id="btn-dark-mode" aria-label="Toggle dark mode">
+                <span class="dm-icon-moon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                <span class="dm-icon-sun" style="display:none;"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></span>
+                <span class="dm-label">Dark Mode</span>
+            </button>
         </nav>
 
         <div class="sidebar-bottom">
@@ -4770,6 +5031,30 @@ function svg_icon(string $name, string $color = "currentColor"): string
                 });
             });
 
+        })();
+    </script>
+
+    <script>
+        /* ── Dark mode toggle — default light, restores saved pref ── */
+        (function () {
+            var btn      = document.getElementById("btn-dark-mode");
+            var iconMoon = btn.querySelector(".dm-icon-moon");
+            var iconSun  = btn.querySelector(".dm-icon-sun");
+            var label    = btn.querySelector(".dm-label");
+            var KEY      = "dashboard_dark_mode";
+            function applyDark(on) {
+                document.body.classList.toggle("dark-mode", on);
+                iconMoon.style.display = on ? "none" : "";
+                iconSun.style.display  = on ? ""     : "none";
+                label.textContent      = on ? "Light Mode" : "Dark Mode";
+            }
+            var saved = localStorage.getItem(KEY);
+            if (saved !== null) { applyDark(saved === "1"); }
+            btn.addEventListener("click", function () {
+                var isDark = document.body.classList.contains("dark-mode");
+                applyDark(!isDark);
+                localStorage.setItem(KEY, isDark ? "0" : "1");
+            });
         })();
     </script>
 </body>
