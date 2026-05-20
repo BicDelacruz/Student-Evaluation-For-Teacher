@@ -41,6 +41,83 @@ function db_column_exists(mysqli $db, string $table, string $column): bool
     return ((int) ($row["cnt"] ?? 0)) > 0;
 }
 
+
+
+function db_table_exists(mysqli $db, string $table): bool
+{
+    $stmt = $db->prepare(
+        "SELECT COUNT(*) AS cnt
+         FROM information_schema.tables
+         WHERE table_schema = DATABASE()
+           AND table_name = ?"
+    );
+    $stmt->bind_param("s", $table);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    return ((int) ($row["cnt"] ?? 0)) > 0;
+}
+
+function fetch_one(mysqli $db, string $sql, string $types = "", array $params = []): ?array
+{
+    $stmt = $db->prepare($sql);
+    if ($params) {
+        $stmt->bind_param($types, ...$params);
+    }
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    return $row ?: null;
+}
+
+function ensure_student_version_support(mysqli $db): void
+{
+    if (db_table_exists($db, 'student_evaluation_task') && !db_column_exists($db, 'student_evaluation_task', 'evaluation_version_id')) {
+        $db->query("ALTER TABLE student_evaluation_task ADD COLUMN evaluation_version_id BIGINT UNSIGNED NULL AFTER evaluation_period_id");
+        try { $db->query("ALTER TABLE student_evaluation_task ADD INDEX idx_setask_version_student (evaluation_version_id, student_id, task_status, evaluation_access_status)"); } catch (Throwable $ignored) {}
+    }
+    if (db_table_exists($db, 'evaluation_response') && !db_column_exists($db, 'evaluation_response', 'evaluation_version_id')) {
+        $db->query("ALTER TABLE evaluation_response ADD COLUMN evaluation_version_id BIGINT UNSIGNED NULL AFTER evaluation_period_id");
+        try { $db->query("ALTER TABLE evaluation_response ADD INDEX idx_response_version_student (evaluation_version_id, student_id, response_status)"); } catch (Throwable $ignored) {}
+    }
+    if (db_table_exists($db, 'evaluation_period_scope') && !db_column_exists($db, 'evaluation_period_scope', 'evaluation_version_id')) {
+        $db->query("ALTER TABLE evaluation_period_scope ADD COLUMN evaluation_version_id BIGINT UNSIGNED NULL AFTER evaluation_period_scope_id");
+        try { $db->query("ALTER TABLE evaluation_period_scope ADD INDEX idx_eps_version_period (evaluation_version_id, evaluation_period_id, scope_status)"); } catch (Throwable $ignored) {}
+    }
+    if (db_table_exists($db, 'evaluation_version')) {
+        if (db_column_exists($db, 'student_evaluation_task', 'evaluation_version_id')) {
+            $db->query("UPDATE student_evaluation_task setask
+                INNER JOIN evaluation_version ev ON ev.evaluation_period_id = setask.evaluation_period_id
+                SET setask.evaluation_version_id = ev.evaluation_version_id
+                WHERE setask.evaluation_version_id IS NULL");
+        }
+        if (db_column_exists($db, 'evaluation_response', 'evaluation_version_id')) {
+            $db->query("UPDATE evaluation_response er
+                LEFT JOIN student_evaluation_task setask ON setask.student_evaluation_task_id = er.student_evaluation_task_id
+                LEFT JOIN evaluation_version evtask ON evtask.evaluation_version_id = setask.evaluation_version_id
+                LEFT JOIN evaluation_version evform ON evform.evaluation_form_id = er.evaluation_form_id
+                LEFT JOIN evaluation_version evperiod ON evperiod.evaluation_period_id = er.evaluation_period_id
+                SET er.evaluation_version_id = COALESCE(evtask.evaluation_version_id, evform.evaluation_version_id, evperiod.evaluation_version_id)
+                WHERE er.evaluation_version_id IS NULL");
+        }
+        if (db_column_exists($db, 'evaluation_period_scope', 'evaluation_version_id')) {
+            $db->query("UPDATE evaluation_period_scope eps
+                INNER JOIN evaluation_version ev ON ev.evaluation_period_id = eps.evaluation_period_id
+                SET eps.evaluation_version_id = ev.evaluation_version_id
+                WHERE eps.evaluation_version_id IS NULL");
+        }
+    }
+}
+
+function get_version_id_for_period(mysqli $db, int $period_id): ?int
+{
+    if (!db_table_exists($db, 'evaluation_version')) {
+        return null;
+    }
+    $row = fetch_one($db, "SELECT evaluation_version_id FROM evaluation_version WHERE evaluation_period_id = ? LIMIT 1", "i", [$period_id]);
+    return $row ? (int)$row['evaluation_version_id'] : null;
+}
+
 function db_routine_exists(mysqli $db, string $routine_name): bool
 {
     $stmt = $db->prepare(
@@ -107,6 +184,23 @@ function get_active_period(mysqli $db, ?int $period_id = null): ?array
     return $row ?: null;
 }
 
+
+
+function backfill_student_task_version(mysqli $db, int $student_id, int $period_id): void
+{
+    if (!db_column_exists($db, 'student_evaluation_task', 'evaluation_version_id')) {
+        return;
+    }
+    $version_id = get_version_id_for_period($db, $period_id);
+    if (!$version_id) {
+        return;
+    }
+    $stmt = $db->prepare("UPDATE student_evaluation_task SET evaluation_version_id = COALESCE(evaluation_version_id, ?) WHERE student_id = ? AND evaluation_period_id = ?");
+    $stmt->bind_param("iii", $version_id, $student_id, $period_id);
+    $stmt->execute();
+    $stmt->close();
+}
+
 function generate_student_evaluation_tasks(mysqli $db, int $student_id, int $period_id): void
 {
     $period = get_active_period($db, $period_id);
@@ -159,6 +253,7 @@ function generate_student_evaluation_tasks(mysqli $db, int $student_id, int $per
         $stmt->bind_param("iiiiiiii", $student_id, $period_id, $student_id, $period_id, $student_id, $term_id, $student_id, $period_id);
         $stmt->execute();
         $stmt->close();
+        backfill_student_task_version($db, $student_id, $period_id);
         return;
     }
 
@@ -196,10 +291,17 @@ function generate_student_evaluation_tasks(mysqli $db, int $student_id, int $per
     $stmt->bind_param("iiiiii", $student_id, $period_id, $student_id, $term_id, $student_id, $period_id);
     $stmt->execute();
     $stmt->close();
+    backfill_student_task_version($db, $student_id, $period_id);
 }
 
-function get_active_form_id(mysqli $db, int $period_id): int
+function get_active_form_id(mysqli $db, int $period_id, ?int $version_id = null): int
 {
+    if ($version_id && db_table_exists($db, 'evaluation_version')) {
+        $row = fetch_one($db, "SELECT evaluation_form_id FROM evaluation_version WHERE evaluation_version_id = ? AND evaluation_period_id = ? LIMIT 1", "ii", [$version_id, $period_id]);
+        if ($row) {
+            return (int)$row['evaluation_form_id'];
+        }
+    }
     $stmt = $db->prepare(
         "SELECT evaluation_form_id
          FROM evaluation_form
@@ -218,11 +320,13 @@ function get_active_form_id(mysqli $db, int $period_id): int
 function get_task_for_student(mysqli $db, int $task_id, int $student_id): ?array
 {
     $active_filter = db_column_exists($db, "student_evaluation_task", "is_active") ? "AND COALESCE(setask.is_active, 1) = 1" : "";
+    $version_select = db_column_exists($db, "student_evaluation_task", "evaluation_version_id") ? "setask.evaluation_version_id" : "NULL AS evaluation_version_id";
     $stmt = $db->prepare(
         "SELECT setask.student_evaluation_task_id,
                 setask.student_id,
                 setask.teaching_assignment_id,
                 setask.evaluation_period_id,
+                $version_select,
                 setask.task_status
          FROM student_evaluation_task setask
          WHERE setask.student_evaluation_task_id = ?
@@ -237,6 +341,7 @@ function get_task_for_student(mysqli $db, int $task_id, int $student_id): ?array
     $stmt->close();
     return $task ?: null;
 }
+
 
 function load_saved_response(mysqli $db, int $task_id, int $student_id): array
 {
@@ -324,7 +429,8 @@ function save_student_response(mysqli $db, int $student_id, int $task_id, array 
 
     $period_id = (int) $task["evaluation_period_id"];
     $teaching_assignment_id = (int) $task["teaching_assignment_id"];
-    $form_id = get_active_form_id($db, $period_id);
+    $version_id = isset($task["evaluation_version_id"]) ? (int)$task["evaluation_version_id"] : get_version_id_for_period($db, $period_id);
+    $form_id = get_active_form_id($db, $period_id, $version_id > 0 ? $version_id : null);
     if ($form_id <= 0) {
         return ["success" => false, "message" => "No active evaluation form found"];
     }
@@ -428,12 +534,21 @@ function save_student_response(mysqli $db, int $student_id, int $task_id, array 
             $stmt->close();
         } else {
             $submitted_at = $final_submit ? $now : null;
-            $stmt = $db->prepare(
-                "INSERT INTO evaluation_response
-                    (student_evaluation_task_id, student_id, teaching_assignment_id, evaluation_period_id, evaluation_form_id, response_status, total_score, average_score, submitted_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
-            );
-            $stmt->bind_param("iiiiisdds", $task_id, $student_id, $teaching_assignment_id, $period_id, $form_id, $response_status, $total_score, $average_score, $submitted_at);
+            if (db_column_exists($db, "evaluation_response", "evaluation_version_id") && $version_id > 0) {
+                $stmt = $db->prepare(
+                    "INSERT INTO evaluation_response
+                        (student_evaluation_task_id, student_id, teaching_assignment_id, evaluation_period_id, evaluation_version_id, evaluation_form_id, response_status, total_score, average_score, submitted_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                );
+                $stmt->bind_param("iiiiiisdds", $task_id, $student_id, $teaching_assignment_id, $period_id, $version_id, $form_id, $response_status, $total_score, $average_score, $submitted_at);
+            } else {
+                $stmt = $db->prepare(
+                    "INSERT INTO evaluation_response
+                        (student_evaluation_task_id, student_id, teaching_assignment_id, evaluation_period_id, evaluation_form_id, response_status, total_score, average_score, submitted_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                );
+                $stmt->bind_param("iiiiisdds", $task_id, $student_id, $teaching_assignment_id, $period_id, $form_id, $response_status, $total_score, $average_score, $submitted_at);
+            }
             $stmt->execute();
             $response_id = (int) $db->insert_id;
             $stmt->close();
@@ -789,6 +904,100 @@ function destroy_student_session(): void
     session_destroy();
 }
 
+
+function get_student_current_evaluation_context(mysqli $db, int $student_id): ?array
+{
+    $active_filter = db_column_exists($db, "student_evaluation_task", "is_active") ? "AND COALESCE(setask.is_active, 1) = 1" : "";
+    $access_order = db_column_exists($db, "student_evaluation_task", "evaluation_access_status") ? "CASE WHEN setask.evaluation_access_status = 'Open' THEN 0 ELSE 1 END," : "";
+
+    $sql = "SELECT
+                ev.evaluation_version_id,
+                ev.version_code,
+                ev.version_name,
+                ev.evaluation_form_id,
+                ep.evaluation_period_id,
+                ep.term_id,
+                ep.period_name,
+                ep.period_status,
+                t.term_name,
+                ay.academic_year_name
+            FROM student_evaluation_task setask
+            JOIN evaluation_period ep
+                ON ep.evaluation_period_id = setask.evaluation_period_id
+            JOIN evaluation_version ev
+                ON ev.evaluation_period_id = ep.evaluation_period_id
+            JOIN term t
+                ON t.term_id = ep.term_id
+            JOIN academic_year ay
+                ON ay.academic_year_id = t.academic_year_id
+            WHERE setask.student_id = ?
+              AND setask.task_status <> 'Reset'
+              $active_filter
+            ORDER BY
+              $access_order
+              CASE WHEN ep.period_status IN ('Open','Ongoing') THEN 0 ELSE 1 END,
+              ep.evaluation_period_id DESC,
+              setask.student_evaluation_task_id DESC
+            LIMIT 1";
+    $row = fetch_one($db, $sql, "i", [$student_id]);
+    if ($row) {
+        return $row;
+    }
+
+    $scopeSql = "SELECT
+                    ev.evaluation_version_id,
+                    ev.version_code,
+                    ev.version_name,
+                    ev.evaluation_form_id,
+                    ep.evaluation_period_id,
+                    ep.term_id,
+                    ep.period_name,
+                    ep.period_status,
+                    t.term_name,
+                    ay.academic_year_name
+                FROM evaluation_period_scope eps
+                JOIN evaluation_version ev
+                    ON ev.evaluation_period_id = eps.evaluation_period_id
+                JOIN evaluation_period ep
+                    ON ep.evaluation_period_id = eps.evaluation_period_id
+                JOIN term t
+                    ON t.term_id = ep.term_id
+                JOIN academic_year ay
+                    ON ay.academic_year_id = t.academic_year_id
+                WHERE eps.scope_status = 'Active'
+                  AND ep.period_status IN ('Open','Ongoing')
+                  AND EXISTS (
+                    SELECT 1
+                    FROM student_section_enrollment sse
+                    JOIN section sec
+                        ON sec.section_id = sse.section_id
+                    JOIN course c
+                        ON c.course_id = sec.course_id
+                    WHERE sse.student_id = ?
+                      AND sse.term_id = ep.term_id
+                      AND sse.enrollment_status = 'Active'
+                      AND (
+                          eps.scope_type = 'All'
+                          OR (eps.scope_type = 'Department' AND eps.department_id = c.department_id)
+                          OR (eps.scope_type = 'Course' AND eps.course_id = c.course_id)
+                          OR (eps.scope_type = 'Year Level' AND eps.year_level = sec.year_level)
+                          OR (eps.scope_type = 'Section' AND eps.section_id = sec.section_id)
+                      )
+                  )
+                ORDER BY ep.evaluation_period_id DESC, eps.evaluation_period_scope_id DESC
+                LIMIT 1";
+    $row = fetch_one($db, $scopeSql, "i", [$student_id]);
+    if ($row) {
+        generate_student_evaluation_tasks($db, $student_id, (int)$row['evaluation_period_id']);
+        backfill_student_task_version($db, $student_id, (int)$row['evaluation_period_id']);
+        return $row;
+    }
+
+    return null;
+}
+
+ensure_student_version_support($db);
+
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"])) {
     $post_action = $_POST["action"];
 
@@ -944,37 +1153,14 @@ if (!$student_row) {
 $student_id = (int) $student_row["student_id"];
 $guidelines_accepted = false;
 
-$term_row = null;
-$stmt = $db->prepare(
-    "SELECT t.term_id, t.term_name, ay.academic_year_name
-     FROM term t
-     JOIN academic_year ay ON ay.academic_year_id = t.academic_year_id
-     WHERE t.term_status IN ('Active')
-     ORDER BY t.term_id DESC
-     LIMIT 1"
-);
-$stmt->execute();
-$result = $stmt->get_result();
-$term_row = $result->fetch_assoc();
-$stmt->close();
-
-$current_term_id = $term_row ? (int) $term_row["term_id"] : null;
-$term_label = $term_row ? $term_row["term_name"] . " • " . $term_row["academic_year_name"] : "Current Semester";
-
-$active_period = null;
-$stmt_ap = $db->prepare(
-    "SELECT ep.evaluation_period_id, ep.period_name, ep.term_id
-     FROM evaluation_period ep
-     WHERE ep.period_status IN ('Open', 'Ongoing')
-     ORDER BY ep.evaluation_period_id DESC
-     LIMIT 1"
-);
-$stmt_ap->execute();
-$active_period = $stmt_ap->get_result()->fetch_assoc();
-$stmt_ap->close();
-
-
-$current_period_id = $active_period ? (int) $active_period["evaluation_period_id"] : null;
+$student_eval_context = get_student_current_evaluation_context($db, $student_id);
+$current_period_id = $student_eval_context ? (int)$student_eval_context["evaluation_period_id"] : null;
+$current_version_id = $student_eval_context ? (int)$student_eval_context["evaluation_version_id"] : null;
+$current_form_id = $student_eval_context ? (int)$student_eval_context["evaluation_form_id"] : 0;
+$current_term_id = $student_eval_context ? (int)$student_eval_context["term_id"] : null;
+$term_label = $student_eval_context
+    ? $student_eval_context["term_name"] . " • " . $student_eval_context["academic_year_name"]
+    : "No Active Evaluation";
 
 if ($current_period_id) {
     $ga_chk = $db->prepare("SELECT guideline_acceptance_id FROM guideline_acceptance WHERE student_id = ? AND evaluation_period_id = ? LIMIT 1");
@@ -993,6 +1179,9 @@ if ($current_period_id) {
 
     $has_active = db_column_exists($db, "student_evaluation_task", "is_active");
     $active_filter = $has_active ? "AND COALESCE(setask.is_active, 1) = 1" : "";
+    $has_task_version = db_column_exists($db, "student_evaluation_task", "evaluation_version_id");
+    $version_filter = ($has_task_version && $current_version_id) ? "AND setask.evaluation_version_id = ?" : "";
+    $access_filter = db_column_exists($db, "student_evaluation_task", "evaluation_access_status") ? "AND (setask.evaluation_access_status = 'Open' OR setask.task_status IN ('Submitted','Draft'))" : "";
 
     $stmt = $db->prepare(
         "SELECT
@@ -1032,11 +1221,17 @@ if ($current_period_id) {
           AND er.response_status <> 'Voided'
          WHERE setask.student_id = ?
            AND setask.evaluation_period_id = ?
+           $version_filter
            AND setask.task_status <> 'Reset'
            $active_filter
+           $access_filter
          ORDER BY subj.subject_code ASC, f.full_name ASC, setask.student_evaluation_task_id ASC"
     );
-    $stmt->bind_param("ii", $student_id, $current_period_id);
+    if ($has_task_version && $current_version_id) {
+        $stmt->bind_param("iii", $student_id, $current_period_id, $current_version_id);
+    } else {
+        $stmt->bind_param("ii", $student_id, $current_period_id);
+    }
     $stmt->execute();
     $result = $stmt->get_result();
     while ($row = $result->fetch_assoc()) {
@@ -1063,7 +1258,7 @@ foreach ($assigned_teachers as $t) {
 $pending_count = max($draft_count + $pending_task_count, 0);
 
 $eval_form_items = [];
-if ($current_period_id) {
+if ($current_period_id && $current_form_id > 0) {
     $stmt = $db->prepare(
         "SELECT
             efi.evaluation_form_item_id,
@@ -1075,12 +1270,11 @@ if ($current_period_id) {
          JOIN evaluation_form_category efc ON efc.evaluation_form_category_id = efi.evaluation_form_category_id
          JOIN evaluation_category ec ON ec.evaluation_category_id = efc.evaluation_category_id
          JOIN evaluation_form ef ON ef.evaluation_form_id = efc.evaluation_form_id
-         WHERE ef.evaluation_period_id = ?
-           AND ef.form_status = 'Active'
+         WHERE ef.evaluation_form_id = ?
            AND efi.form_item_status = 'Active'
          ORDER BY efc.display_order ASC, efi.display_order ASC"
     );
-    $stmt->bind_param("i", $current_period_id);
+    $stmt->bind_param("i", $current_form_id);
     $stmt->execute();
     $result = $stmt->get_result();
     while ($row = $result->fetch_assoc()) {

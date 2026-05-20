@@ -1687,3 +1687,162 @@ button {
     width: calc(100vw - 32px);
   }
 }
+
+/* Evaluation Version Card */
+.version-card {
+  padding: 26px;
+}
+
+.version-header-row .section-title {
+  align-items: flex-start;
+}
+
+.version-header-row .section-title p {
+  color: #64748b;
+  font-size: 16px;
+  margin-top: 6px;
+  line-height: 1.45;
+}
+
+.version-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 1.1fr) minmax(360px, 1.5fr) auto;
+  gap: 18px;
+  align-items: end;
+  margin-top: 22px;
+}
+
+.version-summary-panel {
+  height: 58px;
+  min-height: 58px;
+  border: 1px solid #d8dce2;
+  border-radius: 8px;
+  background: #f9fafb;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  overflow: hidden;
+}
+
+.version-summary-text {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.version-summary-panel strong {
+  color: #071226;
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.version-summary-panel p {
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.version-action-panel {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.version-action-panel form {
+  display: inline-flex;
+}
+
+.version-status-badge {
+  flex: 0 0 auto;
+  min-height: 28px;
+  border-radius: 999px;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-transform: lowercase;
+  white-space: nowrap;
+}
+
+.version-status-badge.active {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.version-status-badge.draft {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.version-status-badge.archived {
+  background: #ffedd5;
+  color: #ea580c;
+}
+
+.archive-version-button {
+  color: #ea580c;
+}
+
+.archive-version-button:hover {
+  background: #ffedd5;
+  color: #c2410c;
+  border-color: #fed7aa;
+}
+
+.version-form-modal {
+  max-width: 840px;
+}
+
+.version-details-grid {
+  grid-template-columns: 1fr 1fr;
+}
+
+.version-details-grid .detail-full {
+  grid-column: span 2;
+}
+
+@media (max-width: 1280px) {
+  .version-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .version-action-panel {
+    grid-column: span 2;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 900px) {
+  .version-grid,
+  .version-details-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .version-action-panel,
+  .version-details-grid .detail-full {
+    grid-column: span 1;
+  }
+
+  .version-action-panel {
+    align-items: stretch;
+  }
+
+  .version-action-panel .secondary-button,
+  .version-action-panel form,
+  .version-action-panel form button {
+    width: 100%;
+  }
+}
