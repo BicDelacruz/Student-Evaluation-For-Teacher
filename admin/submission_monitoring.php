@@ -278,17 +278,108 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     }
 }
 
-$currentPeriod = get_current_period($db);
-$currentPeriodId = (int)($currentPeriod["evaluation_period_id"] ?? 0);
-$currentTermId = (int)($currentPeriod["term_id"] ?? 0);
-
+$hasEvaluationVersion = db_table_exists($db, "evaluation_version");
 $hasTaskTeachingAssignment = db_column_exists($db, "student_evaluation_task", "teaching_assignment_id");
 $hasTaskIsActive = db_column_exists($db, "student_evaluation_task", "is_active");
 $hasTaskAttemptNo = db_column_exists($db, "student_evaluation_task", "attempt_no");
+$hasTaskVersion = db_column_exists($db, "student_evaluation_task", "evaluation_version_id");
+$hasResponseVersion = db_column_exists($db, "evaluation_response", "evaluation_version_id");
+$hasScopeVersion = db_column_exists($db, "evaluation_period_scope", "evaluation_version_id");
 $hasEvalPeriodScope = db_table_exists($db, "evaluation_period_scope");
+
+$evaluationVersions = [];
+if ($hasEvaluationVersion) {
+    $evaluationVersions = fetch_all($db, "
+        SELECT
+            ev.evaluation_version_id,
+            ev.version_code,
+            ev.version_name,
+            ev.version_status,
+            ev.is_default,
+            ev.evaluation_period_id,
+            ev.evaluation_form_id,
+            ep.period_name,
+            ep.term_id,
+            ep.start_date,
+            ep.end_date,
+            ep.period_status,
+            t.term_name,
+            ay.academic_year_id,
+            ay.academic_year_name
+        FROM evaluation_version ev
+        INNER JOIN evaluation_period ep
+            ON ep.evaluation_period_id = ev.evaluation_period_id
+        LEFT JOIN term t
+            ON t.term_id = ep.term_id
+        LEFT JOIN academic_year ay
+            ON ay.academic_year_id = t.academic_year_id
+        WHERE ev.version_status <> 'Archived'
+        ORDER BY
+            CASE ep.period_status
+                WHEN 'Open' THEN 1
+                WHEN 'Ongoing' THEN 2
+                WHEN 'Draft' THEN 3
+                WHEN 'Closed' THEN 4
+                ELSE 5
+            END,
+            ev.is_default DESC,
+            ev.evaluation_version_id DESC
+    ");
+}
+
+$requestedVersionId = (int)($_GET["evaluation_version_id"] ?? 0);
+$currentVersion = null;
+if ($requestedVersionId > 0) {
+    foreach ($evaluationVersions as $version) {
+        if ((int)$version["evaluation_version_id"] === $requestedVersionId) {
+            $currentVersion = $version;
+            break;
+        }
+    }
+}
+if (!$currentVersion && $evaluationVersions) {
+    foreach ($evaluationVersions as $version) {
+        if (in_array((string)$version["period_status"], ["Open", "Ongoing"], true) && (string)$version["version_status"] === "Active") {
+            $currentVersion = $version;
+            break;
+        }
+    }
+}
+if (!$currentVersion && $evaluationVersions) {
+    foreach ($evaluationVersions as $version) {
+        if ((int)$version["is_default"] === 1) {
+            $currentVersion = $version;
+            break;
+        }
+    }
+}
+if (!$currentVersion && $evaluationVersions) {
+    $currentVersion = $evaluationVersions[0];
+}
+
+$currentPeriod = null;
+$currentVersionId = (int)($currentVersion["evaluation_version_id"] ?? 0);
+if ($currentVersion) {
+    $currentPeriod = [
+        "evaluation_period_id" => (int)$currentVersion["evaluation_period_id"],
+        "term_id" => (int)$currentVersion["term_id"],
+        "period_name" => $currentVersion["period_name"],
+        "start_date" => $currentVersion["start_date"],
+        "end_date" => $currentVersion["end_date"],
+        "period_status" => $currentVersion["period_status"],
+        "term_name" => $currentVersion["term_name"],
+        "academic_year_id" => (int)$currentVersion["academic_year_id"],
+        "academic_year_name" => $currentVersion["academic_year_name"],
+    ];
+} else {
+    $currentPeriod = get_current_period($db);
+}
+$currentPeriodId = (int)($currentPeriod["evaluation_period_id"] ?? 0);
+$currentTermId = (int)($currentPeriod["term_id"] ?? 0);
 
 $filters = [
     "search" => trim((string)($_GET["search"] ?? "")),
+    "evaluation_version_id" => $currentVersionId,
     "department_id" => (int)($_GET["department_id"] ?? 0),
     "course_id" => (int)($_GET["course_id"] ?? 0),
     "year_level" => (int)($_GET["year_level"] ?? 0),
@@ -310,278 +401,251 @@ $academicYears = fetch_all($db, "SELECT academic_year_id, academic_year_name FRO
 $semesters = fetch_all($db, "SELECT DISTINCT term_name FROM term ORDER BY FIELD(term_name, 'First Semester', 'Second Semester', 'Summer')");
 
 $activeScopes = [];
-if ($hasEvalPeriodScope) {
+if ($hasEvalPeriodScope && $currentPeriodId > 0) {
+    $scopeVersionCondition = ($hasScopeVersion && $currentVersionId > 0)
+        ? "AND (eps.evaluation_version_id = ? OR eps.evaluation_version_id IS NULL)"
+        : "";
+    $scopeTypes = ($hasScopeVersion && $currentVersionId > 0) ? "ii" : "i";
+    $scopeParams = ($hasScopeVersion && $currentVersionId > 0) ? [$currentPeriodId, $currentVersionId] : [$currentPeriodId];
     $activeScopes = fetch_all($db, "
         SELECT eps.*
         FROM evaluation_period_scope eps
         INNER JOIN evaluation_period ep ON ep.evaluation_period_id = eps.evaluation_period_id
         WHERE eps.scope_status = 'Active'
           AND ep.period_status IN ('Open', 'Ongoing')
+          AND eps.evaluation_period_id = ?
+          $scopeVersionCondition
         ORDER BY eps.opened_at DESC, eps.evaluation_period_scope_id DESC
-    ");
-}
-
-$studentRows = fetch_all($db, "
-    SELECT
-        s.student_id,
-        s.student_number,
-        s.full_name,
-        s.first_name,
-        s.middle_name,
-        s.last_name,
-        COALESCE(sec.section_id, s.current_section_id, 0) AS section_id,
-        COALESCE(sec.section_name, 'Not assigned') AS section_name,
-        COALESCE(sec.year_level, s.current_year_level, 0) AS year_level_number,
-        COALESCE(active_course.course_id, base_course.course_id, 0) AS course_id,
-        COALESCE(active_course.course_code, base_course.course_code, '') AS course_code,
-        COALESCE(active_course.course_name, base_course.course_name, 'Not assigned') AS course_name,
-        COALESCE(active_department.department_id, base_department.department_id, 0) AS department_id,
-        COALESCE(active_department.department_name, base_department.department_name, 'Not assigned') AS department_name,
-        COALESCE(active_term.term_id, sse.term_id, sec.term_id, 0) AS term_id,
-        COALESCE(active_term.term_name, 'Not assigned') AS term_name,
-        COALESCE(active_year.academic_year_id, s.academic_year_id, 0) AS academic_year_id,
-        COALESCE(active_year.academic_year_name, 'Not assigned') AS academic_year_name
-    FROM student s
-    LEFT JOIN student_section_enrollment sse
-        ON sse.student_section_enrollment_id = (
-            SELECT sse2.student_section_enrollment_id
-            FROM student_section_enrollment sse2
-            WHERE sse2.student_id = s.student_id
-              AND sse2.enrollment_status = 'Active'
-            ORDER BY sse2.student_section_enrollment_id DESC
-            LIMIT 1
-        )
-    LEFT JOIN section sec
-        ON sec.section_id = COALESCE(sse.section_id, s.current_section_id)
-    LEFT JOIN course base_course
-        ON base_course.course_id = s.course_id
-    LEFT JOIN course active_course
-        ON active_course.course_id = COALESCE(sec.course_id, s.course_id)
-    LEFT JOIN department base_department
-        ON base_department.department_id = base_course.department_id
-    LEFT JOIN department active_department
-        ON active_department.department_id = active_course.department_id
-    LEFT JOIN term active_term
-        ON active_term.term_id = COALESCE(sse.term_id, sec.term_id)
-    LEFT JOIN academic_year active_year
-        ON active_year.academic_year_id = COALESCE(sec.academic_year_id, s.academic_year_id, active_term.academic_year_id)
-    WHERE s.student_status = 'Active'
-    ORDER BY s.last_name, s.first_name, s.student_number
-");
-
-$studentIds = array_map(static fn($row) => (int)$row["student_id"], $studentRows);
-$taskStats = [];
-$responseStats = [];
-$evaluatedDetails = [];
-$pendingAssignments = [];
-
-if ($studentIds) {
-    $idPlaceholders = implode(",", array_fill(0, count($studentIds), "?"));
-    $idTypes = str_repeat("i", count($studentIds));
-
-    if ($currentPeriodId > 0) {
-        $activeTaskCondition = $hasTaskIsActive ? "AND setask.is_active = 1" : "";
-        $taskRows = fetch_all($db, "
-            SELECT
-                setask.student_id,
-                COUNT(DISTINCT setask.student_evaluation_task_id) AS task_count,
-                COUNT(DISTINCT CASE WHEN setask.task_status = 'Submitted' THEN setask.student_evaluation_task_id END) AS submitted_task_count,
-                COUNT(DISTINCT CASE WHEN setask.task_status IN ('Pending', 'Draft') THEN setask.student_evaluation_task_id END) AS unfinished_task_count,
-                MAX(setask.submitted_at) AS latest_submitted_at
-            FROM student_evaluation_task setask
-            WHERE setask.evaluation_period_id = ?
-              AND setask.task_status <> 'Reset'
-              $activeTaskCondition
-              AND setask.student_id IN ($idPlaceholders)
-            GROUP BY setask.student_id
-        ", "i" . $idTypes, array_merge([$currentPeriodId], $studentIds));
-        foreach ($taskRows as $row) {
-            $taskStats[(int)$row["student_id"]] = $row;
-        }
-
-        $responseRows = fetch_all($db, "
-            SELECT
-                er.student_id,
-                COUNT(DISTINCT er.evaluation_response_id) AS response_count,
-                AVG(er.average_score) AS average_rating,
-                MAX(er.submitted_at) AS latest_response_submitted_at
-            FROM evaluation_response er
-            WHERE er.evaluation_period_id = ?
-              AND er.response_status = 'Submitted'
-              AND er.student_id IN ($idPlaceholders)
-            GROUP BY er.student_id
-        ", "i" . $idTypes, array_merge([$currentPeriodId], $studentIds));
-        foreach ($responseRows as $row) {
-            $responseStats[(int)$row["student_id"]] = $row;
-        }
-
-        $detailsRows = fetch_all($db, "
-            SELECT
-                er.student_id,
-                er.evaluation_response_id,
-                er.average_score,
-                er.total_score,
-                er.submitted_at,
-                subj.subject_code,
-                subj.subject_title,
-                COALESCE(f.full_name, CONCAT_WS(' ', f.first_name, f.middle_name, f.last_name), 'Not assigned') AS faculty_name,
-                COALESCE(erc.comment_text, '') AS comment_text
-            FROM evaluation_response er
-            INNER JOIN teaching_assignment ta
-                ON ta.teaching_assignment_id = er.teaching_assignment_id
-            INNER JOIN section_subject_offering sso
-                ON sso.section_subject_offering_id = ta.section_subject_offering_id
-            INNER JOIN subject subj
-                ON subj.subject_id = sso.subject_id
-            INNER JOIN faculty f
-                ON f.faculty_id = ta.faculty_id
-            LEFT JOIN evaluation_response_comment erc
-                ON erc.evaluation_response_id = er.evaluation_response_id
-            WHERE er.evaluation_period_id = ?
-              AND er.response_status = 'Submitted'
-              AND er.student_id IN ($idPlaceholders)
-            ORDER BY er.student_id, subj.subject_code, subj.subject_title
-        ", "i" . $idTypes, array_merge([$currentPeriodId], $studentIds));
-        foreach ($detailsRows as $row) {
-            $evaluatedDetails[(int)$row["student_id"]][] = $row;
-        }
-
-        $pendingJoinTask = "";
-        $pendingSelectStatus = "'Pending' AS task_status";
-        if ($hasTaskTeachingAssignment) {
-            $pendingJoinTask = "
-                LEFT JOIN student_evaluation_task setask
-                    ON setask.student_id = s.student_id
-                   AND setask.evaluation_period_id = ?
-                   AND setask.teaching_assignment_id = ta.teaching_assignment_id
-                   AND setask.task_status <> 'Reset'
-            ";
-            $pendingSelectStatus = "COALESCE(setask.task_status, 'Pending') AS task_status";
-        }
-
-        $pendingParams = $hasTaskTeachingAssignment ? array_merge([$currentTermId, $currentPeriodId], $studentIds) : array_merge([$currentTermId], $studentIds);
-        $pendingTypes = ($hasTaskTeachingAssignment ? "ii" : "i") . $idTypes;
-        $pendingRows = fetch_all($db, "
-            SELECT DISTINCT
-                s.student_id,
-                ta.teaching_assignment_id,
-                subj.subject_code,
-                subj.subject_title,
-                COALESCE(f.full_name, CONCAT_WS(' ', f.first_name, f.middle_name, f.last_name), 'Not assigned') AS faculty_name,
-                $pendingSelectStatus
-            FROM student s
-            LEFT JOIN student_section_enrollment sse
-                ON sse.student_section_enrollment_id = (
-                    SELECT sse2.student_section_enrollment_id
-                    FROM student_section_enrollment sse2
-                    WHERE sse2.student_id = s.student_id
-                      AND sse2.enrollment_status = 'Active'
-                    ORDER BY sse2.student_section_enrollment_id DESC
-                    LIMIT 1
-                )
-            INNER JOIN section sec
-                ON sec.section_id = COALESCE(sse.section_id, s.current_section_id)
-            INNER JOIN section_subject_offering sso
-                ON sso.section_id = sec.section_id
-               AND sso.offering_status = 'Active'
-               AND sso.term_id = ?
-            INNER JOIN subject subj
-                ON subj.subject_id = sso.subject_id
-               AND subj.subject_status = 'Active'
-            INNER JOIN teaching_assignment ta
-                ON ta.section_subject_offering_id = sso.section_subject_offering_id
-               AND ta.assignment_status = 'Active'
-            INNER JOIN faculty f
-                ON f.faculty_id = ta.faculty_id
-            $pendingJoinTask
-            WHERE s.student_id IN ($idPlaceholders)
-            ORDER BY s.student_id, subj.subject_code, subj.subject_title
-        ", $pendingTypes, $pendingParams);
-        foreach ($pendingRows as $row) {
-            $pendingAssignments[(int)$row["student_id"]][] = $row;
-        }
-    }
+    ", $scopeTypes, $scopeParams);
 }
 
 $records = [];
-foreach ($studentRows as $student) {
-    $studentId = (int)$student["student_id"];
-    $tasks = $taskStats[$studentId] ?? [
-        "task_count" => 0,
-        "submitted_task_count" => 0,
-        "unfinished_task_count" => 0,
-        "latest_submitted_at" => null,
-    ];
-    $responses = $responseStats[$studentId] ?? [
-        "response_count" => 0,
-        "average_rating" => null,
-        "latest_response_submitted_at" => null,
-    ];
+$evaluatedDetails = [];
+$pendingAssignments = [];
 
-    $taskCount = (int)($tasks["task_count"] ?? 0);
-    $submittedTaskCount = (int)($tasks["submitted_task_count"] ?? 0);
-    $responseCount = (int)($responses["response_count"] ?? 0);
-    $isCompleted = $taskCount > 0 && $submittedTaskCount >= $taskCount;
-    if (!$isCompleted && $taskCount === 0 && $responseCount > 0) {
-        $isCompleted = true;
+if ($currentPeriodId > 0) {
+    $activeTaskCondition = $hasTaskIsActive ? "AND setask.is_active = 1" : "";
+    $taskVersionCondition = ($hasTaskVersion && $currentVersionId > 0)
+        ? "setask.evaluation_version_id = ?"
+        : "setask.evaluation_period_id = ?";
+    $taskContextId = ($hasTaskVersion && $currentVersionId > 0) ? $currentVersionId : $currentPeriodId;
+    $responseVersionJoin = ($hasResponseVersion && $hasTaskVersion && $currentVersionId > 0)
+        ? "AND er.evaluation_version_id = setask.evaluation_version_id"
+        : "AND er.evaluation_period_id = setask.evaluation_period_id";
+
+    $monitorRows = fetch_all($db, "
+        SELECT
+            s.student_id,
+            s.student_number,
+            s.full_name,
+            COALESCE(sec.section_id, s.current_section_id, 0) AS section_id,
+            COALESCE(sec.section_name, 'Not assigned') AS section_name,
+            COALESCE(sec.year_level, s.current_year_level, 0) AS year_level_number,
+            COALESCE(c.course_id, s.course_id, 0) AS course_id,
+            COALESCE(c.course_code, '') AS course_code,
+            COALESCE(c.course_name, 'Not assigned') AS course_name,
+            COALESCE(d.department_id, 0) AS department_id,
+            COALESCE(d.department_name, 'Not assigned') AS department_name,
+            COALESCE(t.term_id, 0) AS term_id,
+            COALESCE(t.term_name, 'Not assigned') AS term_name,
+            COALESCE(ay.academic_year_id, 0) AS academic_year_id,
+            COALESCE(ay.academic_year_name, 'Not assigned') AS academic_year_name,
+            COUNT(DISTINCT setask.student_evaluation_task_id) AS task_count,
+            COUNT(DISTINCT CASE
+                WHEN setask.task_status = 'Submitted' OR er.evaluation_response_id IS NOT NULL
+                THEN setask.student_evaluation_task_id
+            END) AS submitted_task_count,
+            COUNT(DISTINCT CASE
+                WHEN NOT (setask.task_status = 'Submitted' OR er.evaluation_response_id IS NOT NULL)
+                THEN setask.student_evaluation_task_id
+            END) AS unfinished_task_count,
+            COUNT(DISTINCT er.evaluation_response_id) AS response_count,
+            AVG(er.average_score) AS average_rating,
+            MAX(COALESCE(er.submitted_at, setask.submitted_at)) AS latest_submitted_at,
+            CASE
+                WHEN SUM(CASE WHEN setask.evaluation_access_status = 'Open' THEN 1 ELSE 0 END) > 0
+                THEN 'Open'
+                ELSE 'Closed'
+            END AS evaluation_access
+        FROM student_evaluation_task setask
+        INNER JOIN student s
+            ON s.student_id = setask.student_id
+        INNER JOIN evaluation_period ep
+            ON ep.evaluation_period_id = setask.evaluation_period_id
+        LEFT JOIN term t
+            ON t.term_id = ep.term_id
+        LEFT JOIN academic_year ay
+            ON ay.academic_year_id = t.academic_year_id
+        INNER JOIN teaching_assignment ta
+            ON ta.teaching_assignment_id = setask.teaching_assignment_id
+        INNER JOIN section_subject_offering sso
+            ON sso.section_subject_offering_id = ta.section_subject_offering_id
+        INNER JOIN section sec
+            ON sec.section_id = sso.section_id
+        INNER JOIN course c
+            ON c.course_id = sec.course_id
+        INNER JOIN department d
+            ON d.department_id = c.department_id
+        LEFT JOIN evaluation_response er
+            ON er.student_evaluation_task_id = setask.student_evaluation_task_id
+           AND er.response_status = 'Submitted'
+           $responseVersionJoin
+        WHERE $taskVersionCondition
+          AND setask.task_status <> 'Reset'
+          AND s.student_status = 'Active'
+          $activeTaskCondition
+        GROUP BY
+            s.student_id,
+            s.student_number,
+            s.full_name,
+            sec.section_id,
+            sec.section_name,
+            sec.year_level,
+            c.course_id,
+            c.course_code,
+            c.course_name,
+            d.department_id,
+            d.department_name,
+            t.term_id,
+            t.term_name,
+            ay.academic_year_id,
+            ay.academic_year_name
+        ORDER BY s.last_name, s.first_name, s.student_number
+    ", "i", [$taskContextId]);
+
+    $detailsRows = fetch_all($db, "
+        SELECT
+            setask.student_id,
+            er.evaluation_response_id,
+            er.average_score,
+            er.total_score,
+            COALESCE(er.submitted_at, setask.submitted_at) AS submitted_at,
+            subj.subject_code,
+            subj.subject_title,
+            COALESCE(f.full_name, CONCAT_WS(' ', f.first_name, f.middle_name, f.last_name), 'Not assigned') AS faculty_name,
+            COALESCE(erc.comment_text, '') AS comment_text
+        FROM student_evaluation_task setask
+        INNER JOIN evaluation_response er
+            ON er.student_evaluation_task_id = setask.student_evaluation_task_id
+           AND er.response_status = 'Submitted'
+           $responseVersionJoin
+        INNER JOIN teaching_assignment ta
+            ON ta.teaching_assignment_id = setask.teaching_assignment_id
+        INNER JOIN section_subject_offering sso
+            ON sso.section_subject_offering_id = ta.section_subject_offering_id
+        INNER JOIN subject subj
+            ON subj.subject_id = sso.subject_id
+        INNER JOIN faculty f
+            ON f.faculty_id = ta.faculty_id
+        LEFT JOIN evaluation_response_comment erc
+            ON erc.evaluation_response_id = er.evaluation_response_id
+        WHERE $taskVersionCondition
+          AND setask.task_status <> 'Reset'
+          $activeTaskCondition
+        ORDER BY setask.student_id, subj.subject_code, subj.subject_title
+    ", "i", [$taskContextId]);
+    foreach ($detailsRows as $row) {
+        $evaluatedDetails[(int)$row["student_id"]][] = $row;
     }
 
-    $status = $isCompleted ? "Completed" : "Pending";
-    $access = student_has_open_access($student, $activeScopes) ? "Open" : "Closed";
-    $submittedRaw = $responses["latest_response_submitted_at"] ?: ($tasks["latest_submitted_at"] ?? null);
+    $pendingRows = fetch_all($db, "
+        SELECT DISTINCT
+            setask.student_id,
+            ta.teaching_assignment_id,
+            subj.subject_code,
+            subj.subject_title,
+            COALESCE(f.full_name, CONCAT_WS(' ', f.first_name, f.middle_name, f.last_name), 'Not assigned') AS faculty_name,
+            CASE
+                WHEN setask.task_status = 'Submitted' OR er.evaluation_response_id IS NOT NULL THEN 'Submitted'
+                ELSE setask.task_status
+            END AS task_status
+        FROM student_evaluation_task setask
+        INNER JOIN teaching_assignment ta
+            ON ta.teaching_assignment_id = setask.teaching_assignment_id
+        INNER JOIN section_subject_offering sso
+            ON sso.section_subject_offering_id = ta.section_subject_offering_id
+        INNER JOIN subject subj
+            ON subj.subject_id = sso.subject_id
+        INNER JOIN faculty f
+            ON f.faculty_id = ta.faculty_id
+        LEFT JOIN evaluation_response er
+            ON er.student_evaluation_task_id = setask.student_evaluation_task_id
+           AND er.response_status = 'Submitted'
+           $responseVersionJoin
+        WHERE $taskVersionCondition
+          AND setask.task_status <> 'Reset'
+          $activeTaskCondition
+        ORDER BY setask.student_id, subj.subject_code, subj.subject_title
+    ", "i", [$taskContextId]);
+    foreach ($pendingRows as $row) {
+        $pendingAssignments[(int)$row["student_id"]][] = $row;
+    }
 
-    $programDisplay = trim((string)$student["course_code"] . " - " . (string)$student["course_name"], " -");
-    $record = [
-        "student_id" => $studentId,
-        "student_number" => $student["student_number"],
-        "student_name" => $student["full_name"],
-        "department_id" => (int)$student["department_id"],
-        "department_name" => $student["department_name"],
-        "course_id" => (int)$student["course_id"],
-        "course_code" => $student["course_code"],
-        "course_name" => $student["course_name"],
-        "program_display" => $programDisplay,
-        "year_level_number" => (int)$student["year_level_number"],
-        "year_level" => year_level_label($student["year_level_number"]),
-        "section_id" => (int)$student["section_id"],
-        "section_name" => $student["section_name"],
-        "academic_year_id" => (int)$student["academic_year_id"],
-        "academic_year" => $student["academic_year_name"],
-        "semester" => term_label($student["term_name"]),
-        "semester_raw" => $student["term_name"],
-        "submitted_date_raw" => $submittedRaw,
-        "submitted_date" => format_datetime_display($submittedRaw),
-        "status" => $status,
-        "evaluation_access" => $access,
-        "task_count" => $taskCount,
-        "submitted_task_count" => $submittedTaskCount,
-        "response_count" => $responseCount,
-        "average_rating" => $responses["average_rating"] !== null ? round((float)$responses["average_rating"], 2) : null,
-        "evaluated_subjects" => [],
-        "pending_subjects" => [],
-    ];
+    foreach ($monitorRows as $student) {
+        $studentId = (int)$student["student_id"];
+        $taskCount = (int)($student["task_count"] ?? 0);
+        $submittedTaskCount = (int)($student["submitted_task_count"] ?? 0);
+        $responseCount = (int)($student["response_count"] ?? 0);
+        $isCompleted = $taskCount > 0 && $submittedTaskCount >= $taskCount;
+        $status = $isCompleted ? "Completed" : "Pending";
+        $submittedRaw = $student["latest_submitted_at"] ?? null;
+        $programDisplay = trim((string)$student["course_code"] . " - " . (string)$student["course_name"], " -");
 
-    foreach ($evaluatedDetails[$studentId] ?? [] as $detail) {
-        $record["evaluated_subjects"][] = [
-            "subject" => trim($detail["subject_code"] . " - " . $detail["subject_title"], " -"),
-            "faculty" => $detail["faculty_name"],
-            "rating" => $detail["average_score"] !== null ? round((float)$detail["average_score"], 2) : null,
-            "comment" => $detail["comment_text"] ?: "No comment submitted.",
-            "submitted_at" => format_datetime_display($detail["submitted_at"]),
+        $record = [
+            "student_id" => $studentId,
+            "student_number" => $student["student_number"],
+            "student_name" => $student["full_name"],
+            "evaluation_version_id" => $currentVersionId,
+            "evaluation_version" => $currentVersion ? trim((string)$currentVersion["version_code"] . " - " . (string)$currentVersion["version_name"], " -") : "Current Evaluation",
+            "department_id" => (int)$student["department_id"],
+            "department_name" => $student["department_name"],
+            "course_id" => (int)$student["course_id"],
+            "course_code" => $student["course_code"],
+            "course_name" => $student["course_name"],
+            "program_display" => $programDisplay,
+            "year_level_number" => (int)$student["year_level_number"],
+            "year_level" => year_level_label($student["year_level_number"]),
+            "section_id" => (int)$student["section_id"],
+            "section_name" => $student["section_name"],
+            "academic_year_id" => (int)$student["academic_year_id"],
+            "academic_year" => $student["academic_year_name"],
+            "semester" => term_label($student["term_name"]),
+            "semester_raw" => $student["term_name"],
+            "submitted_date_raw" => $submittedRaw,
+            "submitted_date" => format_datetime_display($submittedRaw),
+            "status" => $status,
+            "evaluation_access" => $student["evaluation_access"] ?: "Closed",
+            "task_count" => $taskCount,
+            "submitted_task_count" => $submittedTaskCount,
+            "response_count" => $responseCount,
+            "average_rating" => $student["average_rating"] !== null ? round((float)$student["average_rating"], 2) : null,
+            "evaluated_subjects" => [],
+            "pending_subjects" => [],
         ];
-    }
-    foreach ($pendingAssignments[$studentId] ?? [] as $assignment) {
-        if (strtolower((string)$assignment["task_status"]) === "submitted") {
-            continue;
+
+        foreach ($evaluatedDetails[$studentId] ?? [] as $detail) {
+            $record["evaluated_subjects"][] = [
+                "subject" => trim($detail["subject_code"] . " - " . $detail["subject_title"], " -"),
+                "faculty" => $detail["faculty_name"],
+                "rating" => $detail["average_score"] !== null ? round((float)$detail["average_score"], 2) : null,
+                "comment" => $detail["comment_text"] ?: "No comment submitted.",
+                "submitted_at" => format_datetime_display($detail["submitted_at"]),
+            ];
         }
-        $record["pending_subjects"][] = [
-            "subject" => trim($assignment["subject_code"] . " - " . $assignment["subject_title"], " -"),
-            "faculty" => $assignment["faculty_name"],
-            "status" => $assignment["task_status"] ?: "Pending",
-        ];
-    }
 
-    $records[] = $record;
+        foreach ($pendingAssignments[$studentId] ?? [] as $assignment) {
+            if (strtolower((string)$assignment["task_status"]) === "submitted") {
+                continue;
+            }
+            $record["pending_subjects"][] = [
+                "subject" => trim($assignment["subject_code"] . " - " . $assignment["subject_title"], " -"),
+                "faculty" => $assignment["faculty_name"],
+                "status" => $assignment["task_status"] ?: "Pending",
+            ];
+        }
+
+        $records[] = $record;
+    }
 }
 
 $allRecords = $records;
@@ -623,6 +687,7 @@ $filteredRecords = array_values(array_filter($records, function (array $record) 
             $record["section_name"],
             $record["academic_year"],
             $record["semester"],
+            $record["evaluation_version"] ?? "",
             $record["status"],
             $record["evaluation_access"],
         ]));
@@ -640,18 +705,19 @@ $pendingAll = count(array_filter($allRecords, static fn($r) => $r["status"] === 
 $totalFiltered = count($filteredRecords);
 $completedFiltered = count(array_filter($filteredRecords, static fn($r) => $r["status"] === "Completed"));
 $pendingFiltered = count(array_filter($filteredRecords, static fn($r) => $r["status"] === "Pending"));
-$totalResponses = $completedFiltered;
+$totalResponses = array_sum(array_map(static fn($r) => (int)($r["response_count"] ?? 0), $filteredRecords));
 $participationRate = $totalFiltered > 0 ? round(($completedFiltered / $totalFiltered) * 100, 1) : 0.0;
 
 if (($_GET["export"] ?? "") === "csv") {
     header("Content-Type: text/csv; charset=utf-8");
     header("Content-Disposition: attachment; filename=submission_monitoring_export_" . date("Ymd_His") . ".csv");
-    $headers = ["Student ID", "Student Name", "Program", "Year Level", "Section", "Academic Year", "Semester", "Submitted Date", "Status", "Evaluation Access", "Average Rating"];
+    $headers = ["Student ID", "Student Name", "Evaluation Version", "Program", "Year Level", "Section", "Academic Year", "Semester", "Submitted Date", "Status", "Evaluation Access", "Average Rating"];
     echo implode(",", array_map("csv_escape", $headers)) . "\n";
     foreach ($filteredRecords as $record) {
         $line = [
             $record["student_number"],
             $record["student_name"],
+            $record["evaluation_version"] ?? "",
             $record["program_display"],
             $record["year_level"],
             $record["section_name"],
@@ -814,7 +880,7 @@ $logout_role_label = current_admin_label();
                 <?php if ($currentPeriod): ?>
                     <div class="period-chip">
                         <strong><?php echo e(term_label($currentPeriod["term_name"] ?? "")); ?></strong>
-                        <span><?php echo e($currentPeriod["academic_year_name"] ?? ""); ?></span>
+                        <span><?php echo e(($currentVersion["version_code"] ?? "") ? (($currentVersion["version_code"] ?? "") . " • " . ($currentPeriod["academic_year_name"] ?? "")) : ($currentPeriod["academic_year_name"] ?? "")); ?></span>
                     </div>
                 <?php endif; ?>
             </div>
@@ -890,6 +956,21 @@ $logout_role_label = current_admin_label();
                     </div>
 
                     <div class="filter-grid filter-grid-eight">
+                        <?php if ($evaluationVersions): ?>
+                            <div>
+                                <label for="evaluationVersionFilter">Evaluation Version</label>
+                                <select id="evaluationVersionFilter" name="evaluation_version_id">
+                                    <?php foreach ($evaluationVersions as $version): ?>
+                                        <?php
+                                            $versionLabel = trim((string)$version["version_code"] . " - " . (string)$version["version_name"], " -");
+                                            $versionLabel .= " (" . term_label($version["term_name"] ?? "") . " " . ($version["academic_year_name"] ?? "") . ")";
+                                        ?>
+                                        <option value="<?php echo (int)$version["evaluation_version_id"]; ?>" <?php echo $currentVersionId === (int)$version["evaluation_version_id"] ? "selected" : ""; ?>><?php echo e($versionLabel); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        <?php endif; ?>
+
                         <div>
                             <label for="departmentFilter">College</label>
                             <select id="departmentFilter" name="department_id">

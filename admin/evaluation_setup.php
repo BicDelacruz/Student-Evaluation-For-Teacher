@@ -25,6 +25,10 @@ function json_safe($value): string
 function redirect_self(array $params = []): void
 {
     $base = basename(__FILE__);
+    $versionId = (int)($_POST["version_id"] ?? $_GET["version_id"] ?? $_SESSION["evaluation_setup_version_id"] ?? 0);
+    if ($versionId > 0 && !isset($params["version_id"])) {
+        $params["version_id"] = $versionId;
+    }
     $query = $params ? "?" . http_build_query($params) : "";
     header("Location: " . $base . $query);
     exit;
@@ -226,6 +230,86 @@ function ensure_support_tables(mysqli $db): void
     if (db_table_exists($db, 'student_evaluation_task') && !db_column_exists($db, 'student_evaluation_task', 'evaluation_access_status')) {
         $db->query("ALTER TABLE student_evaluation_task ADD COLUMN evaluation_access_status ENUM('Open','Closed') NOT NULL DEFAULT 'Closed' AFTER task_status");
     }
+
+    $db->query("CREATE TABLE IF NOT EXISTS evaluation_version (
+        evaluation_version_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        version_code VARCHAR(30) NOT NULL,
+        version_name VARCHAR(150) NOT NULL,
+        version_description TEXT NULL,
+        evaluation_period_id BIGINT UNSIGNED NOT NULL,
+        evaluation_form_id BIGINT UNSIGNED NOT NULL,
+        version_status ENUM('Draft','Active','Archived') NOT NULL DEFAULT 'Draft',
+        is_default TINYINT(1) NOT NULL DEFAULT 0,
+        created_by_admin_id BIGINT UNSIGNED NULL,
+        archived_by_admin_id BIGINT UNSIGNED NULL,
+        archived_at DATETIME NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (evaluation_version_id),
+        UNIQUE KEY uq_eval_version_code (version_code),
+        UNIQUE KEY uq_eval_version_period (evaluation_period_id),
+        UNIQUE KEY uq_eval_version_form (evaluation_form_id),
+        KEY idx_eval_version_status_default (version_status, is_default),
+        KEY fk_eval_version_created_admin (created_by_admin_id),
+        KEY fk_eval_version_archived_admin (archived_by_admin_id),
+        CONSTRAINT fk_eval_version_period FOREIGN KEY (evaluation_period_id) REFERENCES evaluation_period (evaluation_period_id) ON UPDATE CASCADE,
+        CONSTRAINT fk_eval_version_form FOREIGN KEY (evaluation_form_id) REFERENCES evaluation_form (evaluation_form_id) ON UPDATE CASCADE,
+        CONSTRAINT fk_eval_version_created_admin FOREIGN KEY (created_by_admin_id) REFERENCES admin (admin_id) ON DELETE SET NULL ON UPDATE CASCADE,
+        CONSTRAINT fk_eval_version_archived_admin FOREIGN KEY (archived_by_admin_id) REFERENCES admin (admin_id) ON DELETE SET NULL ON UPDATE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    if (!db_column_exists($db, 'evaluation_category', 'evaluation_version_id')) {
+        $db->query("ALTER TABLE evaluation_category ADD COLUMN evaluation_version_id BIGINT UNSIGNED NULL AFTER evaluation_category_id");
+        $db->query("ALTER TABLE evaluation_category ADD KEY idx_category_version (evaluation_version_id)");
+    }
+
+    $uniqueCategory = fetch_one($db, "SELECT COUNT(*) AS c FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'evaluation_category' AND index_name = 'uq_category_name'");
+    if ($uniqueCategory && (int)$uniqueCategory['c'] > 0) {
+        try { $db->query("ALTER TABLE evaluation_category DROP INDEX uq_category_name"); } catch (Throwable $ignored) {}
+    }
+
+    $versionCategoryUnique = fetch_one($db, "SELECT COUNT(*) AS c FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'evaluation_category' AND index_name = 'uq_category_version_name'");
+    if (!$versionCategoryUnique || (int)$versionCategoryUnique['c'] === 0) {
+        try { $db->query("ALTER TABLE evaluation_category ADD UNIQUE KEY uq_category_version_name (evaluation_version_id, category_name)"); } catch (Throwable $ignored) {}
+    }
+
+    if (db_table_exists($db, 'evaluation_period_scope') && !db_column_exists($db, 'evaluation_period_scope', 'evaluation_version_id')) {
+        $db->query("ALTER TABLE evaluation_period_scope ADD COLUMN evaluation_version_id BIGINT UNSIGNED NULL AFTER evaluation_period_scope_id");
+        try { $db->query("ALTER TABLE evaluation_period_scope ADD INDEX idx_eps_version_period (evaluation_version_id, evaluation_period_id, scope_status)"); } catch (Throwable $ignored) {}
+    }
+    if (db_table_exists($db, 'student_evaluation_task') && !db_column_exists($db, 'student_evaluation_task', 'evaluation_version_id')) {
+        $db->query("ALTER TABLE student_evaluation_task ADD COLUMN evaluation_version_id BIGINT UNSIGNED NULL AFTER evaluation_period_id");
+        try { $db->query("ALTER TABLE student_evaluation_task ADD INDEX idx_setask_version_student (evaluation_version_id, student_id, task_status, evaluation_access_status)"); } catch (Throwable $ignored) {}
+    }
+    if (db_table_exists($db, 'evaluation_response') && !db_column_exists($db, 'evaluation_response', 'evaluation_version_id')) {
+        $db->query("ALTER TABLE evaluation_response ADD COLUMN evaluation_version_id BIGINT UNSIGNED NULL AFTER evaluation_period_id");
+        try { $db->query("ALTER TABLE evaluation_response ADD INDEX idx_response_version_student (evaluation_version_id, student_id, response_status)"); } catch (Throwable $ignored) {}
+    }
+
+    if (db_table_exists($db, 'evaluation_version')) {
+        if (db_column_exists($db, 'evaluation_period_scope', 'evaluation_version_id')) {
+            $db->query("UPDATE evaluation_period_scope eps
+                INNER JOIN evaluation_version ev ON ev.evaluation_period_id = eps.evaluation_period_id
+                SET eps.evaluation_version_id = ev.evaluation_version_id
+                WHERE eps.evaluation_version_id IS NULL");
+        }
+        if (db_column_exists($db, 'student_evaluation_task', 'evaluation_version_id')) {
+            $db->query("UPDATE student_evaluation_task setask
+                INNER JOIN evaluation_version ev ON ev.evaluation_period_id = setask.evaluation_period_id
+                SET setask.evaluation_version_id = ev.evaluation_version_id
+                WHERE setask.evaluation_version_id IS NULL");
+        }
+        if (db_column_exists($db, 'evaluation_response', 'evaluation_version_id')) {
+            $db->query("UPDATE evaluation_response er
+                LEFT JOIN student_evaluation_task setask ON setask.student_evaluation_task_id = er.student_evaluation_task_id
+                LEFT JOIN evaluation_version evtask ON evtask.evaluation_version_id = setask.evaluation_version_id
+                LEFT JOIN evaluation_version evform ON evform.evaluation_form_id = er.evaluation_form_id
+                LEFT JOIN evaluation_version evperiod ON evperiod.evaluation_period_id = er.evaluation_period_id
+                SET er.evaluation_version_id = COALESCE(evtask.evaluation_version_id, evform.evaluation_version_id, evperiod.evaluation_version_id)
+                WHERE er.evaluation_version_id IS NULL");
+        }
+    }
+
 }
 
 
@@ -280,8 +364,63 @@ function scope_ui_label(string $scope): string
     };
 }
 
-function current_context(mysqli $db, int $admin_id): array
+function next_version_code(mysqli $db): string
 {
+    $row = fetch_one($db, "SELECT COUNT(*) AS c FROM evaluation_version");
+    return "EV-V" . (((int)($row['c'] ?? 0)) + 1);
+}
+
+function get_evaluation_versions(mysqli $db): array
+{
+    return fetch_all($db, "SELECT
+            ev.*,
+            ep.period_name,
+            ep.start_date,
+            ep.end_date,
+            ep.period_status,
+            ef.form_title,
+            ef.form_status,
+            t.term_name,
+            ay.academic_year_name,
+            (
+                SELECT COUNT(*)
+                FROM evaluation_form_category efc
+                WHERE efc.evaluation_form_id = ev.evaluation_form_id
+            ) AS criteria_count,
+            (
+                SELECT COUNT(*)
+                FROM evaluation_form_item efi
+                INNER JOIN evaluation_form_category efc
+                    ON efc.evaluation_form_category_id = efi.evaluation_form_category_id
+                WHERE efc.evaluation_form_id = ev.evaluation_form_id
+            ) AS question_count
+        FROM evaluation_version ev
+        INNER JOIN evaluation_period ep
+            ON ep.evaluation_period_id = ev.evaluation_period_id
+        INNER JOIN evaluation_form ef
+            ON ef.evaluation_form_id = ev.evaluation_form_id
+        INNER JOIN term t
+            ON t.term_id = ep.term_id
+        INNER JOIN academic_year ay
+            ON ay.academic_year_id = t.academic_year_id
+        ORDER BY ev.is_default DESC, ev.evaluation_version_id ASC");
+}
+
+function ensure_initial_evaluation_version(mysqli $db, int $adminId): void
+{
+    $existing = fetch_one($db, "SELECT evaluation_version_id FROM evaluation_version LIMIT 1");
+    if ($existing) {
+        $rows = fetch_all($db, "SELECT evaluation_version_id, evaluation_form_id FROM evaluation_version");
+        foreach ($rows as $r) {
+            execute_stmt($db, "UPDATE evaluation_category ec
+                INNER JOIN evaluation_form_category efc
+                    ON efc.evaluation_category_id = ec.evaluation_category_id
+                SET ec.evaluation_version_id = COALESCE(ec.evaluation_version_id, ?)
+                WHERE efc.evaluation_form_id = ?", "ii", [(int)$r['evaluation_version_id'], (int)$r['evaluation_form_id']]);
+        }
+        return;
+    }
+
     $period = fetch_one($db, "SELECT ep.*, t.term_name, t.academic_year_id, ay.academic_year_name
         FROM evaluation_period ep
         JOIN term t ON t.term_id = ep.term_id
@@ -292,34 +431,189 @@ function current_context(mysqli $db, int $admin_id): array
     if (!$period) {
         $ay = fetch_one($db, "SELECT * FROM academic_year WHERE academic_year_status = 'Active' ORDER BY academic_year_id DESC LIMIT 1");
         if (!$ay) {
-            execute_stmt($db, "INSERT INTO academic_year (academic_year_name, start_date, end_date, academic_year_status) VALUES ('2025 - 2026', '2025-08-01', '2026-07-31', 'Active')");
+            execute_stmt($db, "INSERT INTO academic_year (academic_year_name, start_date, end_date, academic_year_status) VALUES ('2025-2026', '2025-08-01', '2026-07-31', 'Active')");
             $ayId = (int)$db->insert_id;
-            $ayName = '2025 - 2026';
         } else {
             $ayId = (int)$ay['academic_year_id'];
-            $ayName = $ay['academic_year_name'];
         }
 
         $term = fetch_one($db, "SELECT * FROM term WHERE academic_year_id = ? ORDER BY FIELD(term_status, 'Active', 'Inactive', 'Closed', 'Archived'), term_id DESC LIMIT 1", "i", [$ayId]);
         if (!$term) {
             execute_stmt($db, "INSERT INTO term (academic_year_id, term_name, start_date, end_date, term_status) VALUES (?, 'Second Semester', '2026-01-10', '2026-05-30', 'Active')", "i", [$ayId]);
             $termId = (int)$db->insert_id;
-            $termName = 'Second Semester';
         } else {
             $termId = (int)$term['term_id'];
-            $termName = $term['term_name'];
         }
 
-        execute_stmt($db, "INSERT INTO evaluation_period (term_id, period_name, start_date, end_date, period_status, opened_by_admin_id) VALUES (?, 'Teacher Evaluation', CURDATE(), DATE_ADD(CURDATE(), INTERVAL 30 DAY), 'Draft', ?)", "ii", [$termId, $admin_id]);
+        execute_stmt($db, "INSERT INTO evaluation_period (term_id, period_name, start_date, end_date, period_status, opened_by_admin_id) VALUES (?, 'Teacher Evaluation', CURDATE(), DATE_ADD(CURDATE(), INTERVAL 30 DAY), 'Draft', ?)", "ii", [$termId, $adminId]);
         $periodId = (int)$db->insert_id;
-        $period = fetch_one($db, "SELECT ep.*, t.term_name, t.academic_year_id, ay.academic_year_name FROM evaluation_period ep JOIN term t ON t.term_id = ep.term_id JOIN academic_year ay ON ay.academic_year_id = t.academic_year_id WHERE ep.evaluation_period_id = ?", "i", [$periodId]);
+    } else {
+        $periodId = (int)$period['evaluation_period_id'];
     }
 
-    $periodId = (int)$period['evaluation_period_id'];
     $form = fetch_one($db, "SELECT * FROM evaluation_form WHERE evaluation_period_id = ? ORDER BY FIELD(form_status, 'Active', 'Draft', 'Inactive', 'Archived'), evaluation_form_id DESC LIMIT 1", "i", [$periodId]);
     if (!$form) {
-        execute_stmt($db, "INSERT INTO evaluation_form (evaluation_period_id, form_title, form_version, form_description, form_status, created_by_admin_id) VALUES (?, 'Faculty Evaluation Form', 1, 'Standard teacher evaluation form for students', 'Draft', ?)", "ii", [$periodId, $admin_id]);
+        execute_stmt($db, "INSERT INTO evaluation_form (evaluation_period_id, form_title, form_version, form_description, form_status, created_by_admin_id) VALUES (?, 'Faculty Evaluation Form', 1, 'Standard teacher evaluation form for students', 'Draft', ?)", "ii", [$periodId, $adminId]);
         $formId = (int)$db->insert_id;
+    } else {
+        $formId = (int)$form['evaluation_form_id'];
+    }
+
+    execute_stmt($db, "INSERT INTO evaluation_version (version_code, version_name, version_description, evaluation_period_id, evaluation_form_id, version_status, is_default, created_by_admin_id)
+        VALUES ('EV-V1', 'Evaluation Version 1', 'Original evaluation setup migrated from the existing database records.', ?, ?, 'Active', 1, ?)", "iii", [$periodId, $formId, $adminId]);
+    $versionId = (int)$db->insert_id;
+
+    execute_stmt($db, "UPDATE evaluation_category ec
+        INNER JOIN evaluation_form_category efc
+            ON efc.evaluation_category_id = ec.evaluation_category_id
+        SET ec.evaluation_version_id = ?
+        WHERE efc.evaluation_form_id = ?", "ii", [$versionId, $formId]);
+}
+
+function create_empty_version(mysqli $db, int $adminId, array $post): int
+{
+    $versionName = trim((string)($post['version_name'] ?? ''));
+    $versionCode = strtoupper(trim((string)($post['version_code'] ?? '')));
+    $description = trim((string)($post['version_description'] ?? ''));
+    $semester = term_db_value(trim((string)($post['version_semester'] ?? '')));
+    $academicYear = normalize_academic_year((string)($post['version_academic_year'] ?? ''));
+    $startDate = (string)($post['version_start_date'] ?? '');
+    $endDate = (string)($post['version_end_date'] ?? '');
+    $status = in_array((string)($post['version_status'] ?? 'Draft'), ['Draft','Active','Archived'], true) ? (string)$post['version_status'] : 'Draft';
+
+    if ($versionName === '' || $academicYear === '' || $startDate === '' || $endDate === '') {
+        throw new RuntimeException("Please complete the version name, academic year, semester, start date, and end date.");
+    }
+    if (strtotime($startDate) === false || strtotime($endDate) === false || strtotime($startDate) > strtotime($endDate)) {
+        throw new RuntimeException("The version schedule dates are invalid. Start date must be before or equal to end date.");
+    }
+    if ($versionCode === '') {
+        $versionCode = next_version_code($db);
+    }
+
+    $duplicate = fetch_one($db, "SELECT evaluation_version_id FROM evaluation_version WHERE version_code = ? LIMIT 1", "s", [$versionCode]);
+    if ($duplicate) {
+        throw new RuntimeException("The version code already exists. Please use another version code.");
+    }
+
+    $academicYearId = find_or_create_academic_year($db, $academicYear, $startDate, $endDate);
+    $termId = find_or_create_term($db, $academicYearId, $semester, $startDate, $endDate);
+    $periodName = period_name_for($semester);
+
+    execute_stmt($db, "INSERT INTO evaluation_period (term_id, period_name, start_date, end_date, period_status, opened_by_admin_id) VALUES (?, ?, ?, ?, 'Draft', ?)", "isssi", [$termId, $periodName, $startDate, $endDate, $adminId]);
+    $periodId = (int)$db->insert_id;
+
+    $nextFormVersionRow = fetch_one($db, "SELECT COALESCE(MAX(form_version), 0) + 1 AS next_version FROM evaluation_form");
+    $nextFormVersion = (int)($nextFormVersionRow['next_version'] ?? 1);
+    execute_stmt($db, "INSERT INTO evaluation_form (evaluation_period_id, form_title, form_version, form_description, form_status, created_by_admin_id) VALUES (?, 'Faculty Evaluation Form', ?, 'Version based teacher evaluation form for students', 'Draft', ?)", "iii", [$periodId, $nextFormVersion, $adminId]);
+    $formId = (int)$db->insert_id;
+
+    execute_stmt($db, "INSERT INTO evaluation_version (version_code, version_name, version_description, evaluation_period_id, evaluation_form_id, version_status, is_default, created_by_admin_id) VALUES (?, ?, ?, ?, ?, ?, 0, ?)", "sssiisi", [$versionCode, $versionName, $description, $periodId, $formId, $status, $adminId]);
+    $versionId = (int)$db->insert_id;
+
+    $labels = [1 => 'Strongly Disagree', 2 => 'Disagree', 3 => 'Neutral', 4 => 'Agree', 5 => 'Strongly Agree'];
+    for ($i = 1; $i <= 5; $i++) {
+        execute_stmt($db, "INSERT INTO rating_scale_option (evaluation_form_id, rating_value, rating_label, score_value, display_order) VALUES (?, ?, ?, ?, ?)", "iisdi", [$formId, $i, $labels[$i], (float)$i, $i]);
+    }
+    execute_stmt($db, "INSERT INTO evaluation_setup_setting (evaluation_form_id, questions_to_display, updated_by_admin_id) VALUES (?, 5, ?)", "ii", [$formId, $adminId]);
+
+    return $versionId;
+}
+
+function update_version_record(mysqli $db, int $adminId, array $post): int
+{
+    $versionId = (int)($post['evaluation_version_id'] ?? 0);
+    $version = fetch_one($db, "SELECT * FROM evaluation_version WHERE evaluation_version_id = ? LIMIT 1", "i", [$versionId]);
+    if (!$version) {
+        throw new RuntimeException("Evaluation version record was not found.");
+    }
+
+    $versionName = trim((string)($post['version_name'] ?? ''));
+    $versionCode = strtoupper(trim((string)($post['version_code'] ?? '')));
+    $description = trim((string)($post['version_description'] ?? ''));
+    $status = in_array((string)($post['version_status'] ?? 'Draft'), ['Draft','Active','Archived'], true) ? (string)$post['version_status'] : 'Draft';
+    $semester = term_db_value(trim((string)($post['version_semester'] ?? '')));
+    $academicYear = normalize_academic_year((string)($post['version_academic_year'] ?? ''));
+    $startDate = (string)($post['version_start_date'] ?? '');
+    $endDate = (string)($post['version_end_date'] ?? '');
+
+    if ($versionName === '' || $versionCode === '' || $academicYear === '' || $startDate === '' || $endDate === '') {
+        throw new RuntimeException("Please complete the version details and schedule.");
+    }
+    if (strtotime($startDate) === false || strtotime($endDate) === false || strtotime($startDate) > strtotime($endDate)) {
+        throw new RuntimeException("The version schedule dates are invalid. Start date must be before or equal to end date.");
+    }
+
+    $duplicate = fetch_one($db, "SELECT evaluation_version_id FROM evaluation_version WHERE version_code = ? AND evaluation_version_id <> ? LIMIT 1", "si", [$versionCode, $versionId]);
+    if ($duplicate) {
+        throw new RuntimeException("The version code already exists. Please use another version code.");
+    }
+
+    $academicYearId = find_or_create_academic_year($db, $academicYear, $startDate, $endDate);
+    $termId = find_or_create_term($db, $academicYearId, $semester, $startDate, $endDate);
+    $periodName = period_name_for($semester);
+
+    execute_stmt($db, "UPDATE evaluation_period SET term_id = ?, period_name = ?, start_date = ?, end_date = ? WHERE evaluation_period_id = ?", "isssi", [$termId, $periodName, $startDate, $endDate, (int)$version['evaluation_period_id']]);
+    execute_stmt($db, "UPDATE evaluation_version SET version_code = ?, version_name = ?, version_description = ?, version_status = ?, archived_by_admin_id = CASE WHEN ? = 'Archived' THEN ? ELSE archived_by_admin_id END, archived_at = CASE WHEN ? = 'Archived' THEN COALESCE(archived_at, NOW()) ELSE archived_at END WHERE evaluation_version_id = ?", "sssssisi", [$versionCode, $versionName, $description, $status, $status, $adminId, $status, $versionId]);
+
+    if ($status === 'Archived') {
+        execute_stmt($db, "UPDATE evaluation_period SET period_status = 'Archived', closed_by_admin_id = ? WHERE evaluation_period_id = ?", "ii", [$adminId, (int)$version['evaluation_period_id']]);
+        execute_stmt($db, "UPDATE evaluation_form SET form_status = 'Archived' WHERE evaluation_form_id = ?", "i", [(int)$version['evaluation_form_id']]);
+        execute_stmt($db, "UPDATE evaluation_period_scope SET scope_status = 'Archived', closed_by_admin_id = ?, closed_at = COALESCE(closed_at, NOW()) WHERE evaluation_period_id = ? AND scope_status = 'Active'", "ii", [$adminId, (int)$version['evaluation_period_id']]);
+        sync_student_task_access_for_period($db, (int)$version['evaluation_period_id']);
+    }
+
+    return $versionId;
+}
+
+function current_context(mysqli $db, int $admin_id, int $requestedVersionId = 0): array
+{
+    ensure_initial_evaluation_version($db, $admin_id);
+
+    $version = null;
+    if ($requestedVersionId > 0) {
+        $version = fetch_one($db, "SELECT ev.*, ep.period_name, ep.start_date, ep.end_date, ep.period_status, t.term_name, t.academic_year_id, ay.academic_year_name
+            FROM evaluation_version ev
+            JOIN evaluation_period ep ON ep.evaluation_period_id = ev.evaluation_period_id
+            JOIN term t ON t.term_id = ep.term_id
+            JOIN academic_year ay ON ay.academic_year_id = t.academic_year_id
+            WHERE ev.evaluation_version_id = ?
+            LIMIT 1", "i", [$requestedVersionId]);
+    }
+
+    if (!$version) {
+        $version = fetch_one($db, "SELECT ev.*, ep.period_name, ep.start_date, ep.end_date, ep.period_status, t.term_name, t.academic_year_id, ay.academic_year_name
+            FROM evaluation_version ev
+            JOIN evaluation_period ep ON ep.evaluation_period_id = ev.evaluation_period_id
+            JOIN term t ON t.term_id = ep.term_id
+            JOIN academic_year ay ON ay.academic_year_id = t.academic_year_id
+            WHERE ev.version_status <> 'Archived'
+            ORDER BY ev.is_default DESC, FIELD(ep.period_status, 'Open', 'Ongoing', 'Draft', 'Closed', 'Archived'), ev.evaluation_version_id ASC
+            LIMIT 1");
+    }
+
+    if (!$version) {
+        $version = fetch_one($db, "SELECT ev.*, ep.period_name, ep.start_date, ep.end_date, ep.period_status, t.term_name, t.academic_year_id, ay.academic_year_name
+            FROM evaluation_version ev
+            JOIN evaluation_period ep ON ep.evaluation_period_id = ev.evaluation_period_id
+            JOIN term t ON t.term_id = ep.term_id
+            JOIN academic_year ay ON ay.academic_year_id = t.academic_year_id
+            ORDER BY ev.evaluation_version_id ASC
+            LIMIT 1");
+    }
+
+    $period = fetch_one($db, "SELECT ep.*, t.term_name, t.academic_year_id, ay.academic_year_name
+        FROM evaluation_period ep
+        JOIN term t ON t.term_id = ep.term_id
+        JOIN academic_year ay ON ay.academic_year_id = t.academic_year_id
+        WHERE ep.evaluation_period_id = ?
+        LIMIT 1", "i", [(int)$version['evaluation_period_id']]);
+
+    $form = fetch_one($db, "SELECT * FROM evaluation_form WHERE evaluation_form_id = ? LIMIT 1", "i", [(int)$version['evaluation_form_id']]);
+    if (!$form) {
+        execute_stmt($db, "INSERT INTO evaluation_form (evaluation_period_id, form_title, form_version, form_description, form_status, created_by_admin_id) VALUES (?, 'Faculty Evaluation Form', 1, 'Standard teacher evaluation form for students', 'Draft', ?)", "ii", [(int)$period['evaluation_period_id'], $admin_id]);
+        $formId = (int)$db->insert_id;
+        execute_stmt($db, "UPDATE evaluation_version SET evaluation_form_id = ? WHERE evaluation_version_id = ?", "ii", [$formId, (int)$version['evaluation_version_id']]);
         $form = fetch_one($db, "SELECT * FROM evaluation_form WHERE evaluation_form_id = ?", "i", [$formId]);
     }
 
@@ -336,7 +630,13 @@ function current_context(mysqli $db, int $admin_id): array
     execute_stmt($db, "INSERT IGNORE INTO evaluation_setup_setting (evaluation_form_id, questions_to_display, updated_by_admin_id) VALUES (?, 5, ?)", "ii", [$formId, $admin_id]);
     $setting = fetch_one($db, "SELECT * FROM evaluation_setup_setting WHERE evaluation_form_id = ?", "i", [$formId]);
 
-    return ["period" => $period, "form" => $form, "setting" => $setting];
+    execute_stmt($db, "UPDATE evaluation_category ec
+        INNER JOIN evaluation_form_category efc
+            ON efc.evaluation_category_id = ec.evaluation_category_id
+        SET ec.evaluation_version_id = COALESCE(ec.evaluation_version_id, ?)
+        WHERE efc.evaluation_form_id = ?", "ii", [(int)$version['evaluation_version_id'], $formId]);
+
+    return ["version" => $version, "period" => $period, "form" => $form, "setting" => $setting];
 }
 
 function get_criteria_records(mysqli $db, int $formId): array
@@ -506,10 +806,13 @@ function generate_tasks_for_scope(mysqli $db, int $periodId, array $scope): void
     if (!$period) {
         return;
     }
+    $versionRow = fetch_one($db, "SELECT evaluation_version_id FROM evaluation_version WHERE evaluation_period_id = ? LIMIT 1", "i", [$periodId]);
+    $versionId = $versionRow ? (int)$versionRow['evaluation_version_id'] : null;
     $termId = (int)$period['term_id'];
     $hasTeachingAssignment = db_column_exists($db, 'student_evaluation_task', 'teaching_assignment_id');
     $hasAttempt = db_column_exists($db, 'student_evaluation_task', 'attempt_no');
     $hasActive = db_column_exists($db, 'student_evaluation_task', 'is_active');
+    $hasVersion = db_column_exists($db, 'student_evaluation_task', 'evaluation_version_id');
 
     $where = "WHERE sse.term_id = ? AND sse.enrollment_status = 'Active' AND sso.offering_status = 'Active' AND ta.assignment_status = 'Active'";
     $types = "i";
@@ -550,20 +853,29 @@ function generate_tasks_for_scope(mysqli $db, int $periodId, array $scope): void
             $existsSql = "SELECT student_evaluation_task_id FROM student_evaluation_task WHERE student_id = ? AND teaching_assignment_id = ? AND evaluation_period_id = ?" . ($hasActive ? " AND is_active = 1" : "") . " LIMIT 1";
             $exists = fetch_one($db, $existsSql, "iii", [$studentId, $taId, $periodId]);
             if (!$exists) {
-                if ($hasAttempt && $hasActive) {
-                    execute_stmt($db, "INSERT INTO student_evaluation_task (student_id, teaching_assignment_id, evaluation_period_id, attempt_no, task_status, is_active) VALUES (?, ?, ?, 1, 'Pending', 1)", "iii", [$studentId, $taId, $periodId]);
-                } elseif ($hasAttempt) {
-                    execute_stmt($db, "INSERT INTO student_evaluation_task (student_id, teaching_assignment_id, evaluation_period_id, attempt_no, task_status) VALUES (?, ?, ?, 1, 'Pending')", "iii", [$studentId, $taId, $periodId]);
-                } elseif ($hasActive) {
-                    execute_stmt($db, "INSERT INTO student_evaluation_task (student_id, teaching_assignment_id, evaluation_period_id, task_status, is_active) VALUES (?, ?, ?, 'Pending', 1)", "iii", [$studentId, $taId, $periodId]);
+                if ($hasVersion && $versionId) {
+                    if ($hasAttempt && $hasActive) {
+                        execute_stmt($db, "INSERT INTO student_evaluation_task (student_id, teaching_assignment_id, evaluation_period_id, evaluation_version_id, attempt_no, task_status, is_active) VALUES (?, ?, ?, ?, 1, 'Pending', 1)", "iiii", [$studentId, $taId, $periodId, $versionId]);
+                    } elseif ($hasAttempt) {
+                        execute_stmt($db, "INSERT INTO student_evaluation_task (student_id, teaching_assignment_id, evaluation_period_id, evaluation_version_id, attempt_no, task_status) VALUES (?, ?, ?, ?, 1, 'Pending')", "iiii", [$studentId, $taId, $periodId, $versionId]);
+                    } elseif ($hasActive) {
+                        execute_stmt($db, "INSERT INTO student_evaluation_task (student_id, teaching_assignment_id, evaluation_period_id, evaluation_version_id, task_status, is_active) VALUES (?, ?, ?, ?, 'Pending', 1)", "iiii", [$studentId, $taId, $periodId, $versionId]);
+                    } else {
+                        execute_stmt($db, "INSERT INTO student_evaluation_task (student_id, teaching_assignment_id, evaluation_period_id, evaluation_version_id, task_status) VALUES (?, ?, ?, ?, 'Pending')", "iiii", [$studentId, $taId, $periodId, $versionId]);
+                    }
                 } else {
-                    execute_stmt($db, "INSERT INTO student_evaluation_task (student_id, teaching_assignment_id, evaluation_period_id, task_status) VALUES (?, ?, ?, 'Pending')", "iii", [$studentId, $taId, $periodId]);
+                    if ($hasAttempt && $hasActive) {
+                        execute_stmt($db, "INSERT INTO student_evaluation_task (student_id, teaching_assignment_id, evaluation_period_id, attempt_no, task_status, is_active) VALUES (?, ?, ?, 1, 'Pending', 1)", "iii", [$studentId, $taId, $periodId]);
+                    } elseif ($hasAttempt) {
+                        execute_stmt($db, "INSERT INTO student_evaluation_task (student_id, teaching_assignment_id, evaluation_period_id, attempt_no, task_status) VALUES (?, ?, ?, 1, 'Pending')", "iii", [$studentId, $taId, $periodId]);
+                    } elseif ($hasActive) {
+                        execute_stmt($db, "INSERT INTO student_evaluation_task (student_id, teaching_assignment_id, evaluation_period_id, task_status, is_active) VALUES (?, ?, ?, 'Pending', 1)", "iii", [$studentId, $taId, $periodId]);
+                    } else {
+                        execute_stmt($db, "INSERT INTO student_evaluation_task (student_id, teaching_assignment_id, evaluation_period_id, task_status) VALUES (?, ?, ?, 'Pending')", "iii", [$studentId, $taId, $periodId]);
+                    }
                 }
-            }
-        } else {
-            $exists = fetch_one($db, "SELECT student_evaluation_task_id FROM student_evaluation_task WHERE student_id = ? AND evaluation_period_id = ? LIMIT 1", "ii", [$studentId, $periodId]);
-            if (!$exists) {
-                execute_stmt($db, "INSERT INTO student_evaluation_task (student_id, evaluation_period_id, task_status) VALUES (?, ?, 'Pending')", "ii", [$studentId, $periodId]);
+            } elseif ($hasVersion && $versionId) {
+                execute_stmt($db, "UPDATE student_evaluation_task SET evaluation_version_id = COALESCE(evaluation_version_id, ?) WHERE student_evaluation_task_id = ?", "ii", [$versionId, (int)$exists['student_evaluation_task_id']]);
             }
         }
     }
@@ -736,23 +1048,75 @@ function validate_scope_selection(array $post): array
     ];
 }
 
-function build_history_rows(mysqli $db): array
+function build_history_rows(mysqli $db, int $selectedVersionId = 0): array
 {
-    $scopeRows = fetch_all($db, "SELECT eps.*, ep.period_name, ep.start_date, ep.end_date, ep.period_status, t.term_name, ay.academic_year_name,
-            d.department_code, d.department_name, c.course_code, c.course_name, sec.section_name
+    $where = "";
+    $types = "";
+    $params = [];
+    if ($selectedVersionId > 0) {
+        $where = "WHERE ev.evaluation_version_id = ?";
+        $types = "i";
+        $params[] = $selectedVersionId;
+    }
+
+    $scopeRows = fetch_all($db, "SELECT
+            eps.*,
+            ev.evaluation_version_id,
+            ev.version_code,
+            ev.version_name,
+            ep.period_name,
+            ep.start_date,
+            ep.end_date,
+            ep.period_status,
+            t.term_name,
+            ay.academic_year_name,
+            d.department_code,
+            d.department_name,
+            c.course_code,
+            c.course_name,
+            sec.section_name
         FROM evaluation_period_scope eps
-        JOIN evaluation_period ep ON ep.evaluation_period_id = eps.evaluation_period_id
-        JOIN term t ON t.term_id = ep.term_id
-        JOIN academic_year ay ON ay.academic_year_id = t.academic_year_id
-        LEFT JOIN department d ON d.department_id = eps.department_id
-        LEFT JOIN course c ON c.course_id = eps.course_id
-        LEFT JOIN section sec ON sec.section_id = eps.section_id
-        ORDER BY eps.opened_at DESC, eps.evaluation_period_scope_id DESC");
+        JOIN evaluation_version ev
+            ON ev.evaluation_period_id = eps.evaluation_period_id
+        JOIN evaluation_period ep
+            ON ep.evaluation_period_id = eps.evaluation_period_id
+        JOIN term t
+            ON t.term_id = ep.term_id
+        JOIN academic_year ay
+            ON ay.academic_year_id = t.academic_year_id
+        LEFT JOIN department d
+            ON d.department_id = eps.department_id
+        LEFT JOIN course c
+            ON c.course_id = eps.course_id
+        LEFT JOIN section sec
+            ON sec.section_id = eps.section_id
+        $where
+        ORDER BY eps.opened_at DESC, eps.evaluation_period_scope_id DESC", $types, $params);
+
     if (!$scopeRows) {
-        $periodRows = fetch_all($db, "SELECT ep.*, t.term_name, ay.academic_year_name FROM evaluation_period ep JOIN term t ON t.term_id = ep.term_id JOIN academic_year ay ON ay.academic_year_id = t.academic_year_id ORDER BY ep.evaluation_period_id DESC");
+        $periodWhere = $selectedVersionId > 0 ? "WHERE ev.evaluation_version_id = ?" : "";
+        $periodRows = fetch_all($db, "SELECT
+                ev.evaluation_version_id,
+                ev.version_code,
+                ev.version_name,
+                ep.*,
+                t.term_name,
+                ay.academic_year_name
+            FROM evaluation_version ev
+            JOIN evaluation_period ep
+                ON ep.evaluation_period_id = ev.evaluation_period_id
+            JOIN term t
+                ON t.term_id = ep.term_id
+            JOIN academic_year ay
+                ON ay.academic_year_id = t.academic_year_id
+            $periodWhere
+            ORDER BY ep.evaluation_period_id DESC", $types, $params);
         foreach ($periodRows as $r) {
             $scopeRows[] = [
                 'evaluation_period_scope_id' => 0,
+                'evaluation_version_id' => $r['evaluation_version_id'],
+                'version_code' => $r['version_code'],
+                'version_name' => $r['version_name'],
                 'evaluation_period_id' => $r['evaluation_period_id'],
                 'scope_type' => 'All',
                 'department_id' => null,
@@ -768,6 +1132,10 @@ function build_history_rows(mysqli $db): array
                 'period_status' => $r['period_status'],
                 'term_name' => $r['term_name'],
                 'academic_year_name' => $r['academic_year_name'],
+                'academic_year_snapshot' => $r['academic_year_name'],
+                'semester_snapshot' => $r['term_name'],
+                'start_date_snapshot' => $r['start_date'],
+                'end_date_snapshot' => $r['end_date'],
                 'department_name' => null,
                 'course_code' => null,
                 'course_name' => null,
@@ -782,10 +1150,12 @@ function build_history_rows(mysqli $db): array
         $r['academic_year_ui'] = display_academic_year((string)($r['academic_year_snapshot'] ?: $r['academic_year_name']));
         $r['start_date'] = $r['start_date_snapshot'] ?: $r['start_date'];
         $r['end_date'] = $r['end_date_snapshot'] ?: $r['end_date'];
+        $r['version_ui'] = trim(($r['version_code'] ?? '') . ' • ' . ($r['version_name'] ?? ''), ' •');
     }
     unset($r);
     return $scopeRows;
 }
+
 
 function scope_applied_to_text(array $row): string
 {
@@ -820,10 +1190,14 @@ function apply_history_filters(array $rows, array $get): array
 
 $adminId = current_admin_id($db);
 ensure_support_tables($db);
-$context = current_context($db, $adminId);
+$requestedVersionId = (int)($_POST['version_id'] ?? $_GET['version_id'] ?? $_SESSION['evaluation_setup_version_id'] ?? 0);
+$context = current_context($db, $adminId, $requestedVersionId);
+$version = $context['version'];
 $period = $context['period'];
 $form = $context['form'];
 $setting = $context['setting'];
+$_SESSION['evaluation_setup_version_id'] = (int)$version['evaluation_version_id'];
+$versionId = (int)$version['evaluation_version_id'];
 $periodId = (int)$period['evaluation_period_id'];
 $formId = (int)$form['evaluation_form_id'];
 $displayCount = max(5, min(10, (int)($setting['questions_to_display'] ?? 5)));
@@ -832,6 +1206,37 @@ try {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $action = (string)($_POST['action'] ?? '');
         $db->begin_transaction();
+
+        if ($action === 'save_version') {
+            $editingVersionId = (int)($_POST['evaluation_version_id'] ?? 0);
+            if ($editingVersionId > 0) {
+                $newVersionId = update_version_record($db, $adminId, $_POST);
+                $db->commit();
+                set_flash("Evaluation version updated successfully.", "success");
+                redirect_self(["version_id" => $newVersionId]);
+            }
+
+            $newVersionId = create_empty_version($db, $adminId, $_POST);
+            $db->commit();
+            set_flash("Evaluation version created successfully. You may now add its criteria and questions.", "success");
+            redirect_self(["version_id" => $newVersionId]);
+        }
+
+        if ($action === 'archive_version') {
+            $archiveVersionId = (int)($_POST['evaluation_version_id'] ?? 0);
+            $archiveVersion = fetch_one($db, "SELECT * FROM evaluation_version WHERE evaluation_version_id = ? LIMIT 1", "i", [$archiveVersionId]);
+            if (!$archiveVersion) {
+                throw new RuntimeException("Evaluation version record was not found.");
+            }
+            execute_stmt($db, "UPDATE evaluation_version SET version_status = 'Archived', is_default = 0, archived_by_admin_id = ?, archived_at = COALESCE(archived_at, NOW()) WHERE evaluation_version_id = ?", "ii", [$adminId, $archiveVersionId]);
+            execute_stmt($db, "UPDATE evaluation_period SET period_status = 'Archived', closed_by_admin_id = ? WHERE evaluation_period_id = ?", "ii", [$adminId, (int)$archiveVersion['evaluation_period_id']]);
+            execute_stmt($db, "UPDATE evaluation_form SET form_status = 'Archived' WHERE evaluation_form_id = ?", "i", [(int)$archiveVersion['evaluation_form_id']]);
+            execute_stmt($db, "UPDATE evaluation_period_scope SET scope_status = 'Archived', closed_by_admin_id = ?, closed_at = COALESCE(closed_at, NOW()) WHERE evaluation_period_id = ? AND scope_status = 'Active'", "ii", [$adminId, (int)$archiveVersion['evaluation_period_id']]);
+            sync_student_task_access_for_period($db, (int)$archiveVersion['evaluation_period_id']);
+            $db->commit();
+            set_flash("Evaluation version archived successfully.", "success");
+            redirect_self(["version_id" => (int)($_POST['fallback_version_id'] ?? 0)]);
+        }
 
         if ($action === 'save_setup') {
             save_schedule($db, $periodId, $formId, $adminId, $_POST);
@@ -870,7 +1275,7 @@ try {
                 execute_stmt($db, "UPDATE evaluation_form_category SET weight_percent = ?, display_order = ?, form_category_status = ? WHERE evaluation_form_category_id = ?", "disi", [$weight, $order, $status, $formCategoryId]);
                 $message = "Criteria updated successfully.";
             } else {
-                execute_stmt($db, "INSERT INTO evaluation_category (category_name, category_description, category_status) VALUES (?, ?, ?)", "sss", [$categoryName, $description, $status]);
+                execute_stmt($db, "INSERT INTO evaluation_category (evaluation_version_id, category_name, category_description, category_status) VALUES (?, ?, ?, ?)", "isss", [$versionId, $categoryName, $description, $status]);
                 $categoryId = (int)$db->insert_id;
                 execute_stmt($db, "INSERT INTO evaluation_form_category (evaluation_form_id, evaluation_category_id, weight_percent, display_order, is_required, form_category_status) VALUES (?, ?, ?, ?, 1, ?)", "iidis", [$formId, $categoryId, $weight, $order, $status]);
                 $message = "Criteria added successfully.";
@@ -1072,11 +1477,12 @@ try {
                 execute_stmt(
                     $db,
                     "INSERT INTO evaluation_period_scope
-                        (evaluation_period_id, academic_year_snapshot, semester_snapshot, start_date_snapshot, end_date_snapshot, scope_type, department_id, course_id, year_level, section_id, scope_status, opened_by_admin_id, opened_at)
+                        (evaluation_version_id, evaluation_period_id, academic_year_snapshot, semester_snapshot, start_date_snapshot, end_date_snapshot, scope_type, department_id, course_id, year_level, section_id, scope_status, opened_by_admin_id, opened_at)
                      VALUES
-                        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active', ?, NOW())",
-                    "isssssiiiii",
+                        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active', ?, NOW())",
+                    "iisssssiiiii",
                     [
+                        $versionId,
                         $periodId,
                         $snapshotPeriod['academic_year_name'] ?? '',
                         $snapshotPeriod['term_name'] ?? '',
@@ -1183,20 +1589,24 @@ try {
     redirect_self(["error" => 1]);
 }
 
-$context = current_context($db, $adminId);
+$context = current_context($db, $adminId, (int)($_GET['version_id'] ?? $_POST['version_id'] ?? $versionId ?? 0));
+$version = $context['version'];
 $period = $context['period'];
 $form = $context['form'];
 $setting = $context['setting'];
+$versionId = (int)$version['evaluation_version_id'];
 $periodId = (int)$period['evaluation_period_id'];
 $formId = (int)$form['evaluation_form_id'];
 $displayCount = max(5, min(10, (int)($setting['questions_to_display'] ?? 5)));
+$evaluationVersions = get_evaluation_versions($db);
+$nextVersionCode = next_version_code($db);
 $criteriaRecords = get_criteria_records($db, $formId);
 $questionRecords = get_question_records($db, $formId);
 $departments = fetch_all($db, "SELECT department_id, department_code, department_name FROM department WHERE department_status = 'Active' ORDER BY department_name");
 $courses = fetch_all($db, "SELECT course_id, department_id, course_code, course_name, number_of_year_level FROM course WHERE course_status = 'Active' ORDER BY course_code");
 $sections = fetch_all($db, "SELECT section_id, course_id, year_level, section_name FROM section WHERE section_status = 'Active' ORDER BY section_name");
 $ratingOptions = fetch_all($db, "SELECT * FROM rating_scale_option WHERE evaluation_form_id = ? ORDER BY display_order", "i", [$formId]);
-$allHistoryRows = build_history_rows($db);
+$allHistoryRows = build_history_rows($db, $versionId);
 $historyRows = apply_history_filters($allHistoryRows, $_GET);
 
 if (isset($_GET['export_history'])) {
@@ -1285,6 +1695,57 @@ $historySemesters = array_values(array_unique(array_map(fn($r) => $r['semester_u
                     Evaluation <?php echo $evaluationIsOpen ? 'Open' : 'Closed'; ?>
                 </span>
             </div>
+
+            <section class="setup-card version-card">
+                <div class="card-header-row version-header-row">
+                    <div class="section-title">
+                        <?php echo icon_svg("history"); ?>
+                        <div>
+                            <h2>Evaluation Version</h2>
+                            <p>Select, add, view, edit, or archive evaluation setup versions.</p>
+                        </div>
+                    </div>
+                    <button class="dark-button compact-button" type="button" onclick="openVersionModal('add')">
+                        <?php echo icon_svg("plus"); ?> Add Version
+                    </button>
+                </div>
+
+                <div class="version-grid">
+                    <div>
+                        <label for="versionSelect">Selected Evaluation Version</label>
+                        <select id="versionSelect" onchange="changeEvaluationVersion(this.value)">
+                            <?php foreach ($evaluationVersions as $v): ?>
+                                <option value="<?php echo (int)$v['evaluation_version_id']; ?>" <?php echo ((int)$v['evaluation_version_id'] === $versionId) ? 'selected' : ''; ?>>
+                                    <?php echo e($v['version_code'] . ' - ' . $v['version_name'] . ' (' . display_academic_year($v['academic_year_name']) . ', ' . term_label($v['term_name']) . ')'); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="version-summary-panel">
+                        <div class="version-summary-text">
+                            <strong><?php echo e($version['version_code']); ?> • <?php echo e($version['version_name']); ?></strong>
+                            <p><?php echo e(trim((string)$version['version_description']) !== '' ? $version['version_description'] : 'No description provided.'); ?></p>
+                        </div>
+
+                        <span class="version-status-badge <?php echo strtolower($version['version_status']); ?>">
+                            <?php echo e($version['version_status']); ?>
+                        </span>
+                    </div>
+                    <div class="version-action-panel">
+                        <button class="secondary-button compact-button" type="button" onclick="openVersionModal('view', <?php echo $versionId; ?>)"><?php echo icon_svg('eye'); ?> View Version</button>
+                        <button class="secondary-button compact-button" type="button" onclick="openVersionModal('edit', <?php echo $versionId; ?>)"><?php echo icon_svg('edit'); ?> Edit Version</button>
+                        <?php if ($version['version_status'] !== 'Archived'): ?>
+                            <form method="post" onsubmit="return confirm('Archive this evaluation version? Active scopes and access for this version will be closed.');">
+                                <input type="hidden" name="action" value="archive_version">
+                                <input type="hidden" name="version_id" value="<?php echo $versionId; ?>">
+                                <input type="hidden" name="evaluation_version_id" value="<?php echo $versionId; ?>">
+                                <input type="hidden" name="fallback_version_id" value="<?php echo (int)($evaluationVersions[0]['evaluation_version_id'] ?? 0); ?>">
+                                <button class="secondary-button compact-button archive-version-button" type="submit"><?php echo icon_svg('archive'); ?> Archive Version</button>
+                            </form>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </section>
 
             <section class="setup-card">
                 <div class="section-title">
@@ -1476,6 +1937,7 @@ $historySemesters = array_values(array_unique(array_map(fn($r) => $r['semester_u
                     <div class="history-stat"><span>Hybrid Scopes Used</span><strong class="purple-number"><?php echo $historyStats['hybrid']; ?></strong><i class="stat-icon-purple"><?php echo icon_svg('settings'); ?></i></div>
                 </div>
                 <form method="get" class="history-filter-form">
+                    <input type="hidden" name="version_id" value="<?php echo $versionId; ?>">
                     <div>
                         <label>Academic Year</label>
                         <select name="history_academic_year">
@@ -1557,13 +2019,14 @@ $historySemesters = array_values(array_unique(array_map(fn($r) => $r['semester_u
                         </tbody>
                     </table>
                 </div>
-                <div class="history-footer"><span>Showing <?php echo count($historyRows); ?> of <?php echo count($allHistoryRows); ?> records</span><div class="pagination-box"><button disabled>‹</button><strong>1</strong><button disabled>›</button></div></div>
+                <div class="history-footer"><span>Showing <?php echo count($historyRows); ?> of <?php echo count($allHistoryRows); ?> records for <?php echo e($version['version_code']); ?></span><div class="pagination-box"><button disabled>‹</button><strong>1</strong><button disabled>›</button></div></div>
             </section>
         </div>
     </main>
 
     <form method="post" id="setupActionForm" class="hidden-form">
         <input type="hidden" name="action" id="setupActionInput">
+        <input type="hidden" name="version_id" value="<?php echo $versionId; ?>">
         <input type="hidden" name="semester" id="setupSemesterInput">
         <input type="hidden" name="academic_year" id="setupAcademicYearInput">
         <input type="hidden" name="start_date" id="setupStartDateInput">
@@ -1571,10 +2034,94 @@ $historySemesters = array_values(array_unique(array_map(fn($r) => $r['semester_u
         <input type="hidden" name="display_count" id="setupDisplayCountInput">
     </form>
 
+    <div class="modal-overlay hidden" id="versionModal">
+        <div class="modal-box version-form-modal">
+            <form method="post" id="versionForm">
+                <input type="hidden" name="action" value="save_version">
+                <input type="hidden" name="version_id" value="<?php echo $versionId; ?>">
+                <input type="hidden" name="evaluation_version_id" id="versionFormId">
+                <div class="modal-header">
+                    <div>
+                        <h2 id="versionModalTitle">Add Evaluation Version</h2>
+                        <p id="versionModalSubtitle">Create a separate schedule, criteria, and question setup.</p>
+                    </div>
+                    <button type="button" class="modal-close" onclick="closeModal('versionModal')"><?php echo icon_svg('close'); ?></button>
+                </div>
+                <div class="modal-body" id="versionFormBody">
+                    <div class="two-column">
+                        <div>
+                            <label>Version Code <span>*</span></label>
+                            <input type="text" name="version_code" id="versionCodeInput" placeholder="e.g., EV-V2" value="<?php echo e($nextVersionCode); ?>" required>
+                        </div>
+                        <div>
+                            <label>Version Name <span>*</span></label>
+                            <input type="text" name="version_name" id="versionNameInput" placeholder="e.g., Evaluation Version 2" required>
+                        </div>
+                    </div>
+                    <label>Description</label>
+                    <textarea name="version_description" id="versionDescriptionInput" placeholder="Describe the purpose of this evaluation version."></textarea>
+                    <div class="two-column">
+                        <div>
+                            <label>Academic Year <span>*</span></label>
+                            <input type="text" name="version_academic_year" id="versionAcademicYearInput" placeholder="2026-2027" required>
+                        </div>
+                        <div>
+                            <label>Semester <span>*</span></label>
+                            <select name="version_semester" id="versionSemesterInput" required>
+                                <option value="First Semester">1st Semester</option>
+                                <option value="Second Semester">2nd Semester</option>
+                                <option value="Summer">Summer</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="two-column">
+                        <div>
+                            <label>Start Date <span>*</span></label>
+                            <input type="date" name="version_start_date" id="versionStartDateInput" required>
+                        </div>
+                        <div>
+                            <label>End Date <span>*</span></label>
+                            <input type="date" name="version_end_date" id="versionEndDateInput" required>
+                        </div>
+                    </div>
+                    <label>Status <span>*</span></label>
+                    <select name="version_status" id="versionStatusInput">
+                        <option value="Draft">Draft</option>
+                        <option value="Active">Active</option>
+                        <option value="Archived">Archived</option>
+                    </select>
+                </div>
+                <div class="modal-body hidden" id="versionViewBody">
+                    <div class="details-grid version-details-grid">
+                        <div><span>Version Code</span><strong id="viewVersionCode"></strong></div>
+                        <div><span>Status</span><strong id="viewVersionStatus"></strong></div>
+                        <div><span>Academic Year</span><strong id="viewVersionAcademicYear"></strong></div>
+                        <div><span>Semester</span><strong id="viewVersionSemester"></strong></div>
+                        <div><span>Start Date</span><strong id="viewVersionStartDate"></strong></div>
+                        <div><span>End Date</span><strong id="viewVersionEndDate"></strong></div>
+                        <div><span>Criteria</span><strong id="viewVersionCriteria"></strong></div>
+                        <div><span>Questions</span><strong id="viewVersionQuestions"></strong></div>
+                        <div class="detail-full"><span>Version Name</span><strong id="viewVersionName"></strong></div>
+                        <div class="detail-full"><span>Description</span><p id="viewVersionDescription"></p></div>
+                    </div>
+                </div>
+                <div class="modal-footer" id="versionFormFooter">
+                    <button type="button" class="secondary-button" onclick="closeModal('versionModal')">Cancel</button>
+                    <button type="submit" class="dark-button" id="versionSubmitButton">Add Version</button>
+                </div>
+                <div class="modal-footer hidden" id="versionViewFooter">
+                    <button type="button" class="secondary-button" onclick="closeModal('versionModal')">Close</button>
+                    <button type="button" class="dark-button" id="versionEditFromViewButton">Edit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div class="modal-overlay hidden" id="criteriaModal">
         <div class="modal-box criteria-form-modal">
             <form method="post" id="criteriaForm">
                 <input type="hidden" name="action" value="save_criteria">
+                <input type="hidden" name="version_id" value="<?php echo $versionId; ?>">
                 <input type="hidden" name="evaluation_form_category_id" id="criteriaFormCategoryId">
                 <div class="modal-header"><h2 id="criteriaModalTitle">Add Evaluation Criteria</h2><button type="button" class="modal-close" onclick="closeModal('criteriaModal')"><?php echo icon_svg('close'); ?></button></div>
                 <div class="modal-body" id="criteriaFormBody">
@@ -1608,6 +2155,7 @@ $historySemesters = array_values(array_unique(array_map(fn($r) => $r['semester_u
         <div class="modal-box question-form-modal">
             <form method="post" id="questionForm">
                 <input type="hidden" name="action" value="save_question">
+                <input type="hidden" name="version_id" value="<?php echo $versionId; ?>">
                 <input type="hidden" name="evaluation_form_category_id" id="questionFormCategoryId">
                 <input type="hidden" name="evaluation_form_item_id" id="questionFormItemId">
                 <div class="modal-header"><h2 id="questionModalTitle">Add Question</h2><button type="button" class="modal-close" onclick="closeModal('questionModal')"><?php echo icon_svg('close'); ?></button></div>
@@ -1657,6 +2205,7 @@ $historySemesters = array_values(array_unique(array_map(fn($r) => $r['semester_u
         <div class="modal-box scope-modal">
             <form method="post" id="scopeForm">
                 <input type="hidden" name="action" id="scopeActionInput">
+                <input type="hidden" name="version_id" value="<?php echo $versionId; ?>">
                 <input type="hidden" name="semester" class="mirror-semester">
                 <input type="hidden" name="academic_year" class="mirror-academic-year">
                 <input type="hidden" name="start_date" class="mirror-start-date">
@@ -1707,6 +2256,7 @@ $historySemesters = array_values(array_unique(array_map(fn($r) => $r['semester_u
     <?php endif; ?>
 
     <script>
+        const evaluationVersions = <?php echo json_safe($evaluationVersions); ?>;
         const criteriaRecords = <?php echo json_safe($criteriaRecords); ?>;
         const questionRecords = <?php echo json_safe($questionRecords); ?>;
         const historyRecords = <?php echo json_safe($allHistoryRows); ?>;
@@ -1728,6 +2278,76 @@ $historySemesters = array_values(array_unique(array_map(fn($r) => $r['semester_u
             if (!document.querySelector(".modal-overlay:not(.hidden)")) {
                 document.body.classList.remove("modal-open");
             }
+        }
+
+        function changeEvaluationVersion(versionId) {
+            if (!versionId) return;
+            const url = new URL(window.location.href);
+            url.searchParams.set("version_id", versionId);
+            url.searchParams.delete("saved");
+            url.searchParams.delete("questions");
+            url.searchParams.delete("history");
+            url.searchParams.delete("error");
+            window.location.href = url.toString();
+        }
+
+        function openVersionModal(mode, id = null) {
+            const form = document.getElementById("versionForm");
+            form.reset();
+            document.getElementById("versionFormId").value = "";
+            document.getElementById("versionFormBody").classList.remove("hidden");
+            document.getElementById("versionFormFooter").classList.remove("hidden");
+            document.getElementById("versionViewBody").classList.add("hidden");
+            document.getElementById("versionViewFooter").classList.add("hidden");
+            Array.from(form.elements).forEach(el => el.disabled = false);
+
+            if (mode === "add") {
+                document.getElementById("versionModalTitle").textContent = "Add Evaluation Version";
+                document.getElementById("versionModalSubtitle").textContent = "Create a separate schedule, criteria, and question setup.";
+                document.getElementById("versionSubmitButton").textContent = "Add Version";
+                document.getElementById("versionCodeInput").value = "<?php echo e($nextVersionCode); ?>";
+                document.getElementById("versionNameInput").value = "";
+                document.getElementById("versionAcademicYearInput").value = "";
+                document.getElementById("versionStartDateInput").value = "";
+                document.getElementById("versionEndDateInput").value = "";
+                document.getElementById("versionStatusInput").value = "Draft";
+            } else {
+                const record = evaluationVersions.find(v => Number(v.evaluation_version_id) === Number(id));
+                if (!record) return;
+                if (mode === "view") {
+                    document.getElementById("versionModalTitle").textContent = "Evaluation Version Details";
+                    document.getElementById("versionModalSubtitle").textContent = "Review this version without changing its setup.";
+                    document.getElementById("versionFormBody").classList.add("hidden");
+                    document.getElementById("versionFormFooter").classList.add("hidden");
+                    document.getElementById("versionViewBody").classList.remove("hidden");
+                    document.getElementById("versionViewFooter").classList.remove("hidden");
+                    document.getElementById("viewVersionCode").textContent = record.version_code || "";
+                    document.getElementById("viewVersionStatus").innerHTML = `<span class="version-status-badge ${String(record.version_status || '').toLowerCase()}">${record.version_status || ''}</span>`;
+                    document.getElementById("viewVersionAcademicYear").textContent = record.academic_year_name || "";
+                    document.getElementById("viewVersionSemester").textContent = record.term_name || "";
+                    document.getElementById("viewVersionStartDate").textContent = formatDate(record.start_date);
+                    document.getElementById("viewVersionEndDate").textContent = formatDate(record.end_date);
+                    document.getElementById("viewVersionCriteria").textContent = record.criteria_count || 0;
+                    document.getElementById("viewVersionQuestions").textContent = record.question_count || 0;
+                    document.getElementById("viewVersionName").textContent = record.version_name || "";
+                    document.getElementById("viewVersionDescription").textContent = record.version_description || "No description provided.";
+                    document.getElementById("versionEditFromViewButton").onclick = () => openVersionModal("edit", id);
+                } else {
+                    document.getElementById("versionModalTitle").textContent = "Edit Evaluation Version";
+                    document.getElementById("versionModalSubtitle").textContent = "Update the version details and schedule.";
+                    document.getElementById("versionSubmitButton").textContent = "Update Version";
+                    document.getElementById("versionFormId").value = record.evaluation_version_id;
+                    document.getElementById("versionCodeInput").value = record.version_code || "";
+                    document.getElementById("versionNameInput").value = record.version_name || "";
+                    document.getElementById("versionDescriptionInput").value = record.version_description || "";
+                    document.getElementById("versionAcademicYearInput").value = String(record.academic_year_name || "").replace(/\s+-\s+/g, "-");
+                    document.getElementById("versionSemesterInput").value = record.term_name || "First Semester";
+                    document.getElementById("versionStartDateInput").value = record.start_date || "";
+                    document.getElementById("versionEndDateInput").value = record.end_date || "";
+                    document.getElementById("versionStatusInput").value = record.version_status || "Draft";
+                }
+            }
+            openModal("versionModal");
         }
 
         function collectSetupValues(form) {
