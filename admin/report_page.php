@@ -192,6 +192,7 @@ function ensure_report_support(mysqli $db): void
     }
 
     $columns = [
+        "evaluation_version_id" => "ALTER TABLE evaluation_result_release ADD COLUMN evaluation_version_id BIGINT UNSIGNED NULL AFTER evaluation_period_id",
         "release_scope_type" => "ALTER TABLE evaluation_result_release ADD COLUMN release_scope_type ENUM('All','Department','Course','Year Level','Section','Subject','Faculty') NOT NULL DEFAULT 'All' AFTER release_status",
         "release_department_id" => "ALTER TABLE evaluation_result_release ADD COLUMN release_department_id BIGINT UNSIGNED NULL AFTER release_scope_type",
         "release_course_id" => "ALTER TABLE evaluation_result_release ADD COLUMN release_course_id BIGINT UNSIGNED NULL AFTER release_department_id",
@@ -229,6 +230,14 @@ function ensure_report_support(mysqli $db): void
             generated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (generated_report_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    }
+
+    if (!db_column_exists($db, "generated_report", "filter_evaluation_version_id")) {
+        try { $db->query("ALTER TABLE generated_report ADD COLUMN filter_evaluation_version_id BIGINT UNSIGNED NULL AFTER report_format"); } catch (Throwable $e) { }
+    }
+
+    if (db_table_exists($db, "faculty_evaluation_result") && !db_column_exists($db, "faculty_evaluation_result", "evaluation_version_id")) {
+        try { $db->query("ALTER TABLE faculty_evaluation_result ADD COLUMN evaluation_version_id BIGINT UNSIGNED NULL AFTER evaluation_period_id"); } catch (Throwable $e) { }
     }
 }
 
@@ -269,6 +278,7 @@ function get_filters(): array
     }
     return [
         "report_type" => $reportType,
+        "evaluation_version_id" => (int)($_GET["evaluation_version_id"] ?? 0),
         "term_id" => (int)($_GET["term_id"] ?? 0),
         "academic_year_id" => (int)($_GET["academic_year_id"] ?? 0),
         "department_id" => (int)($_GET["department_id"] ?? 0),
@@ -282,59 +292,74 @@ function get_filters(): array
 
 function build_base_parts(mysqli $db, array $filters, string $prefix = "setask"): array
 {
-    $hasTaskAssignment = db_column_exists($db, "student_evaluation_task", "teaching_assignment_id");
-    $assignmentJoin = $hasTaskAssignment
-        ? "ta.teaching_assignment_id = COALESCE(setask.teaching_assignment_id, er.teaching_assignment_id)"
-        : "ta.teaching_assignment_id = er.teaching_assignment_id";
+    $hasTaskVersion = db_column_exists($db, "student_evaluation_task", "evaluation_version_id");
+    $hasResponseVersion = db_column_exists($db, "evaluation_response", "evaluation_version_id");
+
+    $versionJoin = $hasTaskVersion
+        ? "INNER JOIN evaluation_version ev ON ev.evaluation_version_id = setask.evaluation_version_id"
+        : "INNER JOIN evaluation_version ev ON ev.evaluation_period_id = setask.evaluation_period_id";
+
+    $responseVersionCondition = $hasResponseVersion && $hasTaskVersion
+        ? "AND (er.evaluation_version_id = ev.evaluation_version_id OR er.evaluation_version_id IS NULL)"
+        : "";
 
     $from = "
         FROM student_evaluation_task setask
-        INNER JOIN student st ON st.student_id = setask.student_id
-        INNER JOIN course c ON c.course_id = st.course_id
-        INNER JOIN department d ON d.department_id = c.department_id
-        LEFT JOIN section sec ON sec.section_id = st.current_section_id
-        INNER JOIN evaluation_period ep ON ep.evaluation_period_id = setask.evaluation_period_id
-        INNER JOIN term t ON t.term_id = ep.term_id
-        INNER JOIN academic_year ay ON ay.academic_year_id = t.academic_year_id
-        
-        INNER JOIN teaching_assignment ta 
+        {$versionJoin}
+        INNER JOIN evaluation_period ep
+            ON ep.evaluation_period_id = setask.evaluation_period_id
+           AND ep.evaluation_period_id = ev.evaluation_period_id
+        INNER JOIN term t
+            ON t.term_id = ep.term_id
+        INNER JOIN academic_year ay
+            ON ay.academic_year_id = t.academic_year_id
+        INNER JOIN student st
+            ON st.student_id = setask.student_id
+        INNER JOIN teaching_assignment ta
             ON ta.teaching_assignment_id = setask.teaching_assignment_id
-        AND ta.assignment_status <> 'Inactive'
-
-        INNER JOIN section_subject_offering sso 
+           AND ta.assignment_status <> 'Inactive'
+        INNER JOIN section_subject_offering sso
             ON sso.section_subject_offering_id = ta.section_subject_offering_id
-        AND sso.section_id = sec.section_id
-        AND sso.term_id = t.term_id
-        AND sso.offering_status <> 'Inactive'
-
-        INNER JOIN subject subj 
+           AND sso.term_id = ep.term_id
+           AND sso.offering_status <> 'Inactive'
+        INNER JOIN section sec
+            ON sec.section_id = sso.section_id
+           AND sec.section_status <> 'Inactive'
+        INNER JOIN course c
+            ON c.course_id = sec.course_id
+           AND c.course_status <> 'Inactive'
+        INNER JOIN department d
+            ON d.department_id = c.department_id
+           AND d.department_status <> 'Inactive'
+        INNER JOIN subject subj
             ON subj.subject_id = sso.subject_id
-
-        LEFT JOIN evaluation_response er 
-            ON er.student_evaluation_task_id = setask.student_evaluation_task_id
-        AND er.teaching_assignment_id = ta.teaching_assignment_id
-        AND er.response_status = 'Submitted'
-
-        LEFT JOIN faculty f 
+           AND subj.subject_status <> 'Inactive'
+        LEFT JOIN faculty f
             ON f.faculty_id = ta.faculty_id
-
-        LEFT JOIN department fd 
+        LEFT JOIN department fd
             ON fd.department_id = f.department_id
+        LEFT JOIN evaluation_response er
+            ON er.student_evaluation_task_id = setask.student_evaluation_task_id
+           AND er.teaching_assignment_id = setask.teaching_assignment_id
+           AND er.evaluation_period_id = setask.evaluation_period_id
+           AND er.response_status = 'Submitted'
+           {$responseVersionCondition}
     ";
 
     $where = [
-    "setask.task_status <> 'Reset'",
-    "setask.is_active = 1"
+        "setask.task_status <> 'Reset'",
+        "setask.is_active = 1"
     ];
     $types = "";
     $params = [];
 
     $map = [
+        "evaluation_version_id" => "ev.evaluation_version_id",
         "academic_year_id" => "ay.academic_year_id",
         "term_id" => "t.term_id",
         "department_id" => "d.department_id",
         "course_id" => "c.course_id",
-        "year_level" => "st.current_year_level",
+        "year_level" => "sec.year_level",
         "section_id" => "sec.section_id",
         "subject_id" => "subj.subject_id",
         "faculty_id" => "f.faculty_id",
@@ -353,52 +378,79 @@ function build_base_parts(mysqli $db, array $filters, string $prefix = "setask")
 
 function build_answer_parts(mysqli $db, array $filters): array
 {
+    $hasTaskVersion = db_column_exists($db, "student_evaluation_task", "evaluation_version_id");
+    $hasResponseVersion = db_column_exists($db, "evaluation_response", "evaluation_version_id");
+
+    $versionJoin = $hasTaskVersion
+        ? "INNER JOIN evaluation_version ev ON ev.evaluation_version_id = setask.evaluation_version_id"
+        : "INNER JOIN evaluation_version ev ON ev.evaluation_period_id = setask.evaluation_period_id";
+
+    $responseVersionCondition = $hasResponseVersion && $hasTaskVersion
+        ? "(er.evaluation_version_id = ev.evaluation_version_id OR er.evaluation_version_id IS NULL)"
+        : "1 = 1";
+
     $from = "
         FROM evaluation_response_answer era
-        INNER JOIN evaluation_response er ON er.evaluation_response_id = era.evaluation_response_id AND er.response_status = 'Submitted'
-        INNER JOIN student_evaluation_task setask ON setask.student_evaluation_task_id = er.student_evaluation_task_id
-        INNER JOIN student st ON st.student_id = er.student_id
-        INNER JOIN course c ON c.course_id = st.course_id
-        INNER JOIN department d ON d.department_id = c.department_id
-        LEFT JOIN section sec ON sec.section_id = st.current_section_id
-        INNER JOIN evaluation_period ep ON ep.evaluation_period_id = er.evaluation_period_id
-        INNER JOIN term t ON t.term_id = ep.term_id
-        INNER JOIN academic_year ay ON ay.academic_year_id = t.academic_year_id
-
-        INNER JOIN teaching_assignment ta 
+        INNER JOIN evaluation_response er
+            ON er.evaluation_response_id = era.evaluation_response_id
+           AND er.response_status = 'Submitted'
+        INNER JOIN student_evaluation_task setask
+            ON setask.student_evaluation_task_id = er.student_evaluation_task_id
+           AND setask.task_status <> 'Reset'
+           AND setask.is_active = 1
+        {$versionJoin}
+        INNER JOIN evaluation_period ep
+            ON ep.evaluation_period_id = setask.evaluation_period_id
+           AND ep.evaluation_period_id = er.evaluation_period_id
+           AND ep.evaluation_period_id = ev.evaluation_period_id
+        INNER JOIN term t
+            ON t.term_id = ep.term_id
+        INNER JOIN academic_year ay
+            ON ay.academic_year_id = t.academic_year_id
+        INNER JOIN student st
+            ON st.student_id = er.student_id
+        INNER JOIN teaching_assignment ta
             ON ta.teaching_assignment_id = er.teaching_assignment_id
-        AND ta.teaching_assignment_id = setask.teaching_assignment_id
-        AND ta.assignment_status <> 'Inactive'
-
-        INNER JOIN section_subject_offering sso 
+           AND ta.teaching_assignment_id = setask.teaching_assignment_id
+           AND ta.assignment_status <> 'Inactive'
+        INNER JOIN section_subject_offering sso
             ON sso.section_subject_offering_id = ta.section_subject_offering_id
-        AND sso.section_id = sec.section_id
-        AND sso.term_id = t.term_id
-        AND sso.offering_status <> 'Inactive'
-
-        INNER JOIN subject subj 
+           AND sso.term_id = ep.term_id
+           AND sso.offering_status <> 'Inactive'
+        INNER JOIN section sec
+            ON sec.section_id = sso.section_id
+           AND sec.section_status <> 'Inactive'
+        INNER JOIN course c
+            ON c.course_id = sec.course_id
+           AND c.course_status <> 'Inactive'
+        INNER JOIN department d
+            ON d.department_id = c.department_id
+           AND d.department_status <> 'Inactive'
+        INNER JOIN subject subj
             ON subj.subject_id = sso.subject_id
-
-        LEFT JOIN faculty f 
+           AND subj.subject_status <> 'Inactive'
+        LEFT JOIN faculty f
             ON f.faculty_id = ta.faculty_id
-
-        INNER JOIN evaluation_form_item efi ON efi.evaluation_form_item_id = era.evaluation_form_item_id
-        INNER JOIN evaluation_form_category efc ON efc.evaluation_form_category_id = efi.evaluation_form_category_id
-        INNER JOIN evaluation_category ec ON ec.evaluation_category_id = efc.evaluation_category_id
+        INNER JOIN evaluation_form_item efi
+            ON efi.evaluation_form_item_id = era.evaluation_form_item_id
+        INNER JOIN evaluation_form_category efc
+            ON efc.evaluation_form_category_id = efi.evaluation_form_category_id
+        INNER JOIN evaluation_category ec
+            ON ec.evaluation_category_id = efc.evaluation_category_id
     ";
 
     $where = [
-    "setask.task_status <> 'Reset'",
-    "setask.is_active = 1"
+        $responseVersionCondition
     ];
     $types = "";
     $params = [];
     $map = [
+        "evaluation_version_id" => "ev.evaluation_version_id",
         "academic_year_id" => "ay.academic_year_id",
         "term_id" => "t.term_id",
         "department_id" => "d.department_id",
         "course_id" => "c.course_id",
-        "year_level" => "st.current_year_level",
+        "year_level" => "sec.year_level",
         "section_id" => "sec.section_id",
         "subject_id" => "subj.subject_id",
         "faculty_id" => "f.faculty_id",
@@ -416,6 +468,7 @@ function build_answer_parts(mysqli $db, array $filters): array
 function report_scope_labels(mysqli $db, array $filters): array
 {
     $labels = [
+        "evaluation_version" => "All Evaluation Versions",
         "semester" => "All Semesters",
         "academic_year" => "All Academic Years",
         "department" => "All Colleges",
@@ -425,6 +478,14 @@ function report_scope_labels(mysqli $db, array $filters): array
         "subject" => "All Courses",
         "faculty" => "All Faculty",
     ];
+    if (!empty($filters["evaluation_version_id"])) {
+        $row = fetch_one($db, "SELECT CONCAT(ev.version_code, ' - ', ev.version_name) AS version_label, t.term_name, ay.academic_year_name FROM evaluation_version ev INNER JOIN evaluation_period ep ON ep.evaluation_period_id = ev.evaluation_period_id INNER JOIN term t ON t.term_id = ep.term_id INNER JOIN academic_year ay ON ay.academic_year_id = t.academic_year_id WHERE ev.evaluation_version_id = ?", "i", [(int)$filters["evaluation_version_id"]]);
+        if ($row) {
+            $labels["evaluation_version"] = (string)$row["version_label"];
+            $labels["semester"] = normalize_term_label((string)$row["term_name"]);
+            $labels["academic_year"] = str_replace(" - ", "-", (string)$row["academic_year_name"]);
+        }
+    }
     if ($filters["term_id"]) {
         $row = fetch_one($db, "SELECT term_name FROM term WHERE term_id = ?", "i", [$filters["term_id"]]);
         if ($row) {
@@ -492,13 +553,21 @@ function get_report_data(mysqli $db, array $filters): array
             COUNT(DISTINCT st.student_id) AS total_students,
             COUNT(DISTINCT CASE WHEN er.response_status = 'Submitted' THEN er.evaluation_response_id END) AS total_responses,
             COUNT(DISTINCT setask.student_evaluation_task_id) AS total_assigned,
-            COUNT(DISTINCT CASE WHEN setask.task_status = 'Submitted' THEN setask.student_evaluation_task_id END) AS completed_tasks,
-            COUNT(DISTINCT CASE WHEN setask.task_status IN ('Pending','Draft') THEN setask.student_evaluation_task_id END) AS pending_tasks,
+            COUNT(DISTINCT CASE WHEN setask.task_status = 'Submitted' OR er.evaluation_response_id IS NOT NULL THEN setask.student_evaluation_task_id END) AS completed_tasks,
+            COUNT(DISTINCT setask.student_evaluation_task_id) - COUNT(DISTINCT CASE WHEN setask.task_status = 'Submitted' OR er.evaluation_response_id IS NOT NULL THEN setask.student_evaluation_task_id END) AS pending_tasks,
             ROUND(AVG(er.average_score), 2) AS average_rating
         {$parts['from']} {$parts['where']}
     ", $parts["types"], $parts["params"]);
 
-    $stats = $stats ?: [];
+    $stats = array_merge([
+        "total_faculty" => 0,
+        "total_students" => 0,
+        "total_responses" => 0,
+        "total_assigned" => 0,
+        "completed_tasks" => 0,
+        "pending_tasks" => 0,
+        "average_rating" => null,
+    ], $stats ?: []);
     $totalAssigned = (int)($stats["total_assigned"] ?? 0);
     $completed = (int)($stats["completed_tasks"] ?? 0);
     $stats["completion_rate"] = $totalAssigned > 0 ? round(($completed / $totalAssigned) * 100, 1) : 0;
@@ -515,7 +584,7 @@ function get_report_data(mysqli $db, array $filters): array
             COUNT(DISTINCT CASE WHEN er.response_status = 'Submitted' THEN er.evaluation_response_id END) AS responses,
             ROUND(AVG(er.average_score), 2) AS avg_rating,
             CASE WHEN COUNT(DISTINCT setask.student_evaluation_task_id) > 0
-                THEN ROUND((COUNT(DISTINCT CASE WHEN setask.task_status = 'Submitted' THEN setask.student_evaluation_task_id END) / COUNT(DISTINCT setask.student_evaluation_task_id)) * 100, 1)
+                THEN ROUND((COUNT(DISTINCT CASE WHEN setask.task_status = 'Submitted' OR er.evaluation_response_id IS NOT NULL THEN setask.student_evaluation_task_id END) / COUNT(DISTINCT setask.student_evaluation_task_id)) * 100, 1)
                 ELSE 0 END AS completion_rate
         {$parts['from']} {$parts['where']}
         GROUP BY f.faculty_id, f.faculty_number, f.full_name, fd.department_name, d.department_name
@@ -550,7 +619,7 @@ function get_report_data(mysqli $db, array $filters): array
             d.department_name,
             COUNT(DISTINCT er.evaluation_response_id) AS responses,
             COUNT(DISTINCT setask.student_evaluation_task_id) AS assigned_count,
-            COUNT(DISTINCT CASE WHEN setask.task_status = 'Submitted' THEN setask.student_evaluation_task_id END) AS completed_count,
+            COUNT(DISTINCT CASE WHEN setask.task_status = 'Submitted' OR er.evaluation_response_id IS NOT NULL THEN setask.student_evaluation_task_id END) AS completed_count,
             ROUND(AVG(er.average_score), 2) AS avg_rating
         {$parts['from']} {$parts['where']}
         GROUP BY d.department_id, d.department_name
@@ -572,7 +641,7 @@ function get_report_data(mysqli $db, array $filters): array
             d.department_name,
             COUNT(DISTINCT er.evaluation_response_id) AS responses,
             COUNT(DISTINCT setask.student_evaluation_task_id) AS assigned_count,
-            COUNT(DISTINCT CASE WHEN setask.task_status = 'Submitted' THEN setask.student_evaluation_task_id END) AS completed_count,
+            COUNT(DISTINCT CASE WHEN setask.task_status = 'Submitted' OR er.evaluation_response_id IS NOT NULL THEN setask.student_evaluation_task_id END) AS completed_count,
             ROUND(AVG(er.average_score), 2) AS avg_rating
         {$parts['from']} {$parts['where']}
         GROUP BY c.course_id, c.course_code, c.course_name, d.department_name
@@ -591,14 +660,14 @@ function get_report_data(mysqli $db, array $filters): array
             sec.section_id,
             sec.section_name,
             c.course_code,
-            st.current_year_level AS year_level,
+            sec.year_level AS year_level,
             COUNT(DISTINCT er.evaluation_response_id) AS responses,
             COUNT(DISTINCT setask.student_evaluation_task_id) AS assigned_count,
-            COUNT(DISTINCT CASE WHEN setask.task_status = 'Submitted' THEN setask.student_evaluation_task_id END) AS completed_count,
+            COUNT(DISTINCT CASE WHEN setask.task_status = 'Submitted' OR er.evaluation_response_id IS NOT NULL THEN setask.student_evaluation_task_id END) AS completed_count,
             ROUND(AVG(er.average_score), 2) AS avg_rating
         {$parts['from']} {$parts['where']} AND sec.section_id IS NOT NULL
-        GROUP BY sec.section_id, sec.section_name, c.course_code, st.current_year_level
-        ORDER BY c.course_code, st.current_year_level, sec.section_name
+        GROUP BY sec.section_id, sec.section_name, c.course_code, sec.year_level
+        ORDER BY c.course_code, sec.year_level, sec.section_name
     ", $parts["types"], $parts["params"]);
     foreach ($sectionRows as &$row) {
         $assigned = (int)($row["assigned_count"] ?? 0);
@@ -632,6 +701,7 @@ function get_report_data(mysqli $db, array $filters): array
 function get_dropdowns(mysqli $db): array
 {
     return [
+        "evaluation_versions" => fetch_all($db, "SELECT ev.evaluation_version_id, ev.version_code, ev.version_name, ev.version_status, t.term_name, ay.academic_year_name FROM evaluation_version ev INNER JOIN evaluation_period ep ON ep.evaluation_period_id = ev.evaluation_period_id INNER JOIN term t ON t.term_id = ep.term_id INNER JOIN academic_year ay ON ay.academic_year_id = t.academic_year_id ORDER BY ay.start_date DESC, t.start_date DESC, ev.evaluation_version_id DESC"),
         "academic_years" => fetch_all($db, "SELECT academic_year_id, academic_year_name FROM academic_year ORDER BY start_date DESC, academic_year_id DESC"),
         "terms" => fetch_all($db, "SELECT t.term_id, t.term_name, ay.academic_year_name FROM term t INNER JOIN academic_year ay ON ay.academic_year_id = t.academic_year_id ORDER BY ay.start_date DESC, t.start_date DESC, t.term_id DESC"),
         "departments" => fetch_all($db, "SELECT department_id, department_code, department_name FROM department WHERE department_status <> 'Inactive' ORDER BY department_name"),
@@ -645,16 +715,20 @@ function get_dropdowns(mysqli $db): array
 function latest_term_badge(mysqli $db, array $filters): string
 {
     $row = null;
-    if (!empty($filters["term_id"])) {
-        $row = fetch_one($db, "SELECT t.term_name, ay.academic_year_name FROM term t INNER JOIN academic_year ay ON ay.academic_year_id = t.academic_year_id WHERE t.term_id = ?", "i", [(int)$filters["term_id"]]);
+    if (!empty($filters["evaluation_version_id"])) {
+        $row = fetch_one($db, "SELECT ev.version_code, t.term_name, ay.academic_year_name FROM evaluation_version ev INNER JOIN evaluation_period ep ON ep.evaluation_period_id = ev.evaluation_period_id INNER JOIN term t ON t.term_id = ep.term_id INNER JOIN academic_year ay ON ay.academic_year_id = t.academic_year_id WHERE ev.evaluation_version_id = ?", "i", [(int)$filters["evaluation_version_id"]]);
+    }
+    if (!$row && !empty($filters["term_id"])) {
+        $row = fetch_one($db, "SELECT NULL AS version_code, t.term_name, ay.academic_year_name FROM term t INNER JOIN academic_year ay ON ay.academic_year_id = t.academic_year_id WHERE t.term_id = ?", "i", [(int)$filters["term_id"]]);
     }
     if (!$row) {
-        $row = fetch_one($db, "SELECT t.term_name, ay.academic_year_name FROM term t INNER JOIN academic_year ay ON ay.academic_year_id = t.academic_year_id ORDER BY FIELD(t.term_status, 'Active','Inactive','Closed','Archived'), t.start_date DESC, t.term_id DESC LIMIT 1");
+        $row = fetch_one($db, "SELECT NULL AS version_code, t.term_name, ay.academic_year_name FROM term t INNER JOIN academic_year ay ON ay.academic_year_id = t.academic_year_id ORDER BY FIELD(t.term_status, 'Active','Inactive','Closed','Archived'), t.start_date DESC, t.term_id DESC LIMIT 1");
     }
     if (!$row) {
         return "No Semester";
     }
-    return normalize_term_label((string)$row["term_name"]) . " " . str_replace(" - ", "-", (string)$row["academic_year_name"]);
+    $version = !empty($row["version_code"]) ? (" " . $row["version_code"] . " •") : "";
+    return normalize_term_label((string)$row["term_name"]) . $version . " " . str_replace(" - ", "-", (string)$row["academic_year_name"]);
 }
 
 function output_csv_report(mysqli $db, array $data, array $filters): void
@@ -719,6 +793,9 @@ function completed_period_ids_for_release(mysqli $db, array $filters): array
     $where = ["eps.scope_status = 'Completed'"];
     $types = "";
     $params = [];
+    if (!empty($filters["evaluation_version_id"])) {
+        $where[] = "ev.evaluation_version_id = ?"; $types .= "i"; $params[] = (int)$filters["evaluation_version_id"];
+    }
     if (!empty($filters["academic_year_id"])) {
         $where[] = "ay.academic_year_id = ?"; $types .= "i"; $params[] = (int)$filters["academic_year_id"];
     }
@@ -741,13 +818,15 @@ function completed_period_ids_for_release(mysqli $db, array $filters): array
         $where[] = "(eps.scope_type = 'All' OR eps.section_id = ?)";
         $types .= "i"; $params[] = (int)$filters["section_id"];
     }
-    $sql = "SELECT DISTINCT eps.evaluation_period_id
+    $sql = "SELECT DISTINCT ep.evaluation_period_id
         FROM evaluation_period_scope eps
         INNER JOIN evaluation_period ep ON ep.evaluation_period_id = eps.evaluation_period_id
+        INNER JOIN evaluation_version ev ON ev.evaluation_period_id = ep.evaluation_period_id
+            AND (eps.evaluation_version_id IS NULL OR eps.evaluation_version_id = ev.evaluation_version_id)
         INNER JOIN term t ON t.term_id = ep.term_id
         INNER JOIN academic_year ay ON ay.academic_year_id = t.academic_year_id
         WHERE " . implode(" AND ", $where) . "
-        ORDER BY eps.evaluation_period_id DESC";
+        ORDER BY ep.evaluation_period_id DESC";
     $rows = fetch_all($db, $sql, $types, $params);
     return array_map(fn($r) => (int)$r["evaluation_period_id"], $rows);
 }
@@ -771,6 +850,8 @@ function handle_release_results(mysqli $db, array $filters): void
     $db->begin_transaction();
     try {
         foreach ($periodIds as $periodId) {
+            $versionRow = fetch_one($db, "SELECT evaluation_version_id, evaluation_form_id FROM evaluation_version WHERE evaluation_period_id = ?" . (!empty($filters["evaluation_version_id"]) ? " AND evaluation_version_id = " . (int)$filters["evaluation_version_id"] : "") . " ORDER BY evaluation_version_id DESC LIMIT 1", "i", [$periodId]);
+            $versionId = $versionRow ? (int)$versionRow["evaluation_version_id"] : 0;
             $releaseName = $filters["report_type"] . " Release " . date("Y-m-d H:i:s");
             execute_stmt($db, "INSERT INTO evaluation_result_release (
                 evaluation_period_id, release_name, release_status, release_scope_type, release_department_id,
@@ -791,6 +872,9 @@ function handle_release_results(mysqli $db, array $filters): void
                 $adminId,
             ]);
             $releaseId = (int)$db->insert_id;
+            if ($versionId > 0 && db_column_exists($db, "evaluation_result_release", "evaluation_version_id")) {
+                execute_stmt($db, "UPDATE evaluation_result_release SET evaluation_version_id = ? WHERE evaluation_result_release_id = ?", "ii", [$versionId, $releaseId]);
+            }
 
             $releaseFilters = $filters;
             $releaseFilters["term_id"] = 0;
@@ -806,6 +890,9 @@ function handle_release_results(mysqli $db, array $filters): void
                     while ($db->more_results() && $db->next_result()) { $db->store_result(); }
                 } catch (Throwable $inner) {
                     continue;
+                }
+                if ($versionId > 0 && db_column_exists($db, "faculty_evaluation_result", "evaluation_version_id")) {
+                    execute_stmt($db, "UPDATE faculty_evaluation_result SET evaluation_version_id = ? WHERE evaluation_result_release_id = ? AND teaching_assignment_id = ?", "iii", [$versionId, $releaseId, (int)$assignment["teaching_assignment_id"]]);
                 }
                 $releasedCount++;
             }
@@ -826,6 +913,7 @@ $action = (string)($_GET["action"] ?? "");
 if ($_SERVER["REQUEST_METHOD"] === "POST" && ($_POST["form_action"] ?? "") === "release_results") {
     $filters = [
         "report_type" => (string)($_POST["report_type"] ?? "Overall Summary"),
+        "evaluation_version_id" => (int)($_POST["evaluation_version_id"] ?? 0),
         "term_id" => (int)($_POST["term_id"] ?? 0),
         "academic_year_id" => (int)($_POST["academic_year_id"] ?? 0),
         "department_id" => (int)($_POST["department_id"] ?? 0),
@@ -926,6 +1014,17 @@ function action_url(array $baseQuery, string $action): string
                         <select id="report_type" name="report_type">
                             <?php foreach (["Overall Summary", "Faculty Performance Summary", "Criteria Performance Summary"] as $type): ?>
                                 <option value="<?php echo e($type); ?>" <?php echo $filters["report_type"] === $type ? "selected" : ""; ?>><?php echo e($type); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="evaluation_version_id">Evaluation Version</label>
+                        <select id="evaluation_version_id" name="evaluation_version_id">
+                            <option value="0">All Evaluation Versions</option>
+                            <?php foreach ($dropdowns["evaluation_versions"] as $row): ?>
+                                <?php $versionLabel = $row["version_code"] . " - " . $row["version_name"] . " (" . normalize_term_label((string)$row["term_name"]) . " " . str_replace(" - ", "-", (string)$row["academic_year_name"]) . ")"; ?>
+                                <option value="<?php echo (int)$row['evaluation_version_id']; ?>" <?php echo $filters["evaluation_version_id"] === (int)$row["evaluation_version_id"] ? "selected" : ""; ?>><?php echo e($versionLabel); ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -1491,6 +1590,7 @@ function render_admin_report_template(array $data, array $filters): void
 
         <section class="report-meta-grid avoid-break">
             <div class="meta-row"><span>Admin</span><strong>System Administrator</strong></div>
+            <div class="meta-row"><span>Evaluation Version</span><strong><?php echo e($scope['evaluation_version'] ?? 'All Evaluation Versions'); ?></strong></div>
             <div class="meta-row"><span>Academic Year</span><strong><?php echo e($scope['academic_year']); ?></strong></div>
             <div class="meta-row"><span>College</span><strong><?php echo e($scope['department']); ?></strong></div>
             <div class="meta-row"><span>Semester</span><strong><?php echo e($scope['semester']); ?></strong></div>
