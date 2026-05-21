@@ -45,226 +45,341 @@ function e(string $value): string
 if (isset($_GET["action"]) && in_array($_GET["action"], ["report_download", "report_preview"], true)) {
     $rpt_user_id = $user_id;
     $rpt_filter_ta = isset($_GET["ta_id"]) ? (int) $_GET["ta_id"] : 0;
+
     $rpt_fac_stmt = $pdo->prepare("
         SELECT f.faculty_id, f.faculty_number, f.full_name, d.department_name, d.department_code
         FROM faculty f
         INNER JOIN department d ON d.department_id = f.department_id
-        WHERE f.user_id = :user_id LIMIT 1
+        WHERE f.user_id = :user_id
+        LIMIT 1
     ");
     $rpt_fac_stmt->execute(["user_id" => $rpt_user_id]);
     $rpt_faculty = $rpt_fac_stmt->fetch();
+
     if (!$rpt_faculty) {
         echo "Faculty not found.";
         exit;
     }
+
     $rpt_faculty_id = (int) $rpt_faculty["faculty_id"];
-    $rpt_period_stmt = $pdo->query("
-        SELECT ep.evaluation_period_id, t.term_name, ay.academic_year_name
-        FROM evaluation_period ep
-        INNER JOIN term t ON t.term_id = ep.term_id
-        INNER JOIN academic_year ay ON ay.academic_year_id = t.academic_year_id
-        ORDER BY FIELD(ep.period_status,'Ongoing','Open','Draft','Closed','Archived'), ep.start_date DESC
+
+    /*
+     * Evaluation Version aware report context.
+     * The old report selected the latest open evaluation period globally.
+     * That broke faculty reports when a newer version was opened for another section.
+     * This now selects the latest released evaluation result owned by the logged in faculty.
+     */
+    $rpt_period_stmt = $pdo->prepare("
+        SELECT
+            ep.evaluation_period_id,
+            ep.term_id,
+            t.term_name,
+            ay.academic_year_name,
+            ev.evaluation_version_id,
+            ev.version_code,
+            ev.version_name
+        FROM faculty_evaluation_result fer
+        INNER JOIN evaluation_result_release err
+            ON err.evaluation_result_release_id = fer.evaluation_result_release_id
+        INNER JOIN teaching_assignment ta
+            ON ta.teaching_assignment_id = fer.teaching_assignment_id
+        INNER JOIN evaluation_period ep
+            ON ep.evaluation_period_id = fer.evaluation_period_id
+        INNER JOIN term t
+            ON t.term_id = ep.term_id
+        INNER JOIN academic_year ay
+            ON ay.academic_year_id = t.academic_year_id
+        LEFT JOIN evaluation_version ev
+            ON ev.evaluation_period_id = fer.evaluation_period_id
+           AND ev.evaluation_form_id = fer.evaluation_form_id
+        WHERE ta.faculty_id = :faculty_id
+          AND fer.result_status = 'Released'
+          AND err.release_status = 'Released'
+        ORDER BY
+            COALESCE(fer.released_at, err.released_at, fer.computed_at, ep.updated_at) DESC,
+            fer.faculty_evaluation_result_id DESC
         LIMIT 1
     ");
+    $rpt_period_stmt->execute(["faculty_id" => $rpt_faculty_id]);
     $rpt_period = $rpt_period_stmt->fetch();
-    $rpt_period_id = $rpt_period ? (int) $rpt_period["evaluation_period_id"] : 0;
+
+    if (!$rpt_period) {
+        $rpt_period_stmt = $pdo->prepare("
+            SELECT
+                ep.evaluation_period_id,
+                t.term_id,
+                t.term_name,
+                ay.academic_year_name,
+                ev.evaluation_version_id,
+                ev.version_code,
+                ev.version_name
+            FROM teaching_assignment ta
+            INNER JOIN term t
+                ON t.term_id = ta.term_id
+            INNER JOIN academic_year ay
+                ON ay.academic_year_id = t.academic_year_id
+            LEFT JOIN evaluation_period ep
+                ON ep.term_id = t.term_id
+            LEFT JOIN evaluation_version ev
+                ON ev.evaluation_period_id = ep.evaluation_period_id
+            WHERE ta.faculty_id = :faculty_id
+              AND ta.assignment_status = 'Active'
+            ORDER BY t.start_date DESC, ep.start_date DESC
+            LIMIT 1
+        ");
+        $rpt_period_stmt->execute(["faculty_id" => $rpt_faculty_id]);
+        $rpt_period = $rpt_period_stmt->fetch();
+    }
+
+    $rpt_period_id = $rpt_period ? (int) ($rpt_period["evaluation_period_id"] ?? 0) : 0;
+
     $rpt_school_stmt = $pdo->query("SELECT school_name FROM school_profile LIMIT 1");
     $rpt_school = $rpt_school_stmt->fetch();
     $rpt_school_name = $rpt_school ? $rpt_school["school_name"] : "";
+
     $rpt_ta_filter = $rpt_filter_ta ? "AND ta.teaching_assignment_id = :ta_id" : "";
+
     $query = "
-    SELECT 
-        ta.teaching_assignment_id,
-        sub.subject_code, 
-        sub.subject_title, 
-        sec.section_name, 
-        c.course_code, 
-        t.term_name,
-        COUNT(DISTINCT er.evaluation_response_id) AS submitted_response_count,
-        (SELECT COUNT(s.student_id) 
-         FROM student s 
-         WHERE s.current_section_id = sso.section_id) AS eligible_student_count,
-        ROUND(AVG(er.average_score), 2) AS overall_average_score,
-        'Submitted' AS result_status
-    FROM teaching_assignment ta
-    INNER JOIN section_subject_offering sso ON sso.section_subject_offering_id = ta.section_subject_offering_id
-    INNER JOIN subject sub ON sub.subject_id = sso.subject_id
-    INNER JOIN section sec ON sec.section_id = sso.section_id
-    INNER JOIN course c ON c.course_id = sec.course_id
-    INNER JOIN term t ON t.term_id = ta.term_id
-    INNER JOIN evaluation_period ep ON ep.evaluation_period_id = :period_id_filter
-    LEFT JOIN evaluation_response er ON er.teaching_assignment_id = ta.teaching_assignment_id 
-                                    AND er.evaluation_period_id = ep.evaluation_period_id
-    WHERE ta.faculty_id = :faculty_id
-      AND ta.term_id = ep.term_id -- This ensures faculty only sees classes for the active term
-    $rpt_ta_filter 
-    GROUP BY ta.teaching_assignment_id, sub.subject_code, sub.subject_title, 
-             sec.section_name, c.course_code, t.term_name, sso.section_id
-    ORDER BY sub.subject_code, sec.section_name";
+        SELECT
+            fer.faculty_evaluation_result_id,
+            ta.teaching_assignment_id,
+            sub.subject_code,
+            sub.subject_title,
+            sec.section_name,
+            c.course_code,
+            t.term_name,
+            ay.academic_year_name,
+            fer.eligible_student_count,
+            fer.submitted_response_count,
+            fer.pending_response_count,
+            fer.participation_rate,
+            fer.overall_average_score,
+            fer.result_status,
+            COALESCE(fer.released_at, err.released_at) AS released_at,
+            ev.evaluation_version_id,
+            ev.version_code,
+            ev.version_name
+        FROM faculty_evaluation_result fer
+        INNER JOIN evaluation_result_release err
+            ON err.evaluation_result_release_id = fer.evaluation_result_release_id
+        INNER JOIN (
+            SELECT
+                fer2.teaching_assignment_id,
+                MAX(fer2.faculty_evaluation_result_id) AS latest_result_id
+            FROM faculty_evaluation_result fer2
+            INNER JOIN evaluation_result_release err2
+                ON err2.evaluation_result_release_id = fer2.evaluation_result_release_id
+            INNER JOIN teaching_assignment ta2
+                ON ta2.teaching_assignment_id = fer2.teaching_assignment_id
+            WHERE ta2.faculty_id = :faculty_id
+              AND fer2.evaluation_period_id = :period_id_filter
+              AND fer2.result_status = 'Released'
+              AND err2.release_status = 'Released'
+            GROUP BY fer2.teaching_assignment_id
+        ) latest
+            ON latest.latest_result_id = fer.faculty_evaluation_result_id
+        INNER JOIN teaching_assignment ta
+            ON ta.teaching_assignment_id = fer.teaching_assignment_id
+        INNER JOIN section_subject_offering sso
+            ON sso.section_subject_offering_id = ta.section_subject_offering_id
+        INNER JOIN subject sub
+            ON sub.subject_id = sso.subject_id
+        INNER JOIN section sec
+            ON sec.section_id = sso.section_id
+        INNER JOIN course c
+            ON c.course_id = sec.course_id
+        INNER JOIN evaluation_period ep
+            ON ep.evaluation_period_id = fer.evaluation_period_id
+        INNER JOIN term t
+            ON t.term_id = ep.term_id
+        INNER JOIN academic_year ay
+            ON ay.academic_year_id = t.academic_year_id
+        LEFT JOIN evaluation_version ev
+            ON ev.evaluation_period_id = fer.evaluation_period_id
+           AND ev.evaluation_form_id = fer.evaluation_form_id
+        WHERE ta.faculty_id = :faculty_id
+          AND fer.evaluation_period_id = :period_id_filter
+          AND fer.result_status = 'Released'
+          AND err.release_status = 'Released'
+          $rpt_ta_filter
+        ORDER BY sub.subject_code, sec.section_name
+    ";
 
     $rpt_results_stmt = $pdo->prepare($query);
-
-    
-    $params = ['period_id_filter' => $rpt_period_id, 'faculty_id' => $rpt_faculty_id];
+    $params = [
+        "faculty_id" => $rpt_faculty_id,
+        "period_id_filter" => $rpt_period_id,
+    ];
     if ($rpt_filter_ta) {
-        $params['ta_id'] = $rpt_filter_ta;
+        $params["ta_id"] = $rpt_filter_ta;
     }
     $rpt_results_stmt->execute($params);
+    $rpt_results = $rpt_results_stmt->fetchAll();
 
-    $report_results = $rpt_results_stmt->fetchAll();
-    $rpt_results = [];
-    foreach ($report_results as $rr) {
-        $rr["pending_response_count"] = max((int) $rr["eligible_student_count"] - (int) $rr["submitted_response_count"], 0);
-        $rr["participation_rate"] = $rr["eligible_student_count"] > 0
-            ? round(($rr["submitted_response_count"] / $rr["eligible_student_count"]) * 100, 1)
-            : 0.0;
-        $rpt_results[] = $rr;
+    $rpt_class_aliases = [];
+    $rpt_class_counter = 1;
+    $rpt_class_label = function (?string $section_name) use (&$rpt_class_aliases, &$rpt_class_counter): string {
+        $key = trim((string) $section_name);
+        if ($key === "") {
+            return "Class";
+        }
+        if (!isset($rpt_class_aliases[$key])) {
+            $rpt_class_aliases[$key] = "Class " . $rpt_class_counter;
+            $rpt_class_counter++;
+        }
+        return $rpt_class_aliases[$key];
+    };
+    foreach ($rpt_results as $rpt_row) {
+        $rpt_class_label($rpt_row["section_name"] ?? "");
     }
+
     $rpt_cat_scores = [];
     $rpt_item_scores = [];
     $rpt_rating_dist = [];
     $rpt_comments_map = [];
-    if (!empty($rpt_results)) {
-        $ta_ids_for_report = array_column($rpt_results, "teaching_assignment_id");
-        $ta_in_ph = implode(",", array_fill(0, max(count($ta_ids_for_report), 1), "?"));
-        if (!empty($ta_ids_for_report)) {
-            $s = $pdo->prepare("
-                SELECT
-                    er.teaching_assignment_id AS ta_id,
-                    ec.category_name,
-                    ROUND(AVG(era.rating_value), 2) AS average_score,
-                    ROUND((AVG(era.rating_value) / 5) * 100, 1) AS percentage_score,
-                    NULL AS rating_description
-                FROM evaluation_response_answer era
-                INNER JOIN evaluation_form_item efi ON efi.evaluation_form_item_id = era.evaluation_form_item_id
-                INNER JOIN evaluation_form_category efc ON efc.evaluation_form_category_id = efi.evaluation_form_category_id
-                INNER JOIN evaluation_category ec ON ec.evaluation_category_id = efc.evaluation_category_id
-                INNER JOIN evaluation_response er ON er.evaluation_response_id = era.evaluation_response_id
-                WHERE er.teaching_assignment_id IN ($ta_in_ph)
-                AND er.evaluation_period_id = ?
-                AND er.response_status = 'Submitted'
-                GROUP BY er.teaching_assignment_id, ec.category_name, efc.display_order
-                ORDER BY er.teaching_assignment_id, efc.display_order
-            ");
-            $s->execute(array_merge($ta_ids_for_report, [$rpt_period_id]));
-            foreach ($s->fetchAll() as $row) {
-                $rpt_cat_scores[$row["ta_id"]][] = $row;
-            }
-        }
-        if (!empty($ta_ids_for_report)) {
-            $s = $pdo->prepare("
-                SELECT
-                    er.teaching_assignment_id AS ta_id,
-                    efi.statement_text_snapshot,
-                    ROUND(AVG(era.rating_value), 2) AS average_score,
-                    COUNT(era.evaluation_response_answer_id) AS response_count
-                FROM evaluation_response_answer era
-                INNER JOIN evaluation_form_item efi ON efi.evaluation_form_item_id = era.evaluation_form_item_id
-                INNER JOIN evaluation_response er ON er.evaluation_response_id = era.evaluation_response_id
-                WHERE er.teaching_assignment_id IN ($ta_in_ph)
-                AND er.evaluation_period_id = ?
-                AND er.response_status = 'Submitted'
-                GROUP BY er.teaching_assignment_id, efi.evaluation_form_item_id, efi.statement_text_snapshot, efi.display_order
-                ORDER BY er.teaching_assignment_id, efi.display_order
-            ");
-            $s->execute(array_merge($ta_ids_for_report, [$rpt_period_id]));
-            foreach ($s->fetchAll() as $row) {
-                $rpt_item_scores[$row["ta_id"]][] = $row;
-            }
-        }
-        if (!empty($ta_ids_for_report)) {
-            $s = $pdo->prepare("
-                SELECT
-                    er.teaching_assignment_id AS ta_id,
-                    era.rating_value,
-                    rso.rating_label,
-                    COUNT(era.evaluation_response_answer_id) AS rating_count,
-                    ROUND(COUNT(era.evaluation_response_answer_id) * 100.0 /
-                          NULLIF((SELECT COUNT(*) FROM evaluation_response_answer era2
-                                  INNER JOIN evaluation_response er2 ON er2.evaluation_response_id = era2.evaluation_response_id
-                                  WHERE er2.teaching_assignment_id = er.teaching_assignment_id
-                                  AND er2.evaluation_period_id = er.evaluation_period_id
-                                  AND er2.response_status = 'Submitted'), 0), 1) AS rating_percentage
-                FROM evaluation_response_answer era
-                INNER JOIN evaluation_response er ON er.evaluation_response_id = era.evaluation_response_id
-                LEFT JOIN rating_scale_option rso ON rso.rating_value = era.rating_value AND rso.evaluation_form_id = (
-                    SELECT ef.evaluation_form_id FROM evaluation_form ef
-                    WHERE ef.evaluation_period_id = er.evaluation_period_id AND ef.form_status = 'Active' LIMIT 1
-                )
-                WHERE er.teaching_assignment_id IN ($ta_in_ph)
-                AND er.evaluation_period_id = ?
-                AND er.response_status = 'Submitted'
-                GROUP BY er.teaching_assignment_id, era.rating_value, rso.rating_label, er.evaluation_period_id
-                ORDER BY er.teaching_assignment_id, era.rating_value DESC
-            ");
-            $s->execute(array_merge($ta_ids_for_report, [$rpt_period_id]));
-            foreach ($s->fetchAll() as $row) {
-                $rpt_rating_dist[$row["ta_id"]][] = $row;
-            }
-        }
-        if (!empty($ta_ids_for_report)) {
-            $s = $pdo->prepare("
-                SELECT er.teaching_assignment_id, erc.comment_text, erc.submitted_at
-                FROM evaluation_response_comment erc
-                INNER JOIN evaluation_response er ON er.evaluation_response_id = erc.evaluation_response_id
-                WHERE er.teaching_assignment_id IN ($ta_in_ph)
-                AND er.evaluation_period_id = ?
-                AND er.response_status = 'Submitted'
-                ORDER BY er.teaching_assignment_id, erc.submitted_at ASC
-            ");
-            $s->execute(array_merge($ta_ids_for_report, [$rpt_period_id]));
-            foreach ($s->fetchAll() as $row) {
-                $rpt_comments_map[$row["teaching_assignment_id"]][] = $row;
-            }
 
+    if (!empty($rpt_results)) {
+        $result_ids = array_map("intval", array_column($rpt_results, "faculty_evaluation_result_id"));
+        $result_in_ph = implode(",", array_fill(0, count($result_ids), "?"));
+
+        $s = $pdo->prepare("
+            SELECT
+                fer.teaching_assignment_id AS ta_id,
+                ec.category_name,
+                frcs.average_score,
+                frcs.percentage_score,
+                frcs.rating_description,
+                efc.display_order
+            FROM faculty_result_category_score frcs
+            INNER JOIN faculty_evaluation_result fer
+                ON fer.faculty_evaluation_result_id = frcs.faculty_evaluation_result_id
+            INNER JOIN evaluation_form_category efc
+                ON efc.evaluation_form_category_id = frcs.evaluation_form_category_id
+            INNER JOIN evaluation_category ec
+                ON ec.evaluation_category_id = efc.evaluation_category_id
+            WHERE frcs.faculty_evaluation_result_id IN ($result_in_ph)
+            ORDER BY fer.teaching_assignment_id, efc.display_order
+        ");
+        $s->execute($result_ids);
+        foreach ($s->fetchAll() as $row) {
+            $rpt_cat_scores[(int) $row["ta_id"]][] = $row;
         }
-        function rpt_score_color(float $s): string
-        {
-            if ($s >= 4.5)
-                return "#16a34a";
-            if ($s >= 4.0)
-                return "#2563eb";
-            if ($s >= 3.5)
-                return "#b45309";
-            if ($s >= 3.0)
-                return "#ea580c";
-            return "#dc2626";
+
+        $s = $pdo->prepare("
+            SELECT
+                fer.teaching_assignment_id AS ta_id,
+                efi.statement_text_snapshot,
+                fris.average_score,
+                fris.response_count,
+                efi.display_order
+            FROM faculty_result_item_score fris
+            INNER JOIN faculty_evaluation_result fer
+                ON fer.faculty_evaluation_result_id = fris.faculty_evaluation_result_id
+            INNER JOIN evaluation_form_item efi
+                ON efi.evaluation_form_item_id = fris.evaluation_form_item_id
+            WHERE fris.faculty_evaluation_result_id IN ($result_in_ph)
+            ORDER BY fer.teaching_assignment_id, efi.display_order
+        ");
+        $s->execute($result_ids);
+        foreach ($s->fetchAll() as $row) {
+            $rpt_item_scores[(int) $row["ta_id"]][] = $row;
         }
-        function rpt_score_label(float $s): string
-        {
-            if ($s >= 4.5)
-                return "Excellent";
-            if ($s >= 4.0)
-                return "Very Good";
-            if ($s >= 3.5)
-                return "Good";
-            if ($s >= 3.0)
-                return "Fair";
-            return "Needs Improvement";
+
+        $s = $pdo->prepare("
+            SELECT
+                fer.teaching_assignment_id AS ta_id,
+                rso.rating_value,
+                rso.rating_label,
+                frrd.rating_count,
+                frrd.rating_percentage
+            FROM faculty_result_rating_distribution frrd
+            INNER JOIN faculty_evaluation_result fer
+                ON fer.faculty_evaluation_result_id = frrd.faculty_evaluation_result_id
+            INNER JOIN rating_scale_option rso
+                ON rso.rating_scale_option_id = frrd.rating_scale_option_id
+            WHERE frrd.faculty_evaluation_result_id IN ($result_in_ph)
+            ORDER BY fer.teaching_assignment_id, rso.rating_value DESC
+        ");
+        $s->execute($result_ids);
+        foreach ($s->fetchAll() as $row) {
+            $rpt_rating_dist[(int) $row["ta_id"]][] = $row;
         }
-        $rpt_total_submitted = (int) array_sum(array_column($rpt_results, "submitted_response_count"));
-        $rpt_total_eligible = (int) array_sum(array_column($rpt_results, "eligible_student_count"));
-        $rpt_avg_sum = 0.0;
-        $rpt_avg_count = 0;
-        foreach ($rpt_results as $r) {
-            if ($r["overall_average_score"] !== null) {
-                $rpt_avg_sum += (float) $r["overall_average_score"];
-                $rpt_avg_count++;
-            }
-        }
-        $rpt_overall_avg_val = $rpt_avg_count > 0 ? $rpt_avg_sum / $rpt_avg_count : 0.0;
-        $rpt_overall_avg_fmt = $rpt_avg_count > 0 ? number_format($rpt_overall_avg_val, 2) : "N/A";
-        $rpt_overall_rate = $rpt_total_eligible > 0 ? number_format(($rpt_total_submitted / $rpt_total_eligible) * 100, 1) : "0.0";
-        $rpt_date_generated = date("F j, Y g:i A");
-        $is_download = $_GET["action"] === "report_download";
-        if ($is_download) {
-            $safe_name = preg_replace('/[^a-z0-9_-]/i', '_', $rpt_faculty["full_name"] ?? "faculty");
-            header("Content-Type: text/html; charset=UTF-8");
-            header("Content-Disposition: attachment; filename=\"Faculty_Evaluation_Report_{$safe_name}.html\"");
-        } else {
-            header("Content-Type: text/html; charset=UTF-8");
+
+        $s = $pdo->prepare("
+            SELECT
+                fer.teaching_assignment_id,
+                erc.comment_text,
+                erc.submitted_at
+            FROM faculty_evaluation_result fer
+            INNER JOIN evaluation_response er
+                ON er.teaching_assignment_id = fer.teaching_assignment_id
+               AND er.evaluation_period_id = fer.evaluation_period_id
+               AND er.evaluation_form_id = fer.evaluation_form_id
+               AND er.response_status = 'Submitted'
+            INNER JOIN evaluation_response_comment erc
+                ON erc.evaluation_response_id = er.evaluation_response_id
+            WHERE fer.faculty_evaluation_result_id IN ($result_in_ph)
+              AND erc.is_visible_to_faculty = 1
+              AND erc.moderation_status = 'Approved'
+            ORDER BY fer.teaching_assignment_id, erc.submitted_at ASC
+        ");
+        $s->execute($result_ids);
+        foreach ($s->fetchAll() as $row) {
+            $rpt_comments_map[(int) $row["teaching_assignment_id"]][] = $row;
         }
     }
+
+    function rpt_score_color(float $s): string
+    {
+        if ($s >= 4.5)
+            return "#16a34a";
+        if ($s >= 4.0)
+            return "#2563eb";
+        if ($s >= 3.5)
+            return "#b45309";
+        if ($s >= 3.0)
+            return "#ea580c";
+        return "#dc2626";
+    }
+
+    function rpt_score_label(float $s): string
+    {
+        if ($s >= 4.5)
+            return "Excellent";
+        if ($s >= 4.0)
+            return "Very Good";
+        if ($s >= 3.5)
+            return "Good";
+        if ($s >= 3.0)
+            return "Fair";
+        return "Needs Improvement";
+    }
+
+    $rpt_total_submitted = (int) array_sum(array_column($rpt_results, "submitted_response_count"));
+    $rpt_total_eligible = (int) array_sum(array_column($rpt_results, "eligible_student_count"));
+    $rpt_avg_sum = 0.0;
+    $rpt_avg_count = 0;
+    foreach ($rpt_results as $r) {
+        if ($r["overall_average_score"] !== null) {
+            $rpt_avg_sum += (float) $r["overall_average_score"];
+            $rpt_avg_count++;
+        }
+    }
+
+    $rpt_overall_avg_val = $rpt_avg_count > 0 ? $rpt_avg_sum / $rpt_avg_count : 0.0;
+    $rpt_overall_avg_fmt = $rpt_avg_count > 0 ? number_format($rpt_overall_avg_val, 2) : "N/A";
+    $rpt_overall_rate = $rpt_total_eligible > 0 ? number_format(($rpt_total_submitted / $rpt_total_eligible) * 100, 1) : "0.0";
+    $rpt_date_generated = date("F j, Y g:i A");
+    $is_download = $_GET["action"] === "report_download";
+
+    if ($is_download) {
+        $safe_name = preg_replace('/[^a-z0-9_-]/i', '_', $rpt_faculty["full_name"] ?? "faculty");
+        header("Content-Type: text/html; charset=UTF-8");
+        header("Content-Disposition: attachment; filename=\"Faculty_Evaluation_Report_{$safe_name}.html\"");
+    } else {
+        header("Content-Type: text/html; charset=UTF-8");
+    }
+
     ?><!DOCTYPE html>
     <html lang="en">
 
@@ -563,7 +678,9 @@ if (isset($_GET["action"]) && in_array($_GET["action"], ["report_download", "rep
             <div class="rpt-meta">
                 <?php if ($rpt_period): ?><strong>Academic Year:</strong>
                     <?php echo e($rpt_period["academic_year_name"]); ?> &nbsp;|&nbsp; <strong>Term:</strong>
-                    <?php echo e($rpt_period["term_name"]); ?><br><?php endif; ?>
+                    <?php echo e($rpt_period["term_name"]); ?>
+                    <?php if (!empty($rpt_period["version_code"])): ?> &nbsp;|&nbsp; <strong>Evaluation Version:</strong>
+                        <?php echo e($rpt_period["version_code"]); ?><?php endif; ?><br><?php endif; ?>
                 <strong>Date Generated:</strong> <?php echo e($rpt_date_generated); ?>
             </div>
         </div>
@@ -590,14 +707,13 @@ if (isset($_GET["action"]) && in_array($_GET["action"], ["report_download", "rep
         <div class="rpt-section">
             <div class="rpt-section-title">ASSIGNED SUBJECTS SUMMARY</div>
             <?php if (empty($rpt_results)): ?>
-                <p class="rpt-no-data">No evaluation results found for this period.</p><?php else: ?>
+                <p class="rpt-no-data">No released evaluation results found for this faculty and period.</p><?php else: ?>
                 <table class="rpt-table">
                     <thead>
                         <tr>
                             <th>#</th>
                             <th>Subject Code</th>
                             <th>Subject Title</th>
-                            <th>Section</th>
                             <th>Term</th>
                             <th>Status</th>
                         </tr>
@@ -610,7 +726,6 @@ if (isset($_GET["action"]) && in_array($_GET["action"], ["report_download", "rep
                                 <td><?php echo $i + 1; ?></td>
                                 <td><strong><?php echo e($r["subject_code"]); ?></strong></td>
                                 <td><?php echo e($r["subject_title"]); ?></td>
-                                <td><?php echo e($r["section_name"]); ?></td>
                                 <td><?php echo e($r["term_name"]); ?></td>
                                 <td><?php echo $badge; ?></td>
                             </tr>
@@ -619,16 +734,20 @@ if (isset($_GET["action"]) && in_array($_GET["action"], ["report_download", "rep
                 </table><?php endif; ?>
         </div>
         <?php foreach ($rpt_results as $r):
-            $fer_id = (int) $r["teaching_assignment_id"];
+            $fer_id = (int) $r["faculty_evaluation_result_id"];
             $ta_id = (int) $r["teaching_assignment_id"];
             $avg = $r["overall_average_score"] !== null ? (float) $r["overall_average_score"] : null;
             $rate = (float) $r["participation_rate"];
             $badge = $r["result_status"] === "Released" ? '<span class="badge-released">Released</span>' : '<span class="badge-unreleased">Unreleased</span>';
             ?>
             <div class="rpt-subject-block">
-                <div class="rpt-subject-header"><?php echo e($r["subject_code"]); ?> &ndash;
-                    <?php echo e($r["section_name"]); ?>         <?php echo $badge; ?> <span
-                        class="rpt-subject-sub"><?php echo e($r["subject_title"]); ?></span>
+                <div class="rpt-subject-header">
+                    <?php echo e($r["subject_code"]); ?>
+                    <span class="badge-released" style="background:#e2e8f0;color:#172033;margin-left:8px;">
+                        <?php echo e($rpt_class_label($r["section_name"] ?? "")); ?>
+                    </span>
+                    <?php echo $badge; ?>
+                    <span class="rpt-subject-sub"><?php echo e($r["subject_title"]); ?></span>
                 </div>
                 <div class="rpt-subject-body">
                     <div class="rpt-stats-row">
@@ -837,8 +956,9 @@ $criteria_data = [];
 $faculty_id = null;
 $period_id = 0;
 $active_period_term_id = 0;
+$active_evaluation_version_id = 0;
 
-// Try block 1: Fetch faculty profile and period (critical data)
+// Try block 1: Fetch faculty profile and the correct faculty owned evaluation context.
 try {
     $stmt = $pdo->prepare("
         SELECT f.faculty_id, f.faculty_number, f.full_name, d.department_name, d.department_code
@@ -856,23 +976,105 @@ try {
 
     $faculty_id = (int) $faculty["faculty_id"];
 
-    $stmt = $pdo->query("
-        SELECT ep.evaluation_period_id, t.term_id, t.term_name, ay.academic_year_name
-        FROM evaluation_period ep
-        INNER JOIN term t ON t.term_id = ep.term_id
-        INNER JOIN academic_year ay ON ay.academic_year_id = t.academic_year_id
-        ORDER BY FIELD(ep.period_status, 'Ongoing', 'Open', 'Draft', 'Closed', 'Archived'), ep.start_date DESC
+    /*
+     * Evaluation Version safe context.
+     * Do not use the latest open evaluation period globally.
+     * Use the latest released result owned by this faculty first.
+     * This preserves EV1 results even when EV2 or EV3 is opened for another section.
+     */
+    $stmt = $pdo->prepare("
+        SELECT
+            ep.evaluation_period_id,
+            ep.term_id,
+            t.term_name,
+            ay.academic_year_name,
+            ev.evaluation_version_id,
+            ev.version_code,
+            ev.version_name
+        FROM faculty_evaluation_result fer
+        INNER JOIN evaluation_result_release err
+            ON err.evaluation_result_release_id = fer.evaluation_result_release_id
+        INNER JOIN teaching_assignment ta
+            ON ta.teaching_assignment_id = fer.teaching_assignment_id
+        INNER JOIN evaluation_period ep
+            ON ep.evaluation_period_id = fer.evaluation_period_id
+        INNER JOIN term t
+            ON t.term_id = ep.term_id
+        INNER JOIN academic_year ay
+            ON ay.academic_year_id = t.academic_year_id
+        LEFT JOIN evaluation_version ev
+            ON ev.evaluation_period_id = fer.evaluation_period_id
+           AND ev.evaluation_form_id = fer.evaluation_form_id
+        WHERE ta.faculty_id = :faculty_id
+          AND fer.result_status = 'Released'
+          AND err.release_status = 'Released'
+        ORDER BY
+            COALESCE(fer.released_at, err.released_at, fer.computed_at, ep.updated_at) DESC,
+            fer.faculty_evaluation_result_id DESC
         LIMIT 1
     ");
+    $stmt->execute(["faculty_id" => $faculty_id]);
     $current_period = $stmt->fetch();
 
-    $period_id = $current_period ? (int) $current_period["evaluation_period_id"] : 0;
-    $active_period_term_id = $current_period ? (int) $current_period["term_id"] : 0;
+    if (!$current_period) {
+        $stmt = $pdo->prepare("
+            SELECT
+                ep.evaluation_period_id,
+                t.term_id,
+                t.term_name,
+                ay.academic_year_name,
+                ev.evaluation_version_id,
+                ev.version_code,
+                ev.version_name
+            FROM teaching_assignment ta
+            INNER JOIN term t
+                ON t.term_id = ta.term_id
+            INNER JOIN academic_year ay
+                ON ay.academic_year_id = t.academic_year_id
+            LEFT JOIN evaluation_period ep
+                ON ep.term_id = t.term_id
+            LEFT JOIN evaluation_version ev
+                ON ev.evaluation_period_id = ep.evaluation_period_id
+            WHERE ta.faculty_id = :faculty_id
+              AND ta.assignment_status = 'Active'
+            ORDER BY t.start_date DESC, ep.start_date DESC
+            LIMIT 1
+        ");
+        $stmt->execute(["faculty_id" => $faculty_id]);
+        $current_period = $stmt->fetch();
+    }
+
+    if (!$current_period) {
+        $stmt = $pdo->query("
+            SELECT
+                ep.evaluation_period_id,
+                t.term_id,
+                t.term_name,
+                ay.academic_year_name,
+                ev.evaluation_version_id,
+                ev.version_code,
+                ev.version_name
+            FROM evaluation_period ep
+            INNER JOIN term t
+                ON t.term_id = ep.term_id
+            INNER JOIN academic_year ay
+                ON ay.academic_year_id = t.academic_year_id
+            LEFT JOIN evaluation_version ev
+                ON ev.evaluation_period_id = ep.evaluation_period_id
+            ORDER BY FIELD(ep.period_status, 'Ongoing', 'Open', 'Draft', 'Closed', 'Archived'), ep.start_date DESC
+            LIMIT 1
+        ");
+        $current_period = $stmt->fetch();
+    }
+
+    $period_id = $current_period ? (int) ($current_period["evaluation_period_id"] ?? 0) : 0;
+    $active_period_term_id = $current_period ? (int) ($current_period["term_id"] ?? 0) : 0;
+    $active_evaluation_version_id = $current_period ? (int) ($current_period["evaluation_version_id"] ?? 0) : 0;
 } catch (Throwable $error) {
     error_log("faculty_dashboard critical error: " . $error->getMessage() . " in " . $error->getFile() . ":" . $error->getLine());
 }
 
-// Try block 2: Fetch assigned subjects (independent of results data)
+// Try block 2: Fetch assigned subjects for the same term as the selected faculty context.
 if ($faculty_id && $active_period_term_id) {
     try {
         $stmt = $pdo->prepare("
@@ -887,17 +1089,28 @@ if ($faculty_id && $active_period_term_id) {
                 c.course_code,
                 t.term_name,
                 t.term_id,
-                COUNT(DISTINCT sse.student_id) AS student_count
+                GREATEST(
+                    COUNT(DISTINCT sse.student_id),
+                    COUNT(DISTINCT s_current.student_id)
+                ) AS student_count
             FROM teaching_assignment ta
-            INNER JOIN section_subject_offering sso ON sso.section_subject_offering_id = ta.section_subject_offering_id
-            INNER JOIN subject sub ON sub.subject_id = sso.subject_id
-            INNER JOIN section sec ON sec.section_id = sso.section_id
-            INNER JOIN course c ON c.course_id = sec.course_id
-            INNER JOIN term t ON t.term_id = ta.term_id
+            INNER JOIN section_subject_offering sso
+                ON sso.section_subject_offering_id = ta.section_subject_offering_id
+            INNER JOIN subject sub
+                ON sub.subject_id = sso.subject_id
+            INNER JOIN section sec
+                ON sec.section_id = sso.section_id
+            INNER JOIN course c
+                ON c.course_id = sec.course_id
+            INNER JOIN term t
+                ON t.term_id = ta.term_id
             LEFT JOIN student_section_enrollment sse
                 ON sse.section_id = sec.section_id
-                AND sse.term_id = ta.term_id
-                AND sse.enrollment_status = 'Active'
+               AND sse.term_id = ta.term_id
+               AND sse.enrollment_status = 'Active'
+            LEFT JOIN student s_current
+                ON s_current.current_section_id = sec.section_id
+               AND s_current.student_status = 'Active'
             WHERE ta.faculty_id = :faculty_id
               AND ta.assignment_status = 'Active'
               AND ta.term_id = :term_id
@@ -908,21 +1121,19 @@ if ($faculty_id && $active_period_term_id) {
                 c.course_code, t.term_name, t.term_id
             ORDER BY sub.subject_code, sec.section_name
         ");
-        $stmt->execute(["faculty_id" => $faculty_id, "term_id" => $active_period_term_id]);
+        $stmt->execute([
+            "faculty_id" => $faculty_id,
+            "term_id" => $active_period_term_id,
+        ]);
         $assigned_subjects = $stmt->fetchAll();
     } catch (Throwable $error) {
         error_log("faculty_dashboard assigned_subjects error: " . $error->getMessage() . " in " . $error->getFile() . ":" . $error->getLine());
     }
 }
 
-// Try block 3: Fetch results and other data
+// Try block 3: Fetch released results, criteria, comments, participation, and report data.
 if ($faculty_id && $period_id && $active_period_term_id) {
     try {
-        // Build $all_results directly from evaluation_response so data shows even before
-        // sp_compute_faculty_result has been run (faculty_evaluation_result may be empty).
-        // NOTE: A single teaching_assignment can have MULTIPLE faculty_evaluation_result rows
-        // (one per release batch). We use a subquery to pick only the LATEST released result
-        // per teaching_assignment to avoid duplicate rows in the output.
         $stmt = $pdo->prepare("
             SELECT
                 ta.teaching_assignment_id,
@@ -930,64 +1141,114 @@ if ($faculty_id && $period_id && $active_period_term_id) {
                 sub.subject_title,
                 sec.section_name,
                 c.course_code,
-                -- Dynamic eligible count via LEFT JOIN instead of correlated subquery
-                COUNT(DISTINCT s_elig.student_id) AS eligible_student_count,
-                COUNT(DISTINCT CASE WHEN er.response_status = 'Submitted' THEN er.evaluation_response_id END) AS submitted_response_count,
-                ROUND(AVG(CASE WHEN er.response_status = 'Submitted' THEN er.average_score END), 2) AS overall_average_score,
-                COALESCE(fer_latest.result_status, 'Pending') AS result_status,
+                COALESCE(
+                    fer_latest.eligible_student_count,
+                    GREATEST(COUNT(DISTINCT sse.student_id), COUNT(DISTINCT s_current.student_id)),
+                    0
+                ) AS eligible_student_count,
+                COALESCE(
+                    fer_latest.submitted_response_count,
+                    COUNT(DISTINCT CASE WHEN er.response_status = 'Submitted' THEN er.evaluation_response_id END),
+                    0
+                ) AS submitted_response_count,
+                COALESCE(
+                    fer_latest.pending_response_count,
+                    0
+                ) AS stored_pending_response_count,
+                COALESCE(
+                    fer_latest.overall_average_score,
+                    ROUND(AVG(CASE WHEN er.response_status = 'Submitted' THEN er.average_score END), 2)
+                ) AS overall_average_score,
+                CASE
+                    WHEN fer_latest.result_status = 'Released' THEN 'Released'
+                    WHEN COUNT(DISTINCT CASE WHEN er.response_status = 'Submitted' THEN er.evaluation_response_id END) > 0 THEN 'Unreleased'
+                    ELSE 'Pending'
+                END AS result_status,
                 fer_latest.released_at,
                 fer_latest.faculty_evaluation_result_id
             FROM teaching_assignment ta
             INNER JOIN section_subject_offering sso
                 ON sso.section_subject_offering_id = ta.section_subject_offering_id
-            INNER JOIN subject sub ON sub.subject_id = sso.subject_id
-            INNER JOIN section sec ON sec.section_id = sso.section_id
-            INNER JOIN course c ON c.course_id = sec.course_id
-            -- Join to count eligible students in this section
-            LEFT JOIN student s_elig
-                ON s_elig.current_section_id = sso.section_id
-               AND s_elig.student_status     = 'Active'
+            INNER JOIN subject sub
+                ON sub.subject_id = sso.subject_id
+            INNER JOIN section sec
+                ON sec.section_id = sso.section_id
+            INNER JOIN course c
+                ON c.course_id = sec.course_id
+            LEFT JOIN student_section_enrollment sse
+                ON sse.section_id = sec.section_id
+               AND sse.term_id = ta.term_id
+               AND sse.enrollment_status = 'Active'
+            LEFT JOIN student s_current
+                ON s_current.current_section_id = sec.section_id
+               AND s_current.student_status = 'Active'
             LEFT JOIN evaluation_response er
                 ON er.teaching_assignment_id = ta.teaching_assignment_id
-               AND er.evaluation_period_id   = :period_id
-            -- Use a subquery to get only the single latest faculty_evaluation_result per TA
+               AND er.evaluation_period_id = :period_id
+               AND er.response_status = 'Submitted'
             LEFT JOIN (
                 SELECT fer_inner.*
                 FROM faculty_evaluation_result fer_inner
+                INNER JOIN evaluation_result_release err_inner
+                    ON err_inner.evaluation_result_release_id = fer_inner.evaluation_result_release_id
                 INNER JOIN (
-                    SELECT teaching_assignment_id, MAX(faculty_evaluation_result_id) AS max_fer_id
-                    FROM faculty_evaluation_result
-                    WHERE evaluation_period_id = :period_id
-                    GROUP BY teaching_assignment_id
-                ) fer_max ON fer_max.teaching_assignment_id = fer_inner.teaching_assignment_id
-                         AND fer_max.max_fer_id = fer_inner.faculty_evaluation_result_id
+                    SELECT
+                        fer2.teaching_assignment_id,
+                        MAX(fer2.faculty_evaluation_result_id) AS max_fer_id
+                    FROM faculty_evaluation_result fer2
+                    INNER JOIN evaluation_result_release err2
+                        ON err2.evaluation_result_release_id = fer2.evaluation_result_release_id
+                    INNER JOIN teaching_assignment ta2
+                        ON ta2.teaching_assignment_id = fer2.teaching_assignment_id
+                    WHERE ta2.faculty_id = :faculty_id
+                      AND fer2.evaluation_period_id = :period_id
+                      AND fer2.result_status = 'Released'
+                      AND err2.release_status = 'Released'
+                    GROUP BY fer2.teaching_assignment_id
+                ) fer_max
+                    ON fer_max.max_fer_id = fer_inner.faculty_evaluation_result_id
+                WHERE err_inner.release_status = 'Released'
+                  AND fer_inner.result_status = 'Released'
             ) fer_latest
                 ON fer_latest.teaching_assignment_id = ta.teaching_assignment_id
             WHERE ta.faculty_id = :faculty_id
-              AND ta.term_id    = :term_id
+              AND ta.term_id = :term_id
+              AND ta.assignment_status = 'Active'
             GROUP BY
                 ta.teaching_assignment_id,
-                sub.subject_code, sub.subject_title,
-                sec.section_name, c.course_code,
-                fer_latest.result_status, fer_latest.released_at, fer_latest.faculty_evaluation_result_id
+                sub.subject_code,
+                sub.subject_title,
+                sec.section_name,
+                c.course_code,
+                fer_latest.eligible_student_count,
+                fer_latest.submitted_response_count,
+                fer_latest.pending_response_count,
+                fer_latest.overall_average_score,
+                fer_latest.result_status,
+                fer_latest.released_at,
+                fer_latest.faculty_evaluation_result_id
             ORDER BY sub.subject_code, sec.section_name
         ");
         $stmt->execute([
             "faculty_id" => $faculty_id,
-            "period_id"  => $period_id,
-            "term_id"    => $active_period_term_id,
+            "period_id" => $period_id,
+            "term_id" => $active_period_term_id,
         ]);
         $all_results_raw = $stmt->fetchAll();
 
-        // Compute pending count and participation rate per row
         $all_results = [];
         foreach ($all_results_raw as $row) {
-            $eligible   = (int) ($row["eligible_student_count"] ?? 0);
-            $submitted  = (int) ($row["submitted_response_count"] ?? 0);
-            $pending    = max($eligible - $submitted, 0);
-            $part_rate  = $eligible > 0 ? round(($submitted / $eligible) * 100, 2) : 0.0;
+            $eligible = (int) ($row["eligible_student_count"] ?? 0);
+            $submitted = (int) ($row["submitted_response_count"] ?? 0);
+            $stored_pending = isset($row["stored_pending_response_count"]) ? (int) $row["stored_pending_response_count"] : 0;
+            $pending = $row["result_status"] === "Released"
+                ? $stored_pending
+                : max($eligible - $submitted, 0);
+            $part_rate = $eligible > 0 ? round(($submitted / $eligible) * 100, 2) : 0.0;
+
             $row["pending_response_count"] = $pending;
-            $row["participation_rate"]     = $part_rate;
+            $row["participation_rate"] = $part_rate;
+            unset($row["stored_pending_response_count"]);
             $all_results[] = $row;
         }
 
@@ -998,39 +1259,50 @@ if ($faculty_id && $period_id && $active_period_term_id) {
                 sub.subject_code,
                 sub.subject_title,
                 sec.section_name,
-                fer_latest.overall_average_score AS average_score
-            FROM evaluation_response_comment erc
-            JOIN evaluation_response er ON er.evaluation_response_id = erc.evaluation_response_id
-            JOIN teaching_assignment ta ON ta.teaching_assignment_id = er.teaching_assignment_id
-            INNER JOIN section_subject_offering sso ON sso.section_subject_offering_id = ta.section_subject_offering_id
-            INNER JOIN subject sub ON sub.subject_id = sso.subject_id
-            INNER JOIN section sec ON sec.section_id = sso.section_id
-            -- Use a subquery to pick only the LATEST faculty_evaluation_result per TA.
-            -- Without this, a TA with multiple release batches would join N fer rows,
-            -- producing N copies of every comment.
-            LEFT JOIN (
-                SELECT fer_inner.teaching_assignment_id, fer_inner.evaluation_period_id,
-                       fer_inner.overall_average_score
-                FROM faculty_evaluation_result fer_inner
-                INNER JOIN (
-                    SELECT teaching_assignment_id, evaluation_period_id,
-                           MAX(faculty_evaluation_result_id) AS max_fer_id
-                    FROM faculty_evaluation_result
-                    GROUP BY teaching_assignment_id, evaluation_period_id
-                ) fer_max ON fer_max.teaching_assignment_id = fer_inner.teaching_assignment_id
-                         AND fer_max.evaluation_period_id  = fer_inner.evaluation_period_id
-                         AND fer_max.max_fer_id             = fer_inner.faculty_evaluation_result_id
-            ) fer_latest
-                ON fer_latest.teaching_assignment_id = ta.teaching_assignment_id
-               AND fer_latest.evaluation_period_id   = er.evaluation_period_id
-            WHERE ta.faculty_id = :fid 
-              AND er.evaluation_period_id = :pid
-              AND er.response_status = 'Submitted'
+                fer.overall_average_score AS average_score
+            FROM faculty_evaluation_result fer
+            INNER JOIN evaluation_result_release err
+                ON err.evaluation_result_release_id = fer.evaluation_result_release_id
+            INNER JOIN (
+                SELECT
+                    fer2.teaching_assignment_id,
+                    MAX(fer2.faculty_evaluation_result_id) AS max_fer_id
+                FROM faculty_evaluation_result fer2
+                INNER JOIN evaluation_result_release err2
+                    ON err2.evaluation_result_release_id = fer2.evaluation_result_release_id
+                INNER JOIN teaching_assignment ta2
+                    ON ta2.teaching_assignment_id = fer2.teaching_assignment_id
+                WHERE ta2.faculty_id = :fid
+                  AND fer2.evaluation_period_id = :pid
+                  AND fer2.result_status = 'Released'
+                  AND err2.release_status = 'Released'
+                GROUP BY fer2.teaching_assignment_id
+            ) fer_dedup
+                ON fer_dedup.max_fer_id = fer.faculty_evaluation_result_id
+            INNER JOIN teaching_assignment ta
+                ON ta.teaching_assignment_id = fer.teaching_assignment_id
+            INNER JOIN section_subject_offering sso
+                ON sso.section_subject_offering_id = ta.section_subject_offering_id
+            INNER JOIN subject sub
+                ON sub.subject_id = sso.subject_id
+            INNER JOIN section sec
+                ON sec.section_id = sso.section_id
+            INNER JOIN evaluation_response er
+                ON er.teaching_assignment_id = fer.teaching_assignment_id
+               AND er.evaluation_period_id = fer.evaluation_period_id
+               AND er.evaluation_form_id = fer.evaluation_form_id
+               AND er.response_status = 'Submitted'
+            INNER JOIN evaluation_response_comment erc
+                ON erc.evaluation_response_id = er.evaluation_response_id
+            WHERE ta.faculty_id = :fid
+              AND fer.evaluation_period_id = :pid
+              AND fer.result_status = 'Released'
+              AND err.release_status = 'Released'
               AND erc.is_visible_to_faculty = 1
               AND erc.moderation_status = 'Approved'
             ORDER BY sub.subject_code, sec.section_name, erc.submitted_at ASC
         ");
-        $stmt->execute(['fid' => $faculty_id, 'pid' => $period_id]);
+        $stmt->execute(["fid" => $faculty_id, "pid" => $period_id]);
         $all_comments_raw = $stmt->fetchAll();
 
         foreach ($all_comments_raw as $row) {
@@ -1055,32 +1327,12 @@ if ($faculty_id && $period_id && $active_period_term_id) {
 
         $participation_data = $all_results;
 
-        // Use only the LATEST faculty_evaluation_result per TA (max ID) to prevent
-        // duplicate category rows when a TA has been released multiple times.
         $stmt = $pdo->prepare("
             SELECT
                 fer.faculty_evaluation_result_id,
                 ec.category_name,
-                COALESCE(
-                    frcs.average_score,
-                    (SELECT AVG(era2.rating_value)
-                     FROM evaluation_response_answer era2
-                     INNER JOIN evaluation_form_item efi2 ON efi2.evaluation_form_item_id = era2.evaluation_form_item_id
-                     INNER JOIN evaluation_response er2 ON er2.evaluation_response_id = era2.evaluation_response_id
-                     WHERE er2.teaching_assignment_id = fer.teaching_assignment_id
-                       AND efi2.evaluation_form_category_id = efc.evaluation_form_category_id
-                       AND er2.response_status = 'Submitted')
-                ) AS average_score,
-                COALESCE(
-                    frcs.percentage_score,
-                    (SELECT AVG(era2.rating_value) / 5.0 * 100
-                     FROM evaluation_response_answer era2
-                     INNER JOIN evaluation_form_item efi2 ON efi2.evaluation_form_item_id = era2.evaluation_form_item_id
-                     INNER JOIN evaluation_response er2 ON er2.evaluation_response_id = era2.evaluation_response_id
-                     WHERE er2.teaching_assignment_id = fer.teaching_assignment_id
-                       AND efi2.evaluation_form_category_id = efc.evaluation_form_category_id
-                       AND er2.response_status = 'Submitted')
-                ) AS percentage_score,
+                frcs.average_score,
+                frcs.percentage_score,
                 frcs.rating_description,
                 sub.subject_code,
                 sub.subject_title,
@@ -1088,30 +1340,45 @@ if ($faculty_id && $period_id && $active_period_term_id) {
                 fer.overall_average_score,
                 efc.display_order
             FROM faculty_evaluation_result fer
-            -- Only pick the single latest fer per TA (highest ID) to avoid duplicate category blocks
+            INNER JOIN evaluation_result_release err
+                ON err.evaluation_result_release_id = fer.evaluation_result_release_id
             INNER JOIN (
-                SELECT teaching_assignment_id, MAX(faculty_evaluation_result_id) AS max_fer_id
-                FROM faculty_evaluation_result
-                WHERE evaluation_period_id = :pid
-                GROUP BY teaching_assignment_id
-            ) fer_dedup ON fer_dedup.teaching_assignment_id = fer.teaching_assignment_id
-                       AND fer_dedup.max_fer_id = fer.faculty_evaluation_result_id
-            INNER JOIN teaching_assignment ta ON ta.teaching_assignment_id = fer.teaching_assignment_id
-            INNER JOIN section_subject_offering sso ON sso.section_subject_offering_id = ta.section_subject_offering_id
-            INNER JOIN subject sub ON sub.subject_id = sso.subject_id
-            INNER JOIN section sec ON sec.section_id = sso.section_id
-            INNER JOIN evaluation_form_category efc ON efc.evaluation_form_id = fer.evaluation_form_id
-                AND efc.form_category_status = 'Active'
-            INNER JOIN evaluation_category ec ON ec.evaluation_category_id = efc.evaluation_category_id
-            LEFT JOIN faculty_result_category_score frcs
+                SELECT
+                    fer2.teaching_assignment_id,
+                    MAX(fer2.faculty_evaluation_result_id) AS max_fer_id
+                FROM faculty_evaluation_result fer2
+                INNER JOIN evaluation_result_release err2
+                    ON err2.evaluation_result_release_id = fer2.evaluation_result_release_id
+                INNER JOIN teaching_assignment ta2
+                    ON ta2.teaching_assignment_id = fer2.teaching_assignment_id
+                WHERE ta2.faculty_id = :fid
+                  AND fer2.evaluation_period_id = :pid
+                  AND fer2.result_status = 'Released'
+                  AND err2.release_status = 'Released'
+                GROUP BY fer2.teaching_assignment_id
+            ) fer_dedup
+                ON fer_dedup.max_fer_id = fer.faculty_evaluation_result_id
+            INNER JOIN teaching_assignment ta
+                ON ta.teaching_assignment_id = fer.teaching_assignment_id
+            INNER JOIN section_subject_offering sso
+                ON sso.section_subject_offering_id = ta.section_subject_offering_id
+            INNER JOIN subject sub
+                ON sub.subject_id = sso.subject_id
+            INNER JOIN section sec
+                ON sec.section_id = sso.section_id
+            INNER JOIN faculty_result_category_score frcs
                 ON frcs.faculty_evaluation_result_id = fer.faculty_evaluation_result_id
-                AND frcs.evaluation_form_category_id = efc.evaluation_form_category_id
+            INNER JOIN evaluation_form_category efc
+                ON efc.evaluation_form_category_id = frcs.evaluation_form_category_id
+            INNER JOIN evaluation_category ec
+                ON ec.evaluation_category_id = efc.evaluation_category_id
             WHERE ta.faculty_id = :fid
-            AND fer.evaluation_period_id = :pid
-            AND fer.result_status = 'Released'
+              AND fer.evaluation_period_id = :pid
+              AND fer.result_status = 'Released'
+              AND err.release_status = 'Released'
             ORDER BY sub.subject_code, sec.section_name, efc.display_order
         ");
-        $stmt->execute(['fid' => $faculty_id, 'pid' => $period_id]);
+        $stmt->execute(["fid" => $faculty_id, "pid" => $period_id]);
         $criteria_raw = $stmt->fetchAll();
 
         foreach ($criteria_raw as $row) {
@@ -1133,70 +1400,55 @@ if ($faculty_id && $period_id && $active_period_term_id) {
             ];
         }
     } catch (Throwable $error) {
-        // If results queries fail, keep assigned_subjects intact but clear results
-        $all_results        = [];
-        $comments_data      = [];
+        $all_results = [];
+        $comments_data = [];
         $participation_data = [];
-        $criteria_data      = [];
+        $criteria_data = [];
         error_log("faculty_dashboard results error: " . $error->getMessage() . " in " . $error->getFile() . ":" . $error->getLine());
     }
 }
 
-// Dashboard summary stats — derived entirely from $all_results (already de-duped, one row per TA)
-// This avoids separate queries that were producing wrong counts due to multiple
-// faculty_evaluation_result rows per teaching_assignment (multiple release batches).
-$assigned_subjects_count = 0;
-$released_results_count  = 0;
-$total_eligible          = 0;
-$total_responses         = 0;
-$overall_average_score   = 0.0;
+// Dashboard summary stats.
+$assigned_subjects_count = count($assigned_subjects);
+$released_results_count = 0;
+$unreleased_results_count = 0;
+$total_eligible = 0;
+$total_responses = 0;
+$overall_average_score = 0.0;
 
-if (!empty($all_results)) {
-    $assigned_subjects_count = count($all_results);
+$avg_sum = 0.0;
+$avg_count = 0;
 
-    $released_results_count = 0;
-    $unreleased_results_count = 0;
-    $avg_sum   = 0.0;
-    $avg_count = 0;
-
-    foreach ($all_results as $r) {
-        if ($r['result_status'] === 'Released') {
-            $released_results_count++;
-        } else {
-            $unreleased_results_count++;
-        }
-        $total_eligible  += (int) $r['eligible_student_count'];
-        $total_responses += (int) $r['submitted_response_count'];
-        if ($r['overall_average_score'] !== null) {
-            $avg_sum += (float) $r['overall_average_score'];
-            $avg_count++;
-        }
+foreach ($all_results as $r) {
+    if (($r["result_status"] ?? "") === "Released") {
+        $released_results_count++;
+    } else {
+        $unreleased_results_count++;
     }
 
-    $overall_average_score = $avg_count > 0 ? round($avg_sum / $avg_count, 2) : 0.0;
-} elseif (!empty($faculty_id) && !empty($period_id) && !empty($active_period_term_id)) {
-    // Fallback: if $all_results is empty (results query failed), use a safe direct count
-    $stmt = $pdo->prepare("
-        SELECT COUNT(*)
-        FROM teaching_assignment
-        WHERE faculty_id = :fid
-          AND term_id    = :tid
-          AND assignment_status = 'Active'
-    ");
-    $stmt->execute(['fid' => $faculty_id, 'tid' => $active_period_term_id]);
-    $assigned_subjects_count = (int) $stmt->fetchColumn();
-    $unreleased_results_count = $assigned_subjects_count;
+    $total_eligible += (int) ($r["eligible_student_count"] ?? 0);
+    $total_responses += (int) ($r["submitted_response_count"] ?? 0);
+
+    if (($r["result_status"] ?? "") === "Released" && $r["overall_average_score"] !== null) {
+        $avg_sum += (float) $r["overall_average_score"];
+        $avg_count++;
+    }
 }
 
-// All participation totals come from $all_results (already de-duped) via $participation_data below.
-// We set a placeholder here; the real rate is computed after $participation_data is built.
+if ($avg_count > 0) {
+    $overall_average_score = round($avg_sum / $avg_count, 2);
+}
+
+if ($assigned_subjects_count > count($all_results)) {
+    $unreleased_results_count += $assigned_subjects_count - count($all_results);
+}
+
 $overall_participation_rate = 0;
 
-$assigned_count   = $assigned_subjects_count;
-$released_count   = $released_results_count;
-$unreleased_count = isset($unreleased_results_count) ? $unreleased_results_count : max($assigned_subjects_count - $released_results_count, 0);
-$overall_average  = number_format($overall_average_score, 2);
-// $participation_rate is set further below after $overall_participation_rate is recalculated
+$assigned_count = $assigned_subjects_count;
+$released_count = $released_results_count;
+$unreleased_count = max($unreleased_results_count, 0);
+$overall_average = number_format($overall_average_score, 2);
 
 $term_label = $current_period
     ? $current_period["term_name"] . " · " . $current_period["academic_year_name"]
@@ -1204,7 +1456,7 @@ $term_label = $current_period
 
 $total_subjects_distinct = count(array_unique(array_column($assigned_subjects, "subject_code")));
 $total_sections = count($assigned_subjects);
-$total_students = array_sum(array_column($assigned_subjects, "student_count"));
+$total_students = array_sum(array_map("intval", array_column($assigned_subjects, "student_count")));
 
 $subjects_by_code = [];
 foreach ($assigned_subjects as $s) {
@@ -1219,19 +1471,51 @@ foreach ($assigned_subjects as $s) {
     $subjects_by_code[$code]["sections"][] = $s;
 }
 
+$class_aliases = [];
+$class_alias_counter = 1;
+$class_label = function (?string $section_name) use (&$class_aliases, &$class_alias_counter): string {
+    $key = trim((string) $section_name);
+    if ($key === "") {
+        return "Class";
+    }
+    if (!isset($class_aliases[$key])) {
+        $class_aliases[$key] = "Class " . $class_alias_counter;
+        $class_alias_counter++;
+    }
+    return $class_aliases[$key];
+};
+foreach ($assigned_subjects as $s) {
+    $class_label($s["section_name"] ?? "");
+}
+foreach ($all_results as $r) {
+    $class_label($r["section_name"] ?? "");
+}
+foreach ($comments_data as $cd) {
+    $class_label($cd["section_name"] ?? "");
+}
+foreach ($criteria_data as $cd) {
+    $class_label($cd["section_name"] ?? "");
+}
+
+$criteria_private_keys = [];
+$criteria_private_counter = 1;
+foreach (array_keys($criteria_data) as $criteria_key) {
+    $criteria_private_keys[$criteria_key] = "criteria_" . $criteria_private_counter;
+    $criteria_private_counter++;
+}
+
 $total_comments = 0;
 foreach ($comments_data as $cd) {
     $total_comments += count($cd["comments"]);
 }
 
-$total_participation_submitted = array_sum(array_column($participation_data, "submitted_response_count"));
-$total_participation_students = array_sum(array_column($participation_data, "eligible_student_count"));
-$total_participation_pending = array_sum(array_column($participation_data, "pending_response_count"));
+$total_participation_submitted = array_sum(array_map("intval", array_column($participation_data, "submitted_response_count")));
+$total_participation_students = array_sum(array_map("intval", array_column($participation_data, "eligible_student_count")));
+$total_participation_pending = array_sum(array_map("intval", array_column($participation_data, "pending_response_count")));
 $overall_participation_rate = $total_participation_students > 0
     ? number_format(($total_participation_submitted / $total_participation_students) * 100, 1)
     : "0.0";
 
-// Now that participation totals are correct, set the dashboard display variable.
 $participation_rate = $overall_participation_rate;
 
 function score_color(float $score): string
@@ -2606,7 +2890,7 @@ function participation_color(float $rate): string
                             <div>
                                 <h3>
                                     <?php echo e($subject["subject_code"]); ?>
-                                    <span class="section-badge"><?php echo e($subject["section_name"]); ?></span>
+                                    <span class="section-badge"><?php echo e($class_label($subject["section_name"] ?? "")); ?></span>
                                 </h3>
                                 <p><?php echo e($subject["subject_title"]); ?></p>
                                 <small><?php echo (int) $subject["student_count"]; ?> students ·
@@ -2639,7 +2923,7 @@ function participation_color(float $rate): string
                 <div class="page-title-row" style="margin-bottom:24px;">
                     <div>
                         <h1>My Subjects</h1>
-                        <p>View all your assigned subjects and sections</p>
+                        <p>View all your assigned subjects</p>
                     </div>
                     <a href="#" class="refresh-btn" data-tab="tab-dashboard"><?php echo svg_icon("arrow-left"); ?> Back
                         to Dashboard</a>
@@ -2650,7 +2934,7 @@ function participation_color(float $rate): string
                         <div class="subjects-search-input">
                             <?php echo svg_icon("search", "#9ca3af"); ?>
                             <input type="text" id="subjects-search"
-                                placeholder="Search by subject code, title, or section...">
+                                placeholder="Search by subject code or title...">
                         </div>
                         <select class="filter-select" id="subjects-filter-subject">
                             <option value="">All Subjects</option>
@@ -2682,16 +2966,16 @@ function participation_color(float $rate): string
                                     <?php echo svg_icon("book", "#556070"); ?>
                                     <div>
                                         <h3><?php echo e($code); ?> – <?php echo e($group["subject_title"]); ?></h3>
-                                        <small><?php echo count($group["sections"]); ?> section(s)</small>
+                                        <small><?php echo count($group["sections"]); ?> class(es)</small>
                                     </div>
                                 </div>
                                 <?php foreach ($group["sections"] as $sec): ?>
                                     <div class="subject-section-row" data-year="<?php echo e((string) $sec["year_level"]); ?>"
-                                        data-search="<?php echo e(strtolower($code . " " . $group["subject_title"] . " " . $sec["section_name"])); ?>">
+                                        data-search="<?php echo e(strtolower($code . " " . $group["subject_title"])); ?>">
                                         <div class="sec-info">
                                             <strong>
                                                 <span class="section-badge"
-                                                    style="background:#172033;color:#fff;"><?php echo e($sec["section_name"]); ?></span>
+                                                    style="background:#172033;color:#fff;"><?php echo e($class_label($sec["section_name"] ?? "")); ?></span>
                                                 <span class="badge-course"><?php echo e($sec["course_code"]); ?></span>
                                                 <span class="badge-year"><?php echo e((string) $sec["year_level"]); ?>nd
                                                     Year</span>
@@ -2717,7 +3001,7 @@ function participation_color(float $rate): string
                             <strong><?php echo $total_subjects_distinct; ?></strong>
                         </div>
                         <div class="load-stat">
-                            <p>Total Sections</p>
+                            <p>Total Classes</p>
                             <strong><?php echo $total_sections; ?></strong>
                         </div>
                         <div class="load-stat">
@@ -2749,13 +3033,6 @@ function participation_color(float $rate): string
                             <option value="">All Subjects</option>
                             <?php foreach (array_keys($subjects_by_code) as $code): ?>
                                 <option value="<?php echo e($code); ?>"><?php echo e($code); ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                        <select class="filter-select" id="results-filter-section">
-                            <option value="">All Sections</option>
-                            <?php foreach ($assigned_subjects as $s): ?>
-                                <option value="<?php echo e($s["section_name"]); ?>"><?php echo e($s["section_name"]); ?>
-                                </option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -2799,15 +3076,14 @@ function participation_color(float $rate): string
                             }
                             ?>
                             <div class="result-row" data-subject="<?php echo e(strtolower($r["subject_code"])); ?>"
-                                data-section="<?php echo e($r["section_name"]); ?>"
-                                data-search="<?php echo e(strtolower($r["subject_code"] . " " . $r["subject_title"] . " " . $r["section_name"])); ?>"
+                                data-search="<?php echo e(strtolower($r["subject_code"] . " " . $r["subject_title"])); ?>"
                                 data-code="<?php echo e($r["subject_code"]); ?>"
-                                data-section-name="<?php echo e($r["section_name"]); ?>" <?php if ($is_released): ?>onclick="switchToCriteria('<?php echo e($r["subject_code"]); ?>', '<?php echo e($r["section_name"]); ?>')"
+                                <?php if ($is_released): ?>onclick="switchToCriteria('<?php echo e($criteria_private_keys[$r["subject_code"] . "||" . $r["section_name"]] ?? ""); ?>')"
                                 <?php endif; ?>>
                                 <div>
                                     <h3>
                                         <?php echo e($r["subject_code"]); ?>
-                                        <span class="section-badge"><?php echo e($r["section_name"]); ?></span>
+                                        <span class="section-badge"><?php echo e($class_label($r["section_name"] ?? "")); ?></span>
                                         <?php if ($is_released): ?>
                                             <span
                                                 class="status-badge status-released"><?php echo svg_icon("check-circle", "#16a34a"); ?>
@@ -2868,11 +3144,9 @@ function participation_color(float $rate): string
                     <div class="criteria-selector">
                         <select class="filter-select" id="criteria-filter-subject" style="flex:1;">
                             <option value="">Select Subject</option>
-                            <?php foreach (array_keys($criteria_data) as $key):
-                                $parts = explode("||", $key);
-                                ?>
-                                <option value="<?php echo e($key); ?>"><?php echo e($parts[0]); ?> –
-                                    <?php echo e($parts[1]); ?>
+                            <?php foreach ($criteria_data as $key => $cdata): ?>
+                                <option value="<?php echo e($criteria_private_keys[$key] ?? ""); ?>">
+                                    <?php echo e($cdata["subject_code"]); ?> <?php echo e($class_label($cdata["section_name"] ?? "")); ?>
                                 </option>
                             <?php endforeach; ?>
                             <?php if (empty($criteria_data)): ?>
@@ -2905,12 +3179,12 @@ function participation_color(float $rate): string
                                 }
                                 $cats_avg = $cat_count > 0 ? $cat_avg_sum / $cat_count : 0.0;
                                 ?>
-                                <div class="criteria-block" data-key="<?php echo e($key); ?>"
+                                <div class="criteria-block" data-key="<?php echo e($criteria_private_keys[$key] ?? ""); ?>"
                                     style="<?php echo $key === $first_key ? "" : "display:none;"; ?>">
                                     <div class="criteria-header-card">
                                         <div>
                                             <h2><?php echo e($cdata["subject_code"]); ?> <span class="section-badge"
-                                                    style="font-size:13px;"><?php echo e($cdata["section_name"]); ?></span></h2>
+                                                    style="font-size:13px;"><?php echo e($class_label($cdata["section_name"] ?? "")); ?></span></h2>
                                             <p><?php echo e($cdata["subject_title"]); ?></p>
                                         </div>
                                         <div class="criteria-header-score">
@@ -3021,13 +3295,6 @@ function participation_color(float $rate): string
                                 <option value="<?php echo e($code); ?>"><?php echo e($code); ?></option>
                             <?php endforeach; ?>
                         </select>
-                        <select class="filter-select" id="comments-filter-section">
-                            <option value="">All Sections</option>
-                            <?php foreach ($assigned_subjects as $s): ?>
-                                <option value="<?php echo e($s["section_name"]); ?>"><?php echo e($s["section_name"]); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
                     </div>
 
                     <div id="comments-list">
@@ -3039,13 +3306,12 @@ function participation_color(float $rate): string
                                     ? "Average Score: " . number_format((float) $cd["average_score"], 2)
                                     : "Average Score: N/A";
                                 ?>
-                                <div class="comment-group" data-subject="<?php echo e($cd["subject_code"]); ?>"
-                                    data-section="<?php echo e($cd["section_name"]); ?>">
+                                <div class="comment-group" data-subject="<?php echo e($cd["subject_code"]); ?>">
                                     <div class="comment-group-header">
                                         <div>
                                             <h3>
                                                 <?php echo e($cd["subject_code"]); ?> – <?php echo e($cd["subject_title"]); ?>
-                                                <span class="section-badge"><?php echo e($cd["section_name"]); ?></span>
+                                                <span class="section-badge"><?php echo e($class_label($cd["section_name"] ?? "")); ?></span>
                                             </h3>
                                             <p><?php echo count($cd["comments"]); ?> comment(s) · <?php echo e($avg_display); ?>
                                             </p>
@@ -3114,13 +3380,6 @@ function participation_color(float $rate): string
                                 <option value="<?php echo e($code); ?>"><?php echo e($code); ?></option>
                             <?php endforeach; ?>
                         </select>
-                        <select class="filter-select" id="participation-filter-section">
-                            <option value="">All Sections</option>
-                            <?php foreach ($assigned_subjects as $s): ?>
-                                <option value="<?php echo e($s["section_name"]); ?>"><?php echo e($s["section_name"]); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
                     </div>
 
                     <div class="participation-summary-grid">
@@ -3145,7 +3404,7 @@ function participation_color(float $rate): string
                     <div style="padding:16px 22px;font-weight:700;font-size:15px;border-bottom:1px solid #e5e7eb;">
                         Participation by Class
                         <div style="font-size:13px;font-weight:400;color:#64748b;margin-top:2px;">Detailed breakdown for
-                            each section</div>
+                            each class</div>
                     </div>
 
                     <div id="participation-list">
@@ -3158,13 +3417,12 @@ function participation_color(float $rate): string
                             $rate = (float) $pd["participation_rate"];
                             $bar_color = participation_color($rate);
                             ?>
-                            <div class="participation-class-row" data-subject="<?php echo e($pd["subject_code"]); ?>"
-                                data-section="<?php echo e($pd["section_name"]); ?>">
+                            <div class="participation-class-row" data-subject="<?php echo e($pd["subject_code"]); ?>">
                                 <div class="participation-class-top">
                                     <div>
                                         <h3>
                                             <?php echo e($pd["subject_code"]); ?>
-                                            <span class="section-badge"><?php echo e($pd["section_name"]); ?></span>
+                                            <span class="section-badge"><?php echo e($class_label($pd["section_name"] ?? "")); ?></span>
                                         </h3>
                                         <p><?php echo e($pd["subject_title"]); ?></p>
                                     </div>
@@ -3239,13 +3497,6 @@ function participation_color(float $rate): string
                             <?php endforeach; ?>
                         </select>
                         <select class="filter-select" style="width:100%;">
-                            <option value="">All Sections</option>
-                            <?php foreach ($assigned_subjects as $s): ?>
-                                <option value="<?php echo e($s["section_name"]); ?>"><?php echo e($s["section_name"]); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                        <select class="filter-select" style="width:100%;">
                             <option value="pdf">PDF Format</option>
                             <option value="excel">Excel Format</option>
                             <option value="print">Print</option>
@@ -3301,7 +3552,7 @@ function participation_color(float $rate): string
                     <div class="report-content-item">
                         <?php echo svg_icon("check-circle", "#16a34a"); ?>
                         <div><strong>Subject Details</strong>
-                            <p>Subject Code, Title, Section, Total Students</p>
+                            <p>Subject Code, Title, Total Students</p>
                         </div>
                     </div>
                     <div class="report-content-item">
@@ -3486,27 +3737,22 @@ function participation_color(float $rate): string
 
             const resultsSearch = document.getElementById("results-search");
             const resultsFilterSubject = document.getElementById("results-filter-subject");
-            const resultsFilterSection = document.getElementById("results-filter-section");
 
             function filterResults() {
                 const query = resultsSearch ? resultsSearch.value.toLowerCase() : "";
                 const filterSubj = resultsFilterSubject ? resultsFilterSubject.value.toLowerCase() : "";
-                const filterSec = resultsFilterSection ? resultsFilterSection.value : "";
 
                 document.querySelectorAll(".result-row").forEach(row => {
                     const search = row.dataset.search || "";
                     const subject = row.dataset.subject || "";
-                    const section = row.dataset.section || "";
                     const matchText = !query || search.includes(query);
                     const matchSubj = !filterSubj || subject === filterSubj;
-                    const matchSec = !filterSec || section === filterSec;
-                    row.style.display = (matchText && matchSubj && matchSec) ? "" : "none";
+                    row.style.display = (matchText && matchSubj) ? "" : "none";
                 });
             }
 
             if (resultsSearch) resultsSearch.addEventListener("input", filterResults);
             if (resultsFilterSubject) resultsFilterSubject.addEventListener("change", filterResults);
-            if (resultsFilterSection) resultsFilterSection.addEventListener("change", filterResults);
 
             const criteriaSelect = document.getElementById("criteria-filter-subject");
 
@@ -3526,64 +3772,52 @@ function participation_color(float $rate): string
                 }
             }
 
-            window.switchToCriteria = function (subjectCode, sectionName) {
-                const key = subjectCode + "||" + sectionName;
+            window.switchToCriteria = function (privateKey) {
+                if (!privateKey) return;
                 switchTab("tab-criteria");
                 setTimeout(function () {
                     if (criteriaSelect) {
                         for (let i = 0; i < criteriaSelect.options.length; i++) {
-                            if (criteriaSelect.options[i].value === key) {
+                            if (criteriaSelect.options[i].value === privateKey) {
                                 criteriaSelect.selectedIndex = i;
                                 break;
                             }
                         }
                     }
-                    updateCriteriaView(key);
+                    updateCriteriaView(privateKey);
                 }, 50);
             };
 
             const commentsFilterSubject = document.getElementById("comments-filter-subject");
-            const commentsFilterSection = document.getElementById("comments-filter-section");
 
             function filterComments() {
                 const filterSubj = commentsFilterSubject ? commentsFilterSubject.value : "";
-                const filterSec = commentsFilterSection ? commentsFilterSection.value : "";
 
                 document.querySelectorAll(".comment-group").forEach(group => {
                     const subject = group.dataset.subject || "";
-                    const section = group.dataset.section || "";
                     const matchSubj = !filterSubj || subject === filterSubj;
-                    const matchSec = !filterSec || section === filterSec;
-                    group.style.display = (matchSubj && matchSec) ? "" : "none";
+                    group.style.display = matchSubj ? "" : "none";
                 });
             }
 
             if (commentsFilterSubject) commentsFilterSubject.addEventListener("change", filterComments);
-            if (commentsFilterSection) commentsFilterSection.addEventListener("change", filterComments);
 
             const partFilterSubject = document.getElementById("participation-filter-subject");
-            const partFilterSection = document.getElementById("participation-filter-section");
 
             function filterParticipation() {
                 const filterSubj = partFilterSubject ? partFilterSubject.value : "";
-                const filterSec = partFilterSection ? partFilterSection.value : "";
 
                 document.querySelectorAll(".participation-class-row").forEach(row => {
                     const subject = row.dataset.subject || "";
-                    const section = row.dataset.section || "";
                     const matchSubj = !filterSubj || subject === filterSubj;
-                    const matchSec = !filterSec || section === filterSec;
-                    row.style.display = (matchSubj && matchSec) ? "" : "none";
+                    row.style.display = matchSubj ? "" : "none";
                 });
             }
 
             if (partFilterSubject) partFilterSubject.addEventListener("change", filterParticipation);
-            if (partFilterSection) partFilterSection.addEventListener("change", filterParticipation);
 
             function buildReportUrl(action) {
                 var ta = "";
-                var selSubj = document.querySelector("#tab-reports .filter-select");
-                var selSec = document.querySelectorAll("#tab-reports .filter-select")[1];
                 return "faculty_dashboard.php?action=" + action + (ta ? "&ta_id=" + ta : "");
             }
 
